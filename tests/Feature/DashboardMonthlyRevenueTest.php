@@ -23,6 +23,8 @@ class DashboardMonthlyRevenueTest extends TestCase
             $table->string('full_name');
             $table->string('status')->default('active');
             $table->unsignedBigInteger('barangay_id')->nullable();
+            $table->string('marker_color', 20)->default('#00BFFF');
+            $table->timestamps();
         });
 
         Schema::create('employees', function ($table) {
