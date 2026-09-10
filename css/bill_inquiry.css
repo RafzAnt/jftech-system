@@ -1,0 +1,16 @@
+/**
+ * JFTECH Bill Inquiry Page Styles
+ * Page: pages/bill_inquiry.blade.php
+ */
+
+.section-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}

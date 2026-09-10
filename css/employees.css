@@ -1,0 +1,45 @@
+/**
+ * JFTECH Employees Module Styles
+ */
+
+.qr-section {
+    text-align: center;
+    padding: 1.5rem;
+    background: rgba(0, 212, 255, 0.02);
+    border-radius: 16px;
+    border: 1px dashed var(--border-color);
+    transition: var(--transition);
+}
+
+.qr-section:hover {
+    border-color: var(--accent);
+    box-shadow: var(--shadow-glow);
+}
+
+.qr-section h3 {
+    color: var(--accent);
+    margin-bottom: 0.75rem;
+    font-size: 1.1rem;
+}
+
+.qr-display {
+    background: white;
+    padding: 1rem;
+    border-radius: 12px;
+    display: inline-block;
+    margin: 0.5rem 0;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+
+.qr-display img {
+    max-width: 180px;
+    height: auto;
+}
+
+.attendance-in { color: var(--success); font-weight: 600; }
+.attendance-out { color: var(--warning); font-weight: 600; }
+.attendance-absent { color: var(--danger); font-weight: 600; }
+
+@media print {
+    .qr-section, .tabs, .btn { display: none !important; }
+}

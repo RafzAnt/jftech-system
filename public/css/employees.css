@@ -1,0 +1,76 @@
+/**
+ * JFTECH Employees Module Styles
+ */
+
+.qr-section {
+    text-align: center;
+    padding: 1.5rem;
+    background: rgba(0, 212, 255, 0.02);
+    border-radius: 16px;
+    border: 1px dashed var(--border-color);
+    transition: var(--transition);
+}
+
+.qr-section:hover {
+    border-color: var(--accent);
+    box-shadow: var(--shadow-glow);
+}
+
+.qr-section h3 {
+    color: var(--accent);
+    margin-bottom: 0.75rem;
+    font-size: 1.1rem;
+}
+
+.qr-display {
+    background: white;
+    padding: 1rem;
+    border-radius: 12px;
+    display: inline-block;
+    margin: 0.5rem 0;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+
+.qr-display img {
+    max-width: 180px;
+    height: auto;
+}
+
+.attendance-in { color: var(--success); font-weight: 600; }
+.attendance-out { color: var(--warning); font-weight: 600; }
+.attendance-absent { color: var(--danger); font-weight: 600; }
+
+.attendance-qr-print-sheet { display: none; }
+
+@media print {
+    body.printing-attendance-qr * { visibility: hidden !important; }
+    body.printing-attendance-qr .attendance-qr-print-sheet,
+    body.printing-attendance-qr .attendance-qr-print-sheet * { visibility: visible !important; }
+    body.printing-attendance-qr .attendance-qr-print-sheet {
+        position: fixed;
+        inset: 0;
+        display: block;
+        padding: 12mm 16mm;
+        background: #fff;
+        color: #10213d;
+        font-family: Arial, sans-serif;
+    }
+    .attendance-print-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-bottom: 5mm;
+        border-bottom: 2px solid #1d4ed8;
+        color: #123c7a;
+    }
+    .attendance-print-header strong { font-size: 15pt; letter-spacing: .06em; }
+    .attendance-print-header span { font-size: 9pt; font-weight: 700; letter-spacing: .1em; }
+    .attendance-print-qr { min-height: 112mm; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .attendance-print-qr h2 { margin: 0 0 6mm; color: #123c7a; font-size: 17pt; letter-spacing: .12em; }
+    .attendance-print-qr-code { padding: 5mm; border: 1px solid #c7d5ea; border-radius: 3mm; }
+    .attendance-print-qr-code img,
+    .attendance-print-qr-code canvas { display: block; width: 52mm !important; height: 52mm !important; }
+    .attendance-print-qr p { margin: 5mm 0 0; color: #334155; font-size: 10pt; font-weight: 700; }
+    .attendance-print-cut-line { border-top: 1px dashed #94a3b8; }
+    .qr-section, .tabs, .btn { display: none !important; }
+}

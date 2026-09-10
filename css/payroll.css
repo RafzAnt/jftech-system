@@ -1,0 +1,339 @@
+/**
+ * JFTECH Payroll Page Styles
+ * Page: pages/payroll.blade.php
+ *
+ * Contains payroll-specific layout plus the payslip component styles
+ * (shared with inventory & user_management views).
+ */
+
+/* ===== PAYROLL LAYOUT ===== */
+.payroll-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.filter-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1rem;
+    align-items: end;
+}
+
+@media (max-width: 900px) {
+    .payroll-stats,
+    .filter-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+    .payroll-stats,
+    .filter-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ===== FORM SECTION (payroll computation) ===== */
+.form-section {
+    margin-top: 1.25rem;
+}
+
+.form-section-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--accent, #1f78f2);
+    border-bottom: 2px solid var(--glass-border, #1f78f2);
+    padding-bottom: 0.35rem;
+    margin-bottom: 0.85rem;
+}
+
+.calc-readonly {
+    background: var(--bg-muted, #f1f5f9);
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.computed-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+}
+
+@media (max-width: 640px) {
+    .computed-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ===== PAYSLIP COMPONENT ===== */
+.payslip-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.payslip-card {
+    background: #ffffff;
+    color: #111827;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+}
+
+.payslip-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    flex-wrap: wrap;
+    background: #1e3a8a;
+    color: #ffffff;
+    padding: 1.25rem 1.5rem;
+}
+
+.payslip-header .company-name {
+    font-size: 1.25rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+}
+
+.payslip-header .company-address {
+    font-size: 0.82rem;
+    opacity: 0.9;
+    margin-top: 0.25rem;
+}
+
+.payslip-header .payslip-period {
+    text-align: right;
+    font-size: 0.85rem;
+    line-height: 1.5;
+}
+
+.payslip-header .payslip-period strong {
+    font-size: 1rem;
+    letter-spacing: 0.08em;
+}
+
+.payslip-archived-badge {
+    display: inline-block;
+    margin-left: 0.5rem;
+    padding: 0.1rem 0.5rem;
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+    background: #f59e0b;
+    color: #1f2937;
+    border-radius: 4px;
+    vertical-align: middle;
+}
+
+.payslip-body {
+    padding: 1.25rem 1.5rem;
+}
+
+.payslip-meta-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1rem;
+}
+
+.payslip-meta-table td {
+    border: 1px solid #e2e8f0;
+    padding: 0.5rem 0.75rem;
+    vertical-align: top;
+    width: 33.333%;
+}
+
+.payslip-meta-table .payslip-label {
+    display: block;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #64748b;
+    margin-bottom: 0.15rem;
+}
+
+.payslip-meta-table strong {
+    font-size: 0.95rem;
+    color: #0f172a;
+}
+
+.payslip-section-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    background: #1e3a8a;
+    color: #ffffff;
+    padding: 0.45rem 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.payslip-table-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    background: #e2e8f0;
+    color: #1e293b;
+    padding: 0.45rem 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.payslip-tables {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.payslip-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.payslip-table th {
+    background: #f1f5f9;
+    text-align: left;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid #e2e8f0;
+    color: #334155;
+}
+
+.payslip-table td {
+    padding: 0.4rem 0.6rem;
+    border: 1px solid #e2e8f0;
+    font-size: 0.85rem;
+    color: #0f172a;
+}
+
+.payslip-table td:last-child,
+.payslip-table th:last-child {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.payslip-table tr.total td {
+    font-weight: 700;
+    background: #f8fafc;
+}
+
+.payslip-summary {
+    width: 100%;
+    max-width: 380px;
+    margin-left: auto;
+    border-collapse: collapse;
+}
+
+.payslip-summary td {
+    border: 1px solid #e2e8f0;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
+    color: #0f172a;
+}
+
+.payslip-summary td:last-child {
+    text-align: right;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.payslip-summary tr.netpay td {
+    background: #16a34a;
+    color: #ffffff;
+    font-weight: 800;
+    font-size: 1.05rem;
+}
+
+.payslip-confirm {
+    font-size: 0.8rem;
+    color: #475569;
+    border-top: 1px dashed #cbd5e1;
+    padding-top: 0.75rem;
+    margin-top: 0.5rem;
+}
+
+.payslip-signatures {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.payslip-signatures > div {
+    width: 45%;
+    min-width: 200px;
+    border-top: 1px solid #94a3b8;
+    padding-top: 0.5rem;
+    font-size: 0.82rem;
+    color: #334155;
+}
+
+.payslip-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+    padding: 1rem 1.5rem;
+    border-top: 1px solid #e2e8f0;
+    background: #f8fafc;
+}
+
+.payslip-view-tabs {
+    display: inline-flex;
+    border: 1px solid var(--glass-border, #1f78f2);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.payslip-view-tab {
+    padding: 0.35rem 0.9rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-muted, #64748b);
+    text-decoration: none;
+    background: transparent;
+}
+
+.payslip-view-tab.active {
+    background: var(--accent, #1f78f2);
+    color: #ffffff;
+}
+
+@media print {
+    body {
+        background: #ffffff;
+    }
+    .top-bar,
+    .payroll-stats,
+    .print-hide,
+    .card-header,
+    .payslip-actions,
+    .grid-overlay {
+        display: none !important;
+    }
+    .main-content {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    .card {
+        border: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+    }
+    .card-body {
+        padding: 0 !important;
+    }
+    .payslip-card {
+        box-shadow: none;
+        border: 1px solid #000000;
+        page-break-inside: avoid;
+    }
+}

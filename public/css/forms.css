@@ -1,0 +1,127 @@
+/**
+ * JFTECH Forms Styles
+ */
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-group.full-width {
+    grid-column: 1 / -1;
+}
+
+.section-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--accent);
+    margin: 1.5rem 0 1rem 0;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.marker-color-options {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    padding: 0.5rem;
+    background: rgba(0, 212, 255, 0.03);
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+}
+
+.color-option {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 3px solid transparent;
+    transition: var(--transition);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.color-option:hover {
+    transform: scale(1.2);
+    box-shadow: 0 0 15px currentColor;
+}
+
+.color-option.selected {
+    border-color: var(--text-primary);
+    transform: scale(1.15);
+    box-shadow: 0 0 15px currentColor;
+}
+
+.map-container {
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+    height: 450px;
+    width: 100%;
+}
+
+.map-container.mobile-tall {
+    height: 350px;
+}
+
+.map-container.small-phone {
+    height: 280px;
+}
+
+.leaflet-container {
+    background: #0d2137 !important;
+}
+
+.leaflet-popup-content-wrapper {
+    background: var(--card-bg-solid);
+    color: var(--text-primary);
+    border-radius: 12px;
+}
+
+.leaflet-popup-tip {
+    background: var(--card-bg-solid);
+}
+
+/* Leaflet dark theme overrides */
+.leaflet-control-zoom a {
+    background: var(--card-bg-solid) !important;
+    color: var(--accent) !important;
+    border-color: var(--border-color) !important;
+}
+
+@media (max-width: 768px) {
+    .map-container {
+        height: 350px;
+    }
+}
+
+@media (max-width: 600px) {
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .map-container {
+        height: 300px;
+    }
+}
+
+@media (max-width: 600px) {
+    .map-container {
+        height: 300px;
+    }
+}
+
+@media (max-width: 480px) {
+    .map-container {
+        height: 280px;
+    }
+}

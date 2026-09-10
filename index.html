@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#081426">
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>JFTECH Management System</title>
+    <link rel="stylesheet" href="css/jftech-theme.css?v=20260502-darkblue">
+    <link rel="stylesheet" href="css/login.css?v=20260502-darkblue">
+    <style>
+        .splash-shell {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+        .splash-card {
+            width: min(100%, 560px);
+            background: var(--card-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 2.5rem 2rem;
+            text-align: center;
+            box-shadow: var(--shadow-lg), var(--shadow-glow);
+            backdrop-filter: blur(18px);
+            animation: splash-enter 0.8s ease-out;
+        }
+        .brand-mark {
+            width: 84px;
+            height: 84px;
+            margin: 0 auto 1.25rem;
+            border-radius: 22px;
+            display: grid;
+            place-items: center;
+            background: color-mix(in srgb, var(--accent) 10%, transparent);
+            border: 1px solid var(--glass-border);
+            box-shadow: var(--shadow-glow);
+        }
+        .brand-mark svg {
+            width: 42px;
+            height: 42px;
+            stroke: var(--accent);
+            fill: none;
+            stroke-width: 1.8;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        .splash-title {
+            margin: 0;
+            font-size: clamp(2.25rem, 5vw, 3.25rem);
+            letter-spacing: 0.12em;
+            color: var(--text-primary);
+        }
+        .splash-subtitle {
+            margin: 0.75rem 0 1.75rem;
+            color: var(--text-secondary);
+            font-size: 1rem;
+        }
+        .loading-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.85rem;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+        }
+        .loading-spinner {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            border: 3px solid rgba(255, 255, 255, 0.14);
+            border-top-color: var(--accent);
+            animation: spin 0.9s linear infinite;
+        }
+        .loading-text {
+            font-size: 0.95rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+        .progress-track {
+            width: 100%;
+            height: 8px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.08);
+            overflow: hidden;
+            margin-bottom: 1rem;
+        }
+        .progress-bar {
+            width: 0;
+            height: 100%;
+            border-radius: inherit;
+            background: linear-gradient(90deg, var(--accent) 0%, #4df3c8 100%);
+            animation: fill-bar 2.4s ease forwards;
+        }
+        .redirect-note {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+        .setup-info {
+            background: rgba(0, 212, 255, 0.05);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+            border: 1px solid var(--border-color);
+            text-align: left;
+        }
+        .setup-info h3 {
+            color: var(--accent);
+            margin-bottom: 1rem;
+        }
+        .setup-info ol {
+            padding-left: 1.5rem;
+            color: var(--text-secondary);
+            line-height: 2;
+        }
+        .setup-info li {
+            margin-bottom: 0.5rem;
+        }
+        .setup-info code {
+            background: color-mix(in srgb, var(--accent) 10%, transparent);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            color: var(--accent);
+            font-size: 0.85rem;
+        }
+        .php-redirect {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background: rgba(76, 175, 80, 0.1);
+            border: 1px solid rgba(76, 175, 80, 0.3);
+            border-radius: 12px;
+            color: var(--success);
+        }
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+        .feature-card {
+            background: rgba(0, 212, 255, 0.05);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1rem;
+            text-align: center;
+            transition: var(--transition);
+        }
+        .feature-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+        }
+        .feature-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        .feature-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+        @keyframes fill-bar {
+            from {
+                width: 0;
+            }
+            to {
+                width: 100%;
+            }
+        }
+        @keyframes splash-enter {
+            from {
+                opacity: 0;
+                transform: translateY(18px) scale(0.98);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+    </style>
+</head>
+<body class="login-page">
+    <div class="grid-overlay"></div>
+    <button class="theme-toggle" type="button" data-theme-toggle aria-pressed="false" title="Toggle theme">
+        <span class="theme-toggle__icon" data-theme-icon></span>
+        <span class="theme-toggle__label" data-theme-label>Dark Mode</span>
+    </button>
+
+    <div class="splash-shell">
+        <div class="splash-card">
+            <div class="brand-mark" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                    <path d="M2 8.82a16 16 0 0 1 20 0"/>
+                    <path d="M5.5 12.85a11 11 0 0 1 13 0"/>
+                    <path d="M9 16.55a6 6 0 0 1 6 0"/>
+                    <circle cx="12" cy="20" r="1.2" fill="currentColor" stroke="none"/>
+                </svg>
+            </div>
+            <h1 class="splash-title">JFTECH</h1>
+            <p class="splash-subtitle">JFTECH Management System</p>
+
+            <div class="loading-row">
+                <div class="loading-spinner"></div>
+                <div class="loading-text">Loading System</div>
+            </div>
+
+            <div class="progress-track" aria-hidden="true">
+                <div class="progress-bar"></div>
+            </div>
+
+            <p class="redirect-note">Preparing login page...</p>
+        </div>
+    </div>
+
+    <script src="js/jftech-main.js?v=20260502-darkblue"></script>
+    <script>
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                window.location.href = 'index.php';
+            }, 2400);
+        });
+    </script>
+</body>
+</html>

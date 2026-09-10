@@ -1,0 +1,41 @@
+/* Corporate two-column login portal. */
+body.corporate-login-page {
+    min-height: 100svh;
+    overflow: hidden;
+    background: var(--primary) !important;
+}
+body.corporate-login-page::before,
+body.corporate-login-page::after { display: none; }
+.login-background { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 14% 43%, var(--accent-glow), transparent 31%), radial-gradient(ellipse at 82% 15%, rgba(15, 107, 255, .12), transparent 29%), var(--primary); }
+.login-background::before, .login-background::after { content: ''; position: absolute; width: 58vw; height: 24vw; border: 1px solid var(--border-color); border-radius: 50%; filter: blur(.1px); }
+.login-background::before { left: -28vw; bottom: -15vw; transform: rotate(-12deg); box-shadow: 0 0 24px var(--accent-glow); }
+.login-background::after { right: -35vw; top: -15vw; transform: rotate(18deg); }
+.theme-toggle { background: rgba(6, 27, 61, .78); border-color: rgba(54, 153, 244, .24); }
+
+.corporate-login-card { position: relative; z-index: 1; width: min(66vw, 790px); height: min(60svh, 500px); min-height: 400px; margin: auto; display: grid; grid-template-columns: 1fr 1fr; overflow: hidden; border: 1px solid var(--border-color); border-radius: 21px; background: var(--card-bg-solid); box-shadow: 0 25px 65px rgba(0, 0, 0, .4), 0 0 32px var(--accent-glow), inset 0 1px rgba(170, 224, 255, .05); backdrop-filter: blur(18px); }
+.corporate-login-card::after { content: ''; position: absolute; top: 7%; bottom: 7%; left: 50%; width: 1px; background: linear-gradient(transparent, rgba(79, 167, 247, .32), transparent); }
+.login-section, .brand-section { min-width: 0; display: flex; flex-direction: column; justify-content: center; }
+.login-section { padding: clamp(1.5rem, 2.5vw, 2.2rem); align-items: flex-end; }
+.corporate-login-form { width: 100%; max-width: 275px; margin: 0; }
+.corporate-login-form .form-group { margin-bottom: 1.45rem; }
+.corporate-login-form label { display: block; margin-bottom: .55rem; color: var(--text-secondary); font-size: .62rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.field-control { position: relative; }
+.field-control input { width: 100%; height: 46px; padding: 0 .9rem 0 2.8rem; border: 1px solid var(--border-color) !important; border-radius: 7px; outline: 0; background: var(--input-bg) !important; box-shadow: inset 0 1px rgba(139, 204, 255, .08), 0 5px 12px rgba(0, 0, 0, .16); color: var(--text-primary) !important; font-size: .86rem; font-weight: 600; transition: .2s ease; }
+.field-control input:focus { border-color: var(--accent) !important; box-shadow: 0 0 0 3px var(--accent-glow), inset 0 1px rgba(161, 220, 255, .12); }
+.field-icon { position: absolute; z-index: 1; top: 50%; left: .95rem; width: 17px; height: 17px; transform: translateY(-50%); fill: none; stroke: var(--accent); stroke-width: 1.8; }
+.password-toggle { position: absolute; z-index: 1; top: 50%; right: .7rem; width: 30px; height: 30px; padding: 0; display: grid; place-items: center; transform: translateY(-50%); border: 0; background: transparent; color: var(--accent); cursor: pointer; }
+.password-toggle svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.7; }
+.login-button { width: 100%; height: 49px; margin-top: .45rem; display: inline-flex; align-items: center; justify-content: center; gap: .55rem; border: 1px solid var(--border-color); border-radius: 7px; background: var(--gradient-accent); box-shadow: 0 10px 22px var(--accent-glow); color: #fff; font-size: .72rem; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; cursor: pointer; transition: .22s ease; }
+.login-button:hover { transform: translateY(-1px); filter: brightness(1.1); box-shadow: 0 13px 27px rgba(21, 99, 239, .5); }
+.login-button svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.9; }
+.alert.alert-danger { margin: 0 auto 1.25rem; width: 100%; max-width: 335px; }
+
+.brand-section { position: relative; align-items: flex-start; padding: 2rem 1.5rem; text-align: center; }
+.brand-section::before { content: ''; position: absolute; inset: 11% 9%; border-radius: 16px; background: radial-gradient(circle at 50% 43%, rgba(18, 154, 255, .16), transparent 34%); pointer-events: none; }
+.brand-logo-wrap { position: relative; z-index: 1; align-self: center; width: clamp(105px, 12vw, 135px); aspect-ratio: 1; display: grid; place-items: center; padding: 10px; border: 1px solid rgba(34, 198, 255, .56); border-radius: 22px; background: linear-gradient(145deg, rgba(18, 78, 144, .42), rgba(3, 19, 50, .35)); box-shadow: 0 0 0 8px rgba(13, 130, 235, .06), 0 0 31px rgba(18, 204, 255, .37), inset 0 1px rgba(189, 242, 255, .15); }
+.brand-logo-wrap img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 7px 12px rgba(0, 0, 0, .25)); }
+.brand-section h1 { position: relative; z-index: 1; width: 100%; margin: 1.1rem 0 .35rem; color: #f0fbff; font-size: clamp(1.8rem, 3.2vw, 2.7rem); line-height: 1; letter-spacing: .08em; font-weight: 700; }
+.brand-section p { position: relative; z-index: 1; width: 100%; color: #85c9f4; font-size: clamp(.6rem, 1vw, .78rem); font-weight: 600; letter-spacing: .25em; text-transform: uppercase; }
+
+@media (max-width: 800px) { body.corporate-login-page { overflow-x: hidden; overflow-y: auto; } .corporate-login-card { width: min(calc(100% - 2rem), 490px); height: auto; min-height: 0; margin: 5.5rem auto 2rem; grid-template-columns: 1fr; } .corporate-login-card::after { top: auto; right: 13%; bottom: auto; left: 13%; width: auto; height: 1px; background: linear-gradient(90deg, transparent, rgba(79, 167, 247, .32), transparent); } .login-section { order: 2; align-items: stretch; padding: 2.5rem 2rem; } .corporate-login-form { max-width: none; } .brand-section { order: 1; align-items: center; padding: 2.5rem 2rem; } .brand-logo-wrap { width: 120px; border-radius: 22px; } .brand-section h1 { margin-top: 1.2rem; } }
+@media (max-width: 420px) { .corporate-login-card { margin-top: 4.75rem; } .login-section { padding: 2rem 1.35rem; } .brand-section { padding: 2rem 1.35rem; } .brand-logo-wrap { width: 104px; } .theme-toggle { top: .7rem; right: .7rem; } }

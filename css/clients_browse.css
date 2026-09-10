@@ -1,0 +1,256 @@
+/**
+ * JFTECH Browse Clients Styles
+ */
+
+.filter-bar {
+    animation: fadeIn 0.3s ease-out;
+}
+
+.data-table tbody tr {
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.data-table tbody tr:hover {
+    background: rgba(0, 212, 255, 0.05);
+}
+
+.leaflet-popup-content-wrapper {
+    background: var(--card-bg-solid) !important;
+    color: var(--text-primary) !important;
+    border-radius: 12px !important;
+    border: 1px solid var(--border-color);
+}
+
+.leaflet-popup-tip {
+    background: var(--card-bg-solid) !important;
+}
+
+.leaflet-popup-content h4 {
+    color: var(--accent);
+}
+
+/* Barangay legend */
+.barangay-legend {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1rem;
+    z-index: 500;
+    max-width: 200px;
+}
+
+.barangay-legend h4 {
+    font-size: 0.85rem;
+    margin-bottom: 0.5rem;
+    color: var(--accent);
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    margin-bottom: 0.35rem;
+}
+
+.legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid white;
+}
+
+/* ===== CLIENT DETAILS MODAL ===== */
+.client-detail-field,
+.client-detail-rate {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 0.65rem 0.85rem;
+    background: var(--input-bg, rgba(0, 0, 0, 0.94));
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+}
+
+.client-detail-field > span,
+.client-detail-rate > span {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+}
+
+.client-detail-field > strong,
+.client-detail-rate > strong {
+    font-size: 0.95rem;
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.client-detail-rate {
+    border-color: rgba(41, 182, 255, 0.35);
+    background: rgba(41, 182, 255, 0.04);
+}
+
+.client-detail-rate > strong {
+    color: var(--accent);
+}
+
+/* ===== CLIENT DETAILS MODAL LAYOUT ===== */
+.cd-modal {
+    max-height: 88vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.cd-body {
+    padding: 1.5rem;
+    overflow-y: auto;
+}
+
+.cd-profile {
+    text-align: center;
+    margin-bottom: 1.25rem;
+}
+
+.cd-avatar {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 0.75rem;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    color: #fff;
+    font-size: 1.6rem;
+    font-weight: 700;
+    box-shadow: 0 0 0 3px rgba(0, 230, 118, 0.25);
+}
+
+.cd-name {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.cd-fields {
+    display: grid;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.cd-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+
+.cd-section {
+    margin-top: 1.25rem;
+}
+
+.cd-section-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.6rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.cd-billing {
+    color: var(--accent);
+}
+
+.cd-payment {
+    color: var(--success);
+}
+
+.cd-table-wrap {
+    overflow-x: auto;
+    border-radius: 10px;
+}
+
+.cd-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+}
+
+.cd-table th {
+    text-align: left;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    padding: 0.5rem 0.6rem;
+    border-bottom: 1px solid var(--border-color);
+    white-space: nowrap;
+}
+
+.cd-table td {
+    padding: 0.55rem 0.6rem;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-primary);
+    white-space: nowrap;
+}
+
+.cd-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.cd-method {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    border-radius: 20px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: rgba(41, 121, 255, 0.15);
+    color: var(--info);
+    border: 1px solid rgba(41, 121, 255, 0.3);
+}
+
+.cd-empty {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    padding: 0.5rem 0;
+}
+
+.cd-actions {
+    display: flex;
+    gap: 0.6rem;
+    margin-top: 1.5rem;
+}
+
+.cd-btn-block {
+    flex: 1;
+    width: 100%;
+    justify-content: center;
+    border-radius: 999px;
+}
+
+@media (max-width: 480px) {
+    .cd-grid-2 {
+        grid-template-columns: 1fr;
+    }
+    .cd-actions {
+        flex-direction: column;
+    }
+}
+
+@media print {
+    .sidebar, .menu-toggle, .top-bar, .filter-bar, #map, .card-header button {
+        display: none !important;
+    }
+    .main-content {
+        margin-left: 0;
+        padding: 0;
+    }
+}

@@ -1,0 +1,217 @@
+/**
+ * JFTECH Price Management Page Styles
+ * Page: pages/price_management.blade.php
+ */
+
+.price-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+@media (max-width: 768px) {
+    .price-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 480px) {
+    .price-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Price status badges */
+.price-status-active { color: var(--success); }
+.price-status-scheduled { color: var(--info); }
+.price-status-draft { color: var(--warning); }
+.price-status-inactive { color: var(--text-muted); }
+.price-status-expired { color: var(--danger); }
+
+/* Action button group */
+.btn-group-action {
+    display: flex;
+    gap: 0.25rem;
+    flex-wrap: wrap;
+}
+
+.btn-group-action .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.7rem;
+}
+
+/* Table action menu */
+.action-menu {
+    position: relative;
+    display: inline-block;
+}
+
+.action-menu-btn {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 0.25rem 0.5rem;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    cursor: pointer;
+}
+
+.action-menu-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    z-index: 100;
+    min-width: 140px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 0.25rem;
+    box-shadow: var(--shadow-lg);
+    margin-top: 0.25rem;
+}
+
+.action-menu-dropdown.show {
+    display: block;
+}
+
+.action-menu-dropdown .dropdown-item {
+    display: block;
+    width: 100%;
+    padding: 0.4rem 0.75rem;
+    color: var(--text-primary);
+    font-size: 0.8rem;
+    text-align: left;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    border-radius: 6px;
+}
+
+.action-menu-dropdown .dropdown-item:hover {
+    background: rgba(0, 212, 255, 0.08);
+    color: var(--accent);
+}
+
+/* Search and filter toolbar */
+.price-toolbar {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+}
+
+.price-toolbar .search-box {
+    max-width: 300px;
+}
+
+.filter-section {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    display: none;
+}
+
+.filter-section.show {
+    display: block;
+}
+
+.filter-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+}
+
+@media (max-width: 768px) {
+    .filter-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.filter-section .form-group {
+    margin-bottom: 0;
+}
+
+/* Bulk update selection */
+.bulk-update-bar {
+    display: none;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+    background: rgba(0, 212, 255, 0.08);
+    border: 1px solid var(--accent);
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+}
+
+.bulk-update-bar.show {
+    display: flex;
+}
+
+.select-all-checkbox {
+    cursor: pointer;
+    width: 18px;
+    height: 18px;
+}
+
+/* Quick action buttons */
+.quick-actions {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+}
+
+.quick-actions .btn {
+    min-width: 130px;
+}
+
+/* Timeline */
+.price-timeline .timeline-item::before {
+    background: var(--accent);
+}
+
+/* Price difference badges */
+.price-diff-positive { color: var(--success); }
+.price-diff-negative { color: var(--danger); }
+
+/* Price detail page */
+.price-detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+}
+
+@media (max-width: 768px) {
+    .price-detail-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.product-image-placeholder {
+    width: 80px;
+    height: 80px;
+    border-radius: 8px;
+    background: rgba(0, 212, 255, 0.1);
+    border: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    font-size: 2rem;
+}
+
+/* Modal extra wide */
+.modal-content.xl {
+    max-width: 900px;
+}
+
+@media (min-width: 768px) {
+    .modal-content.xl {
+        width: 85%;
+    }
+}

@@ -1,0 +1,8 @@
+/**
+ * JFTECH User Management Page Styles
+ * Page: pages/user_management.blade.php
+ */
+
+/* User management relies on shared theme components (cards, tables, badges).
+   The payslip preview component styles live in payroll.css.
+   Add page-specific overrides below as needed. */

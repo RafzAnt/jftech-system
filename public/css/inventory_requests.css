@@ -1,0 +1,95 @@
+/**
+ * JFTECH Inventory Requests Page Styles
+ * Page: pages/inventory_requests.blade.php
+ */
+
+.filter-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.filter-tab {
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: var(--card-bg);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: var(--transition);
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+
+.filter-tab:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.filter-tab.active {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+}
+
+.status-badge {
+    padding: 0.35rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-pending {
+    background: rgba(255, 171, 0, 0.12);
+    color: var(--warning);
+    border: 1px solid rgba(255, 171, 0, 0.3);
+}
+
+.status-approved {
+    background: rgba(0, 230, 118, 0.12);
+    color: var(--success);
+    border: 1px solid rgba(0, 230, 118, 0.3);
+}
+
+.status-denied {
+    background: rgba(255, 23, 68, 0.12);
+    color: var(--danger);
+    border: 1px solid rgba(255, 23, 68, 0.3);
+}
+
+.actions-column {
+    min-width: 112px;
+}
+
+.request-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    align-items: flex-start;
+}
+
+.request-action-btn {
+    width: 92px;
+    min-height: 32px;
+    padding: 0.45rem 0.6rem;
+    border-radius: 8px;
+    font-size: 0.68rem;
+    letter-spacing: 0.45px;
+}
+
+.request-action-btn:hover {
+    transform: translateY(-1px);
+}
+
+@media (max-width: 768px) {
+    .request-actions {
+        flex-direction: row;
+    }
+    .request-action-btn {
+        width: auto;
+        min-width: 82px;
+    }
+}
