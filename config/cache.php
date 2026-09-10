@@ -15,7 +15,10 @@ return [
     |
     */
 
-    'default' => env('CACHE_STORE', 'database'),
+    // Vercel's .env importer can create a variable with an empty value.
+    // Treat that the same as an unset variable instead of selecting a cache
+    // store named "" and crashing before Laravel can handle a request.
+    'default' => env('CACHE_STORE') ?: 'database',
 
     /*
     |--------------------------------------------------------------------------

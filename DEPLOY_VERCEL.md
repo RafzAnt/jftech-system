@@ -30,8 +30,10 @@ Vercel build command, output directory, or a `vercel.json` file for this app.
    `Dockerfile.vercel` automatically.
 3. Leave Build Command and Output Directory empty. The Dockerfile installs PHP
    dependencies and starts Laravel on Vercel's assigned `PORT`.
-4. In **Settings → Environment Variables**, add these values for
-   **Production** (and Preview too if previews need a database):
+4. In **Settings → Environment Variables**, use **Add More** and add the
+   values below one at a time for **Production only**. Do **not** use
+   **Import .env**: it imports local XAMPP values such as `127.0.0.1`, which
+   cannot work from Vercel.
 
    ```text
    APP_NAME=JFTECH
@@ -48,8 +50,6 @@ Vercel build command, output directory, or a `vercel.json` file for this app.
    DB_DATABASE=YOUR_DATABASE_NAME
    DB_USERNAME=YOUR_DATABASE_USER
    DB_PASSWORD=YOUR_DATABASE_PASSWORD
-   DB_SOCKET=
-
    SESSION_DRIVER=database
    CACHE_STORE=database
    QUEUE_CONNECTION=sync
