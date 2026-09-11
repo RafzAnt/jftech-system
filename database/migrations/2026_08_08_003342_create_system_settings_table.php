@@ -17,9 +17,9 @@ CREATE TABLE IF NOT EXISTS system_settings (
 
 INSERT IGNORE INTO system_settings (setting_key, setting_value, setting_label) VALUES
 ('company_name', 'JFTECH WiFi Solutions', 'Company Name'),
-('company_address', 'Balilihan, Bohol, Philippines', 'Company Address'),
+('company_address', 'Del Carmen Sur, Balilihan, Bohol', 'Company Address'),
 ('company_contact', '09123456789', 'Contact Number'),
-('company_email', 'info@jftech.com', 'Email Address'),
+('company_email', 'jftechitsolutions@gmail.com', 'Email Address'),
 ('penalty_rate', '50.00', 'Overdue Penalty (PHP)'),
 ('tax_rate', '0.00', 'Tax Rate (%)'),
 ('currency', 'PHP', 'Currency'),

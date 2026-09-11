@@ -95,6 +95,30 @@
     letter-spacing: 0.04em;
 }
 
+.payslip-header .print-company-brand {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.payslip-header .print-company-logo {
+    width: auto;
+    height: 48px;
+    object-fit: contain;
+}
+
+.payslip-header .print-company-brand .company {
+    font-size: 1.2rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+}
+
+.payslip-header .print-company-brand .sub {
+    font-size: 0.8rem;
+    opacity: 0.9;
+    margin-top: 0.25rem;
+}
+
 .payslip-header .company-address {
     font-size: 0.82rem;
     opacity: 0.9;

@@ -32,6 +32,8 @@
             color: #475569;
             margin-top: 2px;
         }
+        .print-company-brand { display: flex; align-items: flex-start; gap: 10px; }
+        .print-company-logo { width: auto; height: 48px; object-fit: contain; }
         .doc-title {
             text-align: right;
             font-size: 14px;
@@ -130,8 +132,6 @@
             th, td { overflow-wrap: anywhere; }
         }
     </style>
-    @php($logoPath = resource_path('views/logo/jftect_logo.png'))
-    @php($logoData = is_file($logoPath) ? base64_encode(file_get_contents($logoPath)) : null)
 </head>
 <body>
     <div class="toolbar no-print" style="margin-bottom: 16px; text-align: right;">
@@ -139,15 +139,7 @@
     </div>
 
     <div class="doc-header">
-        <div style="display:flex;align-items:center;gap:1rem">
-            @if ($logoData)
-                <img src="data:image/png;base64,{{ $logoData }}" alt="JFTECH" style="height:48px; width:auto; display:block;">
-            @endif
-            <div>
-                <div class="company">JFTECH IT SOLUTIONS</div>
-                <div class="sub">Main Office &bull; Purok 2, San Isidro, Consolacion, Cebu</div>
-            </div>
-        </div>
+        @include('partials.print_company')
         <div class="doc-title">
             <strong>{{ strtoupper($reportName) }}</strong><br>
             Generated: {{ date('M d, Y h:i A') }}

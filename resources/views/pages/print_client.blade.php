@@ -7,6 +7,10 @@
     @php($thermal = request()->get('format', 'thermal') === 'thermal')
     <style>
         * { box-sizing: border-box; }
+        .print-company-brand { display: flex; align-items: flex-start; gap: 8px; text-align: left; }
+        .print-company-logo { width: auto; height: 42px; object-fit: contain; }
+        .print-company-brand .company { font-size: 16px; font-weight: 800; line-height: 1.15; }
+        .print-company-brand .sub { font-size: 11px; line-height: 1.3; margin-top: 2px; }
         @if ($thermal)
         body {
             margin: 0;
@@ -58,9 +62,7 @@
     <div class="toolbar"><button type="button" onclick="window.print()">Print / Save as PDF</button></div>
     <main class="receipt">
         @if ($thermal)
-            <div class="center brand">JFTECH IT SOLUTIONS</div>
-            <div class="center small">Del Carmen Sur, Bilaran, Bohol</div>
-            <div class="center small">0964 932 7591</div>
+            @include('partials.print_company', ['compact' => true])
             <div class="center small">TIN # 476-882-950-000</div>
             <div class="center small">{{ now()->format('M d, Y') }}</div>
 
@@ -98,10 +100,7 @@
             <div class="center tiny stars">************************</div>
         @else
             <header class="header">
-                <div>
-                    <h1>JFTECH IT SOLUTIONS</h1>
-                    <div class="muted">WiFi Billing &amp; Management System</div>
-                </div>
+                @include('partials.print_company')
                 <div class="muted" style="text-align:right;">CLIENT INFORMATION<br>{{ now()->format('M d, Y h:i A') }}</div>
             </header>
 

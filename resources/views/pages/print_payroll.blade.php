@@ -13,6 +13,9 @@
         .header { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 20px 24px; background: #1e3a8a; color: white; }
         .company { font-size: 19px; font-weight: 800; letter-spacing: .04em; }
         .muted { font-size: 12px; opacity: .9; }
+        .print-company-brand { display: flex; align-items: flex-start; gap: 10px; }
+        .print-company-logo { width: auto; height: 48px; object-fit: contain; }
+        .print-company-brand .sub { font-size: 12px; opacity: .9; margin-top: 2px; }
         .body { padding: 22px 24px; }
         .section-title { margin: 18px 0 7px; padding: 7px 10px; background: #1e3a8a; color: white; font-weight: 700; text-transform: uppercase; font-size: 12px; }
         .meta, .amounts { width: 100%; border-collapse: collapse; }
@@ -53,7 +56,7 @@
     @endphp
     <main class="payslip">
         <header class="header">
-            <div><div class="company">JFTECH IT SOLUTIONS</div><div class="muted">WiFi Billing &amp; Management System</div></div>
+            @include('partials.print_company')
             <div style="text-align:right"><strong>PAYSLIP</strong><br><span class="muted">{{ $record->payroll_period_start }} to {{ $record->payroll_period_end }}</span></div>
         </header>
         <div class="body">

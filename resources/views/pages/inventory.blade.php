@@ -75,7 +75,7 @@
                         <a href="inventory.php" class="payslip-view-tab {{ !$showArchived ? 'active' : '' }}">Active</a>
                         <a href="inventory.php?view=archived" class="payslip-view-tab {{ $showArchived ? 'active' : '' }}">Archived ({{ $archivedCount }})</a>
                     </div>
-                    <button class="btn btn-sm btn-secondary" onclick="window.print()">Print</button>
+                    <a class="btn btn-sm btn-secondary" target="_blank" rel="noopener" href="{{ url('/pages/print_inventory.php?category=' . urlencode($filterCategory) . ($showArchived ? '&archived=1' : '')) }}">Print</a>
                 </div>
             </div>
             <div class="card-body" style="padding: 0;">

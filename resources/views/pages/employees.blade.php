@@ -156,7 +156,7 @@ $afternoonQR = null;
 
             <section class="attendance-qr-print-sheet" id="attendanceQrPrintSheet" aria-hidden="true">
                 <header class="attendance-print-header">
-                    <strong>JFTECH MANAGEMENT SYSTEM</strong>
+                    @include('partials.print_company')
                     <span>ATTENDANCE QR CODES</span>
                 </header>
                 <div class="attendance-print-qr attendance-print-time-in">

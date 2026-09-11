@@ -132,10 +132,7 @@
 @endphp
                         <div class="payslip-card">
                             <div class="payslip-header">
-                                <div>
-                                    <div class="company-name">JFTECH IT SOLUTIONS</div>
-                                    <div class="company-address">Main Office &bull; Purok 2, San Isidro, Consolacion, Cebu</div>
-                                </div>
+                                @include('partials.print_company')
                                 <div class="payslip-period">
                                     <div><strong>PAYSLIP</strong>@if ($showArchived) <span class="payslip-archived-badge">ARCHIVED</span>@endif</div>
                                     <div>Payroll Period: {{ date('M d, Y', strtotime($record['payroll_period_start'])) }} - {{ date('M d, Y', strtotime($record['payroll_period_end'])) }}</div>
@@ -516,6 +513,7 @@
     }
 
     function printPayslip(record) {
+        const printLogoUrl = @json(url('/assets/jftech-logo.png'));
         const rv = function(key) { return Number(record[key]) || 0; };
         const dailyRate = rv('daily_rate');
         const gross = rv('gross_pay');
@@ -570,6 +568,9 @@
                     .print-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; background: #1e3a8a; color: #fff; padding: 1.25rem 1.5rem; }
                     .print-header .company { font-size: 1.2rem; font-weight: 800; letter-spacing: 0.04em; }
                     .print-header .address { font-size: 0.8rem; opacity: 0.9; margin-top: 0.25rem; }
+                    .print-company-brand { display: flex; align-items: flex-start; gap: 10px; }
+                    .print-company-logo { width: auto; height: 48px; object-fit: contain; }
+                    .print-company-brand .sub { font-size: 0.8rem; opacity: 0.9; margin-top: 0.25rem; }
                     .print-header .meta { text-align: right; font-size: 0.85rem; line-height: 1.5; }
                     .print-header .meta strong { font-size: 1rem; letter-spacing: 0.08em; }
                     .print-body { padding: 1.25rem 1.5rem; }
@@ -599,9 +600,12 @@
             <body>
                 <div class="print-card">
                     <div class="print-header">
-                        <div>
+                        <div class="print-company-brand">
+                            <img class="print-company-logo" src="${printLogoUrl}" alt="JFTECH IT Solutions logo">
+                            <div>
                             <div class="company">JFTECH IT SOLUTIONS</div>
-                            <div class="address">Main Office &bull; Purok 2, San Isidro, Consolacion, Cebu</div>
+                            <div class="address">Del Carmen Sur, Balilihan, Bohol<br>jftechitsolutions@gmail.com</div>
+                            </div>
                         </div>
                         <div class="meta">
                             <div><strong>PAYSLIP</strong></div>

@@ -32,6 +32,8 @@
             color: #475569;
             margin-top: 2px;
         }
+        .print-company-brand { display: flex; align-items: flex-start; gap: 10px; }
+        .print-company-logo { width: auto; height: 48px; object-fit: contain; }
         .doc-title {
             text-align: right;
             font-size: 14px;
@@ -95,10 +97,7 @@
     </div>
 
     <div class="doc-header">
-        <div>
-            <div class="company">JFTECH IT SOLUTIONS</div>
-            <div class="sub">Main Office &bull; Purok 2, San Isidro, Consolacion, Cebu</div>
-        </div>
+        @include('partials.print_company')
         <div class="doc-title">
             <strong>BILLING REPORT</strong><br>
             Generated: {{ date('M d, Y h:i A') }}
