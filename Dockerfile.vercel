@@ -47,4 +47,6 @@ ENV SERVER_NAME=:80
 
 EXPOSE 80
 
-CMD ["sh", "-c", "php artisan serve --host=0.0.0.0 --port=${PORT:-80}"]
+# Set RUN_MIGRATIONS=true in Vercel after the remote MySQL credentials are set.
+# Every deployment then applies only new migration files before serving Laravel.
+CMD ["sh", "-c", "if [ \"${RUN_MIGRATIONS:-false}\" = \"true\" ]; then php artisan migrate --force; fi; exec php artisan serve --host=0.0.0.0 --port=${PORT:-80}"]

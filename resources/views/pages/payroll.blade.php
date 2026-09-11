@@ -103,7 +103,7 @@
                     <div class="search-box" style="margin: 0;">
                         <input type="text" class="search-input" placeholder="Search payroll..." data-target="#payrollTable">
                     </div>
-                    <button class="btn btn-sm btn-secondary" onclick="window.print()">Print</button>
+                    <button class="btn btn-sm btn-secondary" type="button" onclick="printPayrollRecords()">Print</button>
                 </div>
             </div>
             <div class="card-body">
@@ -689,9 +689,19 @@
         }
     }
 
+    function printPayrollRecords() {
+        document.body.classList.add('printing-payroll-records');
+        window.print();
+    }
+
     // Expose modal actions explicitly for the buttons' inline click handlers.
     window.openPayrollModal = openPayrollModal;
     window.closePayrollModal = closePayrollModal;
+    window.printPayrollRecords = printPayrollRecords;
+
+    window.addEventListener('afterprint', function () {
+        document.body.classList.remove('printing-payroll-records');
+    });
 
     document.addEventListener('DOMContentLoaded', function() {
         const generatePayrollButton = document.getElementById('generatePayrollButton');

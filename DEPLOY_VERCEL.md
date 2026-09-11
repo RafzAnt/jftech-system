@@ -56,12 +56,15 @@ Vercel build command, output directory, or a `vercel.json` file for this app.
    FILESYSTEM_DISK=local
    SESSION_SECURE_COOKIE=true
    SESSION_SAME_SITE=lax
+   RUN_MIGRATIONS=true
    ```
 
    Generate `APP_KEY` locally with `php artisan key:generate --show`; use the
    same value on every deployment. Never paste `.env` into GitHub or Vercel.
-5. Click **Deploy**. Future pushes to the connected production branch deploy
-   automatically.
+5. Click **Deploy**. With `RUN_MIGRATIONS=true`, future pushes to the
+   connected production branch automatically deploy and run only new Laravel
+   migration files before the app starts. This requires a working remote MySQL
+   connection.
 
 ## After deployment
 

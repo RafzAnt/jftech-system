@@ -8,6 +8,32 @@
     <link rel="stylesheet" href="{{ asset('css/clients_browse.css') }}?{{ $clientsBrowseCssVersion }}">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        #receiptModal .print-company-brand { display: flex; align-items: flex-start; gap: 8px; }
+        #receiptModal .print-company-logo { width: auto; height: 36px; object-fit: contain; }
+        #receiptModal .print-company-brand .company { font-size: 0.95rem; font-weight: 800; }
+        #receiptModal .print-company-brand .sub { font-size: 0.7rem; margin-top: 2px; }
+        @media print {
+            body.printing-client-receipt * { visibility: hidden !important; }
+            body.printing-client-receipt #receiptModal,
+            body.printing-client-receipt #receiptModal * { visibility: visible !important; }
+            body.printing-client-receipt #receiptModal {
+                position: fixed;
+                inset: 0;
+                display: block;
+                padding: 12mm;
+                background: #fff;
+            }
+            body.printing-client-receipt #receiptModal .modal-content {
+                width: 100%;
+                max-width: none;
+                margin: 0;
+                box-shadow: none;
+            }
+            body.printing-client-receipt .modal-close,
+            body.printing-client-receipt .receipt-print-actions { display: none !important; }
+        }
+    </style>
 </head>
 <body>
     <div class="grid-overlay"></div>
@@ -185,14 +211,14 @@
         <div class="modal-content modal-small">
             <div class="modal-header">
                 <div style="display:flex;align-items:center;gap:.5rem">
-                    @include('partials.modal_logo')
+                    @include('partials.print_company')
                     <h3 class="modal-title">Client Receipt</h3>
                 </div>
                 <button class="modal-close" onclick="this.closest('.modal-overlay').classList.remove('active')">&times;</button>
             </div>
             <div id="receiptContent" style="background: white; color: black; padding: 1.5rem; border-radius: 8px;"></div>
-            <div style="text-align: center; margin-top: 1rem;">
-                <button class="btn btn-primary" onclick="window.print()">Print Receipt</button>
+            <div class="receipt-print-actions" style="text-align: center; margin-top: 1rem;">
+                <button class="btn btn-primary" type="button" onclick="printClientReceiptContent()">Print Receipt</button>
             </div>
         </div>
     </div>
@@ -770,9 +796,16 @@
         window.open(url, '_blank');
     }
 
+    function printClientReceiptContent() {
+        document.body.classList.add('printing-client-receipt');
+        window.print();
+    }
+
     // Keep the row actions available even when optional map resources are offline.
     window.viewClient = viewClient;
     window.printReceipt = printReceipt;
+    window.printClientReceiptContent = printClientReceiptContent;
+    window.addEventListener('afterprint', () => document.body.classList.remove('printing-client-receipt'));
     </script>
     <script src="{{ asset('js/jftech-main.js') }}?{{ $mainJsVersion }}"></script>
 </body>

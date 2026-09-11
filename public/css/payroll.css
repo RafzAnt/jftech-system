@@ -358,6 +358,35 @@
     color: #ffffff;
 }
 
+/* The page-level Print button outputs payroll records only, never the sidebar,
+   filters, search box, or application controls. */
+@media print {
+    body.printing-payroll-records * {
+        visibility: hidden !important;
+    }
+
+    body.printing-payroll-records .payslip-list,
+    body.printing-payroll-records .payslip-list * {
+        visibility: visible !important;
+    }
+
+    body.printing-payroll-records .payslip-list {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+    }
+
+    body.printing-payroll-records .payslip-card {
+        break-inside: avoid;
+        page-break-inside: avoid;
+        box-shadow: none;
+    }
+
+    body.printing-payroll-records .payslip-actions {
+        display: none !important;
+    }
+}
+
 @media print {
     body {
         background: #ffffff;
