@@ -27,18 +27,18 @@ class ApiController extends Controller
     public function attendanceHistory(Request $request): JsonResponse
     {
         $data = $request->validate(['employee_id' => ['required', 'integer']]);
-        return response()->json(['success' => true, 'data' => DB::table('attendance')->where('employee_id', $data['employee_id'])->orderByDesc('attendance_date')->limit(30)->get()]);
+        return response()->json(['success' => true, 'data' => DB::table('attendance as a')->join('employees as e', 'e.id', '=', 'a.employee_id')->where('a.employee_id', $data['employee_id'])->orderByDesc('a.attendance_date')->limit(30)->get(['a.*', 'e.position'])]);
     }
     public function employeeLogin(Request $request): JsonResponse
     {
         $data = $request->validate(['username' => ['required', 'string'], 'password' => ['required', 'string']]);
-        $user = DB::table('users')->join('employees', 'employees.user_id', '=', 'users.id')->where('users.username', $data['username'])->where('users.status', 'active')->select('users.*', 'employees.id as employee_id')->first();
+        $user = DB::table('users')->join('employees', 'employees.user_id', '=', 'users.id')->where('users.username', $data['username'])->where('users.status', 'active')->select('users.*', 'employees.id as employee_id', 'employees.position as employee_position')->first();
         if (! $user || ! Hash::check($data['password'], $user->password)) {
             DB::table('login_history')->insert(['username' => $data['username'], 'full_name' => '', 'role' => 'employee', 'ip_address' => $request->ip(), 'user_agent' => (string) $request->userAgent(), 'status' => 'failed', 'error_message' => 'Invalid username or password.']);
             return response()->json(['success' => false, 'message' => 'Invalid username or password.'], 401);
         }
         $historyId = DB::table('login_history')->insertGetId(['user_id' => $user->id, 'username' => $user->username, 'full_name' => $user->full_name, 'role' => $user->role, 'ip_address' => $request->ip(), 'user_agent' => (string) $request->userAgent(), 'status' => 'success']);
-        return response()->json(['success' => true, 'user' => ['id' => $user->id, 'employee_id' => $user->employee_id, 'full_name' => $user->full_name, 'username' => $user->username, 'login_history_id' => $historyId]]);
+        return response()->json(['success' => true, 'user' => ['id' => $user->id, 'employee_id' => $user->employee_id, 'full_name' => $user->full_name, 'username' => $user->username, 'position' => $user->employee_position, 'login_history_id' => $historyId]]);
     }
 
     public function employeeLogout(Request $request): JsonResponse
@@ -120,6 +120,6 @@ class ApiController extends Controller
         });
         $scanType = $qr->qr_type === 'morning' ? 'Time In' : 'Time Out';
         $formattedTime = $now->format('h:i A');
-        return response()->json(['success' => true, 'message' => 'Attendance recorded.', 'status' => $status, 'scan_type' => $scanType, 'time' => $formattedTime]);
+        return response()->json(['success' => true, 'message' => 'Attendance recorded.', 'status' => $status, 'scan_type' => $scanType, 'time' => $formattedTime, 'employee_name' => $employee->full_name, 'position' => $employee->position]);
     }
 }

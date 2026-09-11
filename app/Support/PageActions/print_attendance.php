@@ -12,9 +12,9 @@ $selectedDate = $request->query('attendance_date') ?? date('Y-m-d');
 $selectedStart = $request->query('start') ?? '';
 $selectedEnd = $request->query('end') ?? '';
 
-$query = "SELECT a.*, e.full_name, e.employee_code, e.department 
-          FROM attendance a 
-          JOIN employees e ON a.employee_id = e.id 
+$query = "SELECT a.*, e.full_name, e.employee_code, e.position, e.department
+          FROM attendance a
+          JOIN employees e ON a.employee_id = e.id
           WHERE 1=1";
 $params = [];
 

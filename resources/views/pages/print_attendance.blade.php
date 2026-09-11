@@ -117,6 +117,7 @@
             <tr>
                 <th style="width: 12%;">Date</th>
                 <th>Employee</th>
+                <th>Position</th>
                 <th style="width: 12%;">Code</th>
                 <th style="width: 16%;">Morning In</th>
                 <th style="width: 16%;">Morning Out</th>
@@ -130,6 +131,7 @@
             <tr>
                 <td>{{ date('M d, Y', strtotime($att['attendance_date'])) }}</td>
                 <td>{{ htmlspecialchars($att['full_name']) }}</td>
+                <td>{{ htmlspecialchars($att['position'] ?: '—') }}</td>
                 <td>{{ htmlspecialchars($att['employee_code']) }}</td>
                 <td>{{ $att['morning_time_in'] ? date('h:i A', strtotime($att['morning_time_in'])) : '-' }}</td>
                 <td>{{ $att['morning_time_out'] ? date('h:i A', strtotime($att['morning_time_out'])) : '-' }}</td>
@@ -147,7 +149,7 @@
             </tr>
             @endforeach
             @php
-if (empty($attendanceRecords)) { echo '<tr><td colspan="8" style="text-align: center; color: #64748b; padding: 18px;">No attendance records found.</td></tr>'; } 
+if (empty($attendanceRecords)) { echo '<tr><td colspan="9" style="text-align: center; color: #64748b; padding: 18px;">No attendance records found.</td></tr>'; }
 @endphp
         </tbody>
     </table>

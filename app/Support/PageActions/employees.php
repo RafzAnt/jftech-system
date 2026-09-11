@@ -69,7 +69,7 @@ function formatScheduleTime(string $time): string {
     return $parsed !== false ? date('g:i A', $parsed) : $time;
 }
 
-$defaultEmployeePosition = 'Employee';
+$employeePositions = ['Technician', 'Technician I', 'Technician II', 'Master Technician', 'Intern'];
 
 // Get all employees
 $stmt = $pdo->query("SELECT e.*, u.username, u.status as user_status FROM employees e LEFT JOIN users u ON e.user_id = u.id ORDER BY e.full_name");
@@ -246,7 +246,7 @@ if ($request->isMethod('post') && $request->has('save_employee')) {
     try {
         $employeeId = $request->input('employee_id') ?? null;
         $fullName = trim($request->input('full_name'));
-        $position = $defaultEmployeePosition;
+        $position = trim((string) $request->input('position'));
         $contactNumber = trim($request->input('contact_number'));
         $email = trim($request->input('email'));
         $address = trim($request->input('address'));
@@ -255,6 +255,9 @@ if ($request->isMethod('post') && $request->has('save_employee')) {
 
         if ($fullName === '') {
             throw new Exception('Full name is required.');
+        }
+        if (! in_array($position, $employeePositions, true)) {
+            throw new Exception('Select a valid employee position.');
         }
 
         $pdo->beginTransaction();

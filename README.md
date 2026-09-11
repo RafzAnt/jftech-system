@@ -35,3 +35,9 @@ Before your defense, demonstrate these flows with sample data:
 5. Export a filtered report and explain administrator-only access and audit history.
 
 Run automated checks with `php artisan test`.
+
+
+
+
+
+buhata ra gud ni siya  ang mga employees nga position  e add sa  manage users ni siya and then dapat mo  display sd position sa attendance if mo scan na siya  ug nsa nga position siya tapos ma display sad payroll , employess attendance unsa nga position and then nig log in sad app mo display sad after login unsa nga position sila technician, technian I, technician II, Master Technician , intern, mao na ang employess position and then mao ni akoa app e update akoa app  /home/rafael/JFTECH/jftech/

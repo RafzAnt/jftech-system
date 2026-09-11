@@ -64,7 +64,7 @@
                                     <tr>
                                         <td><strong>{{ $emp['employee_code'] }}</strong></td>
                                         <td>{{ htmlspecialchars($emp['full_name']) }}</td>
-                                        <td>{{ $defaultEmployeePosition }}</td>
+                                        <td>{{ $emp['position'] ?: '—' }}</td>
                                         <td>{{ $emp['contact_number'] }}</td>
                                         <td style="color: var(--success); font-weight: 600;">PHP {{ number_format($emp['daily_rate'], 2) }}</td>
                                         <td>
@@ -214,7 +214,7 @@ $afternoonQR = null;
                                     @foreach ($attendanceRecords as $record)
                                     <tr>
                                         <td><strong>{{ htmlspecialchars($record['employee_name']) }}</strong></td>
-                                        <td>{{ $defaultEmployeePosition }}</td>
+                                        <td>{{ $record['position'] ?: '—' }}</td>
                                         <td>{{ $record['attendance_date'] ? date('M d, Y', strtotime($record['attendance_date'])) : '-' }}</td>
                                         <td class="attendance-in">{{ $record['morning_time_in'] ? date('h:i A', strtotime($record['morning_time_in'])) : '-' }}</td>
                                         <td class="attendance-out">{{ $record['morning_time_out'] ? date('h:i A', strtotime($record['morning_time_out'])) : '-' }}</td>
@@ -274,7 +274,11 @@ $afternoonQR = null;
                     </div>
                     <div class="form-group">
                         <label class="form-label">Position</label>
-                        <input type="text" class="form-input" value="{{ $defaultEmployeePosition }}" readonly>
+                        <select name="position" class="form-select" id="empPosition">
+                            @foreach ($employeePositions ?? ['Technician', 'Technician I', 'Technician II', 'Master Technician', 'Intern'] as $position)
+                            <option value="{{ $position }}">{{ $position }}</option>
+                            @endforeach
+                        </select>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Contact Number</label>
@@ -333,6 +337,7 @@ $afternoonQR = null;
         document.getElementById('modalTitle').textContent = 'Add Employee';
         document.getElementById('employeeId').value = '';
         document.getElementById('empFullName').value = '';
+        document.getElementById('empPosition').value = 'Technician';
         document.getElementById('empContact').value = '';
         document.getElementById('empEmail').value = '';
         document.getElementById('empDailyRate').value = '';
@@ -356,6 +361,7 @@ $afternoonQR = null;
         document.getElementById('modalTitle').textContent = 'Edit Employee';
         document.getElementById('employeeId').value = emp.id;
         document.getElementById('empFullName').value = emp.full_name;
+        document.getElementById('empPosition').value = emp.position || 'Technician';
         document.getElementById('empContact').value = emp.contact_number;
         document.getElementById('empEmail').value = emp.email;
         document.getElementById('empDailyRate').value = emp.daily_rate;

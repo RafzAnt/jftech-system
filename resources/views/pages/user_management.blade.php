@@ -85,6 +85,7 @@
                                 <th>ID</th>
                                 <th>Username</th>
                                 <th>Full Name</th>
+                                <th>Position</th>
                                 <th>Email</th>
                                 <th>Role</th>
                                 <th>Status</th>
@@ -98,6 +99,7 @@
                                 <td>{{ $user['id'] }}</td>
                                 <td><strong>{{ htmlspecialchars($user['username']) }}</strong></td>
                                 <td>{{ htmlspecialchars($user['full_name']) }}</td>
+                                <td>{{ $user['employee_position'] ?: '—' }}</td>
                                 <td>{{ $user['email'] }}</td>
                                 <td><span class="badge badge-{{ $user['role'] === 'admin' ? 'warning' : 'info' }}">{{ ucfirst($user['role']) }}</span></td>
                                 <td>
@@ -143,7 +145,7 @@
                             @endforeach
                             @if (empty($users))
                             <tr>
-                                <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">
+                                <td colspan="9" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">
                                     {{ $showArchived ? 'No archived users.' : 'No users found.' }}
                                 </td>
                             </tr>
@@ -207,6 +209,15 @@
                     </select>
                     <small style="color:var(--text-muted)">Create the employee profile first in Employees, then link the account here.</small>
                 </div>
+                <div class="form-group" id="createPositionGroup">
+                    <label class="form-label">Position *</label>
+                    <select name="employee_position" id="createEmployeePosition" class="form-select">
+                        <option value="">Select position</option>
+                        @foreach ($employeePositions as $position)
+                        <option value="{{ $position }}">{{ $position }}</option>
+                        @endforeach
+                    </select>
+                </div>
                 <div style="display: flex; gap: 1rem; justify-content: flex-end; flex-wrap: wrap;">
                     <button type="button" class="btn btn-secondary" onclick="closeModal('createUserModal')">Cancel</button>
                     <button type="submit" class="btn btn-success">Create User</button>
@@ -246,6 +257,15 @@
                     <select name="role" id="editRole" class="form-select">
                         <option value="employee">Employee</option>
                         <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <div class="form-group" id="editPositionGroup">
+                    <label class="form-label">Position *</label>
+                    <select name="employee_position" id="editEmployeePosition" class="form-select">
+                        <option value="">Select position</option>
+                        @foreach ($employeePositions as $position)
+                        <option value="{{ $position }}">{{ $position }}</option>
+                        @endforeach
                     </select>
                 </div>
                 <div class="form-group">
@@ -306,6 +326,8 @@
         document.getElementById('editPhone').value = user.phone;
         document.getElementById('editRole').value = user.role;
         document.getElementById('editStatus').value = user.status;
+        document.getElementById('editEmployeePosition').value = user.employee_position || '';
+        toggleEditPosition();
         openModal('editUserModal');
     }
 
@@ -317,11 +339,25 @@
         const role = document.getElementById('createUserRole');
         const group = document.getElementById('employeeProfileGroup');
         const select = document.getElementById('employeeProfile');
-        if (!role || !group || !select) return;
+        const positionGroup = document.getElementById('createPositionGroup');
+        const position = document.getElementById('createEmployeePosition');
+        if (!role || !group || !select || !positionGroup || !position) return;
         const isEmployee = role.value === 'employee';
         group.style.display = isEmployee ? '' : 'none';
+        positionGroup.style.display = isEmployee ? '' : 'none';
         select.required = isEmployee;
+        position.required = isEmployee;
     }
+    function toggleEditPosition() {
+        const role = document.getElementById('editRole');
+        const group = document.getElementById('editPositionGroup');
+        const position = document.getElementById('editEmployeePosition');
+        if (!role || !group || !position) return;
+        const isEmployee = role.value === 'employee';
+        group.style.display = isEmployee ? '' : 'none';
+        position.required = isEmployee;
+    }
+    document.getElementById('editRole').addEventListener('change', toggleEditPosition);
     toggleEmployeeProfile();
     </script>
     <script src="{{ asset('js/jftech-main.js') }}?{{ $mainJsVersion }}"></script>
