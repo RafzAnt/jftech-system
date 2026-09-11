@@ -603,7 +603,7 @@
                         <div class="print-company-brand">
                             <img class="print-company-logo" src="${printLogoUrl}" alt="JFTECH IT Solutions logo">
                             <div>
-                            <div class="company">JFTECH IT SOLUTIONS</div>
+                            <div class="company">JFTECH IT SOLUTIONS &mdash; MAIN OFFICE</div>
                             <div class="address">Del Carmen Sur, Balilihan, Bohol<br>jftechitsolutions@gmail.com</div>
                             </div>
                         </div>

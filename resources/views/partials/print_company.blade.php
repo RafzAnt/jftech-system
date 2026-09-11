@@ -5,7 +5,7 @@
         <img class="print-company-logo" src="data:image/png;base64,{{ $printLogoData }}" alt="JFTECH IT Solutions logo">
     @endif
     <div>
-        <div class="company">JFTECH IT SOLUTIONS</div>
+        <div class="company">JFTECH IT SOLUTIONS &mdash; MAIN OFFICE</div>
         <div class="sub">Del Carmen Sur, Balilihan, Bohol<br>jftechitsolutions@gmail.com</div>
     </div>
 </div>
