@@ -91,15 +91,6 @@
                 </div>
 
                 <div class="section-title">Location on Map</div>
-                <div class="form-group" style="margin-bottom: .75rem;">
-                    <label class="form-label" for="addressSearch">Find street, sitio, or purok in Balilihan</label>
-                    <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
-                        <input id="addressSearch" class="form-input" placeholder="Example: Purok 2, Barangay San Roque" style="flex:1; min-width:220px;">
-                        <button id="addressSearchButton" type="button" class="btn btn-secondary">Find on map</button>
-                    </div>
-                    <div id="addressSearchResults" style="margin-top:.5rem; color:var(--text-muted); font-size:.85rem;"></div>
-                    <small style="color:var(--text-muted);">Search is limited to Balilihan. Confirm the result, then use the map pin for an exact house/purok location.</small>
-                </div>
                 <div class="form-group">
                     <label class="form-label">Marker Color</label>
                     <div class="marker-color-options">
@@ -207,26 +198,6 @@
          if (currentUserCoords) drawRoute(currentUserCoords.lat, currentUserCoords.lng, lat, lng);
      }
 
-     document.getElementById('addressSearchButton').addEventListener('click', async () => {
-         const query = document.getElementById('addressSearch').value.trim();
-         const results = document.getElementById('addressSearchResults');
-         if (query.length < 2) { results.textContent = 'Enter a street, sitio, or purok first.'; return; }
-         results.textContent = 'Searching Balilihan map data…';
-         try {
-             const response = await fetch(`{{ route('locations.balilihan-search') }}?q=${encodeURIComponent(query)}`);
-             const data = await response.json();
-             if (!response.ok) throw new Error(data.message || 'Search unavailable');
-             if (!data.results?.length) { results.textContent = 'No mapped result found. Select the barangay and place the pin manually at the exact location.'; return; }
-             results.replaceChildren(...data.results.map(place => {
-                 const button = document.createElement('button');
-                 button.type = 'button'; button.className = 'btn btn-sm btn-secondary';
-                 button.style.margin = '.2rem .2rem .2rem 0'; button.textContent = place.label;
-                 button.addEventListener('click', () => setClientLocation(place.lat, place.lng, place.label));
-                 return button;
-             }));
-         } catch (error) { results.textContent = error.message || 'Search failed. Place the pin manually.'; }
-     });
-
      function clearDirections() {
          if (directionsLayer) {
              map.removeLayer(directionsLayer);
@@ -308,7 +279,7 @@
                  const userLat = position.coords.latitude;
                  const userLng = position.coords.longitude;
                  if (!isWithinBohol(userLat, userLng)) {
-                     document.getElementById('addressSearchResults').textContent = 'Your browser returned a location outside Bohol. The map remains centered in Balilihan; enable precise device location to use directions.';
+                     console.warn('Browser location is outside Bohol; the map remains centered in Balilihan.');
                      return;
                  }
                  updateUserLocationMarker(userLat, userLng);
