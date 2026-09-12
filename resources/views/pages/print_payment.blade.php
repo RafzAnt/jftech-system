@@ -6,6 +6,7 @@
     <title>Payment Receipt - {{ $payment['bill_number'] }}</title>
     @php($thermal = request()->get('format', 'thermal') === 'thermal')
     <style>
+        @media print { *, *::before, *::after { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } }
         * { box-sizing: border-box; }
         .print-company-brand { display: flex; align-items: flex-start; gap: 8px; text-align: left; }
         .print-company-logo { width: auto; height: 42px; object-fit: contain; }

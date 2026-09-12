@@ -26,7 +26,7 @@ $clients = $stmt->fetchAll();
              JOIN clients c ON p.client_id = c.id
              LEFT JOIN users u ON p.received_by = u.id
              LEFT JOIN bills b ON p.bill_id = b.id
-             ORDER BY p.payment_date DESC LIMIT 50");
+             ORDER BY p.payment_date DESC, p.id DESC");
     $payments = $stmt->fetchAll();
 
 // Calculate totals
@@ -101,7 +101,7 @@ if ($request->isMethod('post') && $request->has('record_payment')) {
              JOIN clients c ON p.client_id = c.id
              LEFT JOIN users u ON p.received_by = u.id
              LEFT JOIN bills b ON p.bill_id = b.id
-             ORDER BY p.payment_date DESC LIMIT 50");
+             ORDER BY p.payment_date DESC, p.id DESC");
         $payments = $stmt->fetchAll();
     } catch (Exception $e) {
         $error = 'Error: ' . $e->getMessage();

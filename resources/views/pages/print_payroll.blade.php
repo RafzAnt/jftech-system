@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Payslip - {{ $record->employee_name }}</title>
     <style>
+        @media print { *, *::before, *::after { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } }
+        @media print { .header { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; flex-wrap:nowrap; } .header .print-company-brand { min-width:0; } .header > :last-child { text-align:right !important; } }
         * { box-sizing: border-box; }
         body { margin: 0; padding: 20px; background: #f1f5f9; color: #0f172a; font: 14px/1.4 Arial, sans-serif; }
         .toolbar { max-width: 850px; margin: 0 auto 14px; text-align: right; }

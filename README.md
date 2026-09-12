@@ -20,7 +20,7 @@ Requirements: PHP 8.3+, Composer, Node.js, and MySQL/MariaDB.
 1. Copy `.env.example` to `.env` and configure the `DB_*` values for a new MySQL database.
 2. Run `composer install`, `php artisan key:generate`, and `php artisan migrate --force`.
 3. Run `npm install` then `npm run build`.
-4. Run `php artisan serve` and open the URL shown by Laravel.
+4. Run `php artisan serve --host=0.0.0.0 --port=8000` and open the URL shown by Laravel. This makes port 8000 available to a port-forwarding service while Laravel preserves the forwarded URL for assets and form submissions.
 
 For production, set `APP_ENV=production`, `APP_DEBUG=false`, a unique `APP_KEY`, HTTPS, and a database account with only the permissions the application needs.
 

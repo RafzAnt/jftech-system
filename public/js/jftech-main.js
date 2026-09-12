@@ -154,16 +154,68 @@ document.addEventListener('DOMContentLoaded', function() {
         window.print();
     };
 
-    // Form validation
-    const forms = document.querySelectorAll('.needs-validation');
+    // Form validation: every required field gets a clear inline error message.
+    const forms = document.querySelectorAll('form');
+    const requiredFields = 'input[required]:not([type="hidden"]), select[required], textarea[required]';
+
+    function fieldGroup(field) {
+        return field.closest('.form-group') || field.parentElement;
+    }
+
+    function validationMessage(field) {
+        const group = fieldGroup(field);
+        if (!group) return;
+
+        const invalid = !field.validity.valid;
+        const existingMessage = group.querySelector('.required-field-message');
+        if (!invalid) {
+            group.classList.remove('form-field-invalid');
+            if (existingMessage) existingMessage.remove();
+            return;
+        }
+
+        let message = existingMessage;
+        if (!message) {
+            message = document.createElement('small');
+            message.className = 'required-field-message';
+            message.setAttribute('aria-live', 'polite');
+            group.appendChild(message);
+        }
+
+        group.classList.add('form-field-invalid');
+        message.textContent = field.validity.valueMissing ? 'Required field.' : (field.validationMessage || 'Please enter a valid value.');
+    }
+
     forms.forEach(form => {
-        form.addEventListener('submit', function(e) {
-            if (!form.checkValidity()) {
-                e.preventDefault();
-                e.stopPropagation();
-            }
+        form.addEventListener('submit', function() {
             form.classList.add('was-validated');
+            form.querySelectorAll(requiredFields).forEach(validationMessage);
         });
+    });
+
+    // The browser prevents an invalid form from submitting before its submit
+    // event runs, so listen during capture to show the inline feedback too.
+    document.addEventListener('invalid', function(event) {
+        const field = event.target;
+        if (!field.matches || !field.matches(requiredFields)) return;
+
+        const form = field.closest('form');
+        if (form) form.classList.add('was-validated');
+        validationMessage(field);
+    }, true);
+
+    document.addEventListener('input', function(event) {
+        const field = event.target;
+        if (!field.matches || !field.matches(requiredFields)) return;
+        const form = field.closest('form');
+        if (form && form.classList.contains('was-validated')) validationMessage(field);
+    });
+
+    document.addEventListener('change', function(event) {
+        const field = event.target;
+        if (!field.matches || !field.matches(requiredFields)) return;
+        const form = field.closest('form');
+        if (form && form.classList.contains('was-validated')) validationMessage(field);
     });
 
     // Auto-hide alerts after 5 seconds

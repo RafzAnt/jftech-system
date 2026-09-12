@@ -45,7 +45,7 @@
             ['id' => 'clients_register', 'label' => 'Register Client', 'url' => 'clients_register.php'],
             ['id' => 'clients_browse', 'label' => 'Browse Clients', 'url' => 'clients_browse.php'],
             ['id' => 'bill_inquiry', 'label' => 'Client Records', 'url' => 'bill_inquiry.php'],
-            ['id' => 'payment_history', 'label' => 'Payment History', 'url' => 'payment_history.php'],
+            ['id' => 'payment_history', 'label' => 'Record Payment', 'url' => 'payment_history.php'],
             ['id' => 'employees', 'label' => 'Employees', 'url' => 'employees.php'],
             ['id' => 'payroll', 'label' => 'Payroll', 'url' => 'payroll.php'],
             ['id' => 'inventory', 'label' => 'Inventory', 'url' => 'inventory.php', 'submenu' => [

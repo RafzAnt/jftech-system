@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JFTECH - Payment History</title>
+    <title>JFTECH - Record Payment</title>
     <link rel="stylesheet" href="{{ asset('css/jftech-theme.css') }}?{{ $themeCssVersion }}">
     <link rel="stylesheet" href="{{ asset('css/payment_history.css') }}?{{ $paymentHistoryCssVersion }}">
 </head>
@@ -15,8 +15,8 @@
     <div class="main-content">
         <div class="top-bar">
             <div>
-                <h1 class="page-title">Payment History</h1>
-                <p style="color: var(--text-muted); font-size: 0.85rem;">Record and view payment transactions</p>
+                <h1 class="page-title">Record Payment</h1>
+                <p style="color: var(--text-muted); font-size: 0.85rem;">Record a payment, then review the complete payment history below</p>
             </div>
         </div>
 
@@ -106,7 +106,7 @@
         <!-- Payment History Table -->
         <div class="card">
             <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
-                <span class="card-title">Recent Payments</span>
+                <span class="card-title">Payment History</span>
             </div>
             <div class="card-body" style="padding: 0;">
                 <div class="data-table-container">

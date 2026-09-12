@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <title>Payment Transactions Report</title>
     <style>
+        @media print { *, *::before, *::after { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } }
+        @media print { .doc-header { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; flex-wrap: nowrap; } .doc-header .print-company-brand { min-width: 0; } .doc-title { text-align: right; } }
         * { box-sizing: border-box; }
         body {
             font-family: Arial, Helvetica, sans-serif;

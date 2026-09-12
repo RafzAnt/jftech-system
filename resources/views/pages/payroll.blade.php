@@ -593,7 +593,13 @@
                     .confirm { font-size: 0.8rem; color: #475569; border-top: 1px dashed #cbd5e1; padding-top: 0.75rem; margin-top: 0.5rem; }
                     .signatures { display: flex; justify-content: space-between; gap: 1rem; margin-top: 1.5rem; flex-wrap: wrap; }
                     .signatures > div { width: 45%; min-width: 200px; border-top: 1px solid #94a3b8; padding-top: 0.5rem; font-size: 0.82rem; color: #334155; }
-                    @media print { body { margin: 0; } .print-card { border-color: #000; } }
+                    @media print {
+                        *, *::before, *::after { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                        body { margin: 0; }
+                        .print-header { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; flex-wrap: nowrap; }
+                        .print-header .print-company-brand { min-width: 0; }
+                        .print-card { border-color: #000; }
+                    }
                     @media (max-width: 650px) { .print-tables { grid-template-columns: 1fr; } .meta-table td { width: 50%; } .signatures > div { width: 100%; } .print-header { flex-direction: column; gap: 0.5rem; } .print-header .meta { text-align: right; } }
                 </style>
             </head>

@@ -374,6 +374,20 @@ html[data-theme="light"] .login-page::after {
     box-shadow: 0 0 0 3px var(--accent-glow);
 }
 
+/* Shared required-field feedback for every form in the system. */
+.form-field-invalid :is(input, select, textarea) {
+    border-color: var(--danger) !important;
+    box-shadow: 0 0 0 3px var(--danger-glow) !important;
+}
+
+.required-field-message {
+    display: block;
+    margin-top: 0.35rem;
+    color: var(--danger);
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
 .form-input::placeholder {
     color: var(--text-muted);
 }
@@ -1542,6 +1556,13 @@ html[data-theme="light"] .theme-toggle__icon {
 
 /* ===== PRINT STYLES ===== */
 @media print {
+    *,
+    *::before,
+    *::after {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
     .sidebar, .top-bar, .menu-toggle, .btn {
         display: none !important;
     }

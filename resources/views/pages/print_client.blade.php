@@ -6,6 +6,8 @@
     <title>Client Receipt - {{ $client->client_code }}</title>
     @php($thermal = request()->get('format', 'thermal') === 'thermal')
     <style>
+        @media print { *, *::before, *::after { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } }
+        @media print { .header { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; flex-wrap:nowrap; } .header .print-company-brand { min-width:0; } .header > :last-child { text-align:right !important; } }
         * { box-sizing: border-box; }
         .print-company-brand { display: flex; align-items: flex-start; gap: 8px; text-align: left; }
         .print-company-logo { width: auto; height: 42px; object-fit: contain; }
