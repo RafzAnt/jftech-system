@@ -30,12 +30,33 @@ if ($request->isMethod('post')) {
         $email = trim($request->input('email'));
         $barangayId = $request->input('barangay_id');
         $exactAddress = trim($request->input('exact_address'));
+        $installationDate = trim((string) $request->input('installation_date'));
+
+        if ($fullName === '' || $contactNumber === '' || $email === '' || ! $barangayId || $exactAddress === '' || $installationDate === '') {
+            throw new \RuntimeException('Please complete all required client registration fields.');
+        }
+        if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            throw new \RuntimeException('Please enter a valid email address.');
+        }
+        $date = \DateTime::createFromFormat('Y-m-d', $installationDate);
+        if (! $date || $date->format('Y-m-d') !== $installationDate) {
+            throw new \RuntimeException('Please enter a valid installation date.');
+        }
+        $barangayStmt = $pdo->prepare('SELECT id FROM barangays WHERE id = ?');
+        $barangayStmt->execute([(int) $barangayId]);
+        if (! $barangayStmt->fetch()) {
+            throw new \RuntimeException('Please select a valid barangay.');
+        }
         $latitude = (float) $request->input('latitude');
         $longitude = (float) $request->input('longitude');
         if ($latitude < 9.60 || $latitude > 9.90 || $longitude < 123.85 || $longitude > 124.10) {
             throw new \RuntimeException('Please place the client pin within the Balilihan, Bohol service area.');
         }
-        $markerColor = $request->input('marker_color') ?: '#00BFFF';
+        $markerColor = $request->input('marker_color');
+        $markerColors = ['#00BFFF', '#00E676', '#FF1744', '#FFAB00', '#E040FB', '#2979FF', '#76FF03', '#FF4081'];
+        if (! in_array($markerColor, $markerColors, true)) {
+            throw new \RuntimeException('Please select a valid marker color.');
+        }
         $planId = (int) $request->input('internet_plan_id');
         $planStmt = $pdo->prepare("SELECT * FROM internet_plans WHERE id = ? AND status = 'active' AND archived = 0");
         $planStmt->execute([$planId]);
@@ -47,8 +68,6 @@ if ($request->isMethod('post')) {
         $wifiPlan = $plan['plan_name'];
         $monthlyRate = $plan['monthly_price'];
         $installationFee = $plan['installation_fee'];
-        $installationDate = $request->input('installation_date') ?: date('Y-m-d');
-
         $stmt = $pdo->prepare("INSERT INTO clients (client_code, full_name, contact_number, email, barangay_id, exact_address, latitude, longitude, marker_color, wifi_plan, internet_plan_id, monthly_rate, installation_fee, installation_date, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')");
         $stmt->execute([$clientCode, $fullName, $contactNumber, $email, $barangayId, $exactAddress, $latitude, $longitude, $markerColor, $wifiPlan, $planId, $monthlyRate, $installationFee, $installationDate]);
 

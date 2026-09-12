@@ -161,7 +161,7 @@
     @if ($verified)
     <!-- Create User Modal -->
     <div class="modal-overlay" id="createUserModal">
-        <div class="modal-content modal-medium">
+        <div class="modal-content modal-medium create-user-modal-content">
             <div class="modal-header">
                 <div style="display:flex;align-items:center;gap:.5rem">
                     @include('partials.modal_logo')
@@ -169,7 +169,7 @@
                 </div>
                 <button class="modal-close" onclick="closeModal('createUserModal')">&times;</button>
             </div>
-            <form method="POST" action="">
+            <form method="POST" action="" class="create-user-form">
             @csrf
                 <input type="hidden" name="create_user" value="1">
                 <div class="form-group">
@@ -218,7 +218,7 @@
                         @endforeach
                     </select>
                 </div>
-                <div style="display: flex; gap: 1rem; justify-content: flex-end; flex-wrap: wrap;">
+                <div class="create-user-actions" style="display: flex; gap: 1rem; justify-content: flex-end; flex-wrap: wrap;">
                     <button type="button" class="btn btn-secondary" onclick="closeModal('createUserModal')">Cancel</button>
                     <button type="submit" class="btn btn-success">Create User</button>
                 </div>

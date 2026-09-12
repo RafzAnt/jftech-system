@@ -4,5 +4,46 @@
  */
 
 /* User management relies on shared theme components (cards, tables, badges).
-   The payslip preview component styles live in payroll.css.
-   Add page-specific overrides below as needed. */
+   The payslip preview component styles live in payroll.css. */
+
+/* Keep the create-user dialog compact: employee fields sit in two columns
+   instead of stretching the modal into a long vertical form. */
+.create-user-modal-content {
+    max-width: 560px !important;
+}
+
+.create-user-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 1rem;
+    row-gap: 0.15rem;
+}
+
+.create-user-form .form-group {
+    margin-bottom: 0.85rem;
+}
+
+.create-user-actions {
+    grid-column: 1 / -1;
+}
+
+.create-user-form small {
+    display: block;
+    margin-top: 0.35rem;
+    font-size: 0.72rem;
+    line-height: 1.25;
+}
+
+.create-user-actions {
+    margin-top: 0.15rem;
+}
+
+@media (max-width: 600px) {
+    .create-user-form {
+        grid-template-columns: 1fr;
+    }
+
+    .create-user-actions {
+        grid-column: auto;
+    }
+}

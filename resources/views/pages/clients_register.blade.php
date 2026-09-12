@@ -43,8 +43,8 @@
                         <input type="text" name="contact_number" class="form-input" placeholder="09123456789" required>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Email</label>
-                        <input type="email" name="email" class="form-input" placeholder="juan@email.com">
+                        <label class="form-label">Email *</label>
+                        <input type="email" name="email" class="form-input" placeholder="juan@email.com" required>
                     </div>
                     <div class="form-group">
                         <label class="form-label">WiFi Plan *</label>
@@ -58,16 +58,16 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Monthly Rate (PHP)</label>
-                        <input type="number" name="monthly_rate" class="form-input" id="monthlyRate" placeholder="500.00" step="0.01" readonly>
+                        <label class="form-label">Monthly Rate (PHP) *</label>
+                        <input type="number" name="monthly_rate" class="form-input" id="monthlyRate" placeholder="500.00" step="0.01" readonly required>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Installation Fee (PHP)</label>
-                        <input type="number" class="form-input" id="installationFee" step="0.01" readonly>
+                        <label class="form-label">Installation Fee (PHP) *</label>
+                        <input type="number" class="form-input" id="installationFee" step="0.01" readonly required>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Installation Date</label>
-                        <input type="date" name="installation_date" class="form-input" value="{{ date('Y-m-d') }}">
+                        <label class="form-label">Installation Date *</label>
+                        <input type="date" name="installation_date" class="form-input" value="{{ date('Y-m-d') }}" required>
                     </div>
                 </div>
 
@@ -85,14 +85,14 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Exact Address</label>
-                        <input type="text" name="exact_address" class="form-input" placeholder="Purok 1, Sitio...">
+                        <label class="form-label">Exact Address *</label>
+                        <input type="text" name="exact_address" class="form-input" placeholder="Purok 1, Sitio..." required>
                     </div>
                 </div>
 
                 <div class="section-title">Location on Map</div>
                 <div class="form-group">
-                    <label class="form-label">Marker Color</label>
+                    <label class="form-label">Marker Color *</label>
                     <div class="marker-color-options">
                         <div class="color-option selected" style="background: #00BFFF;" data-color="#00BFFF"></div>
                         <div class="color-option" style="background: #00E676;" data-color="#00E676"></div>
