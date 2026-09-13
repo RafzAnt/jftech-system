@@ -48,25 +48,23 @@ if ($verified && $request->isMethod('post')) {
             $email = trim($request->input('email'));
             $phone = trim($request->input('phone'));
             $role = $request->input('role');
-            $employeeId = (int) $request->input('employee_id');
             $employeePosition = trim((string) $request->input('employee_position'));
             if ($role === 'employee') {
-                if (! $employeeId) throw new Exception('Select the employee profile to link to this account.');
                 if (! in_array($employeePosition, $employeePositions, true)) throw new Exception('Select a valid employee position.');
-                $stmt = $pdo->prepare("SELECT id FROM employees WHERE id = ? AND user_id IS NULL");
-                $stmt->execute([$employeeId]);
-                if (! $stmt->fetch()) throw new Exception('This employee profile is already linked to an account or does not exist.');
             }
-            
+
+            $pdo->beginTransaction();
             $stmt = $pdo->prepare("INSERT INTO users (username, password, full_name, email, phone, role, status) VALUES (?, ?, ?, ?, ?, ?, 'active')");
             $stmt->execute([$username, $password, $fullName, $email, $phone, $role]);
             $userId = $pdo->lastInsertId();
-            
+
             if ($role === 'employee') {
-                $stmt = $pdo->prepare("UPDATE employees SET user_id = ?, position = ? WHERE id = ?");
-                $stmt->execute([$userId, $employeePosition, $employeeId]);
+                $employeeCode = 'EMP-' . date('Y') . '-' . strtoupper(uniqid());
+                $stmt = $pdo->prepare("INSERT INTO employees (employee_code, user_id, full_name, position, contact_number, email, date_hired, daily_rate, status) VALUES (?, ?, ?, ?, ?, ?, ?, 0, 'active')");
+                $stmt->execute([$employeeCode, $userId, $fullName, $employeePosition, $phone, $email, date('Y-m-d')]);
             }
-            
+
+            $pdo->commit();
             $success = 'User created successfully!';
         }
         
@@ -129,6 +127,9 @@ if ($verified && $request->isMethod('post')) {
             }
         }
     } catch (Exception $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
         $error = 'Error: ' . $e->getMessage();
     }
 }
@@ -149,7 +150,6 @@ if ($verified) {
     }
     $users = $stmt->fetchAll();
     $archivedCount = (int) $pdo->query("SELECT COUNT(*) FROM users WHERE archived = 1")->fetchColumn();
-    $unlinkedEmployees = $pdo->query("SELECT id, employee_code, full_name, position FROM employees WHERE user_id IS NULL AND status = 'active' ORDER BY full_name")->fetchAll();
 }
     return get_defined_vars();
 };

@@ -194,20 +194,10 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">Role</label>
-                    <select name="role" id="createUserRole" class="form-select" onchange="toggleEmployeeProfile()">
+                    <select name="role" id="createUserRole" class="form-select" onchange="toggleCreatePosition()">
                         <option value="employee">Employee</option>
                         <option value="admin">Admin</option>
                     </select>
-                </div>
-                <div class="form-group" id="employeeProfileGroup">
-                    <label class="form-label">Employee Profile *</label>
-                    <select name="employee_id" id="employeeProfile" class="form-select">
-                        <option value="">Select employee profile</option>
-                        @foreach ($unlinkedEmployees ?? [] as $employee)
-                        <option value="{{ $employee['id'] }}">{{ $employee['employee_code'] }} — {{ $employee['full_name'] }}</option>
-                        @endforeach
-                    </select>
-                    <small style="color:var(--text-muted)">Create the employee profile first in Employees, then link the account here.</small>
                 </div>
                 <div class="form-group" id="createPositionGroup">
                     <label class="form-label">Position *</label>
@@ -335,17 +325,13 @@
         document.getElementById('resetUserId').value = userId;
         openModal('resetPasswordModal');
     }
-    function toggleEmployeeProfile() {
+    function toggleCreatePosition() {
         const role = document.getElementById('createUserRole');
-        const group = document.getElementById('employeeProfileGroup');
-        const select = document.getElementById('employeeProfile');
         const positionGroup = document.getElementById('createPositionGroup');
         const position = document.getElementById('createEmployeePosition');
-        if (!role || !group || !select || !positionGroup || !position) return;
+        if (!role || !positionGroup || !position) return;
         const isEmployee = role.value === 'employee';
-        group.style.display = isEmployee ? '' : 'none';
         positionGroup.style.display = isEmployee ? '' : 'none';
-        select.required = isEmployee;
         position.required = isEmployee;
     }
     function toggleEditPosition() {
@@ -358,7 +344,7 @@
         position.required = isEmployee;
     }
     document.getElementById('editRole').addEventListener('change', toggleEditPosition);
-    toggleEmployeeProfile();
+    toggleCreatePosition();
     </script>
     <script src="{{ asset('js/jftech-main.js') }}?{{ $mainJsVersion }}"></script>
 </body>
