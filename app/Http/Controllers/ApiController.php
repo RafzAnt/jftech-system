@@ -44,8 +44,30 @@ class ApiController extends Controller
     public function employeeLogout(Request $request): JsonResponse
     {
         $data = $request->validate(['login_history_id' => ['required', 'integer']]);
-        DB::table('login_history')->where('id', $data['login_history_id'])->update(['logout_time' => now()]);
-        return response()->json(['success' => true, 'message' => 'Logout recorded.']);
+        $history = DB::table('login_history')
+            ->select('id', 'status', 'logout_time')
+            ->where('id', $data['login_history_id'])
+            ->first();
+
+        if (! $history || $history->status !== 'success') {
+            return response()->json(['success' => false, 'message' => 'Login history record not found.'], 404);
+        }
+
+        // A queued request can be retried after a network interruption. Keep
+        // the original logout time instead of replacing it during that retry.
+        if ($history->logout_time) {
+            return response()->json(['success' => true, 'message' => 'Logout already recorded.']);
+        }
+
+        $updated = DB::table('login_history')
+            ->where('id', $history->id)
+            ->whereNull('logout_time')
+            ->update(['logout_time' => now()]);
+
+        return response()->json([
+            'success' => $updated === 1,
+            'message' => $updated === 1 ? 'Logout recorded.' : 'Logout already recorded.',
+        ]);
     }
 
     public function inventoryRequestCreate(Request $request): JsonResponse

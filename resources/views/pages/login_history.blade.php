@@ -69,7 +69,7 @@
                                  <th>Username</th>
                                  <th>Role</th>
                                  <th>Login Time</th>
-                                 <th>Logout Time</th>
+                                 <th>Logged Out At</th>
                                  <th>Status</th>
                              </tr>
                          </thead>

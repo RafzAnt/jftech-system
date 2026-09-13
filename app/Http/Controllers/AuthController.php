@@ -33,9 +33,13 @@ class AuthController extends Controller
     {
         $historyId = $request->session()->get('login_history_id');
         if ($historyId) {
-            LoginHistory::where('id', $historyId)->first()?->update(['logout_time' => now()]);
-        } elseif ($request->user()) {
-            LoginHistory::where('user_id', $request->user()->id)->latest('login_time')->first()?->update(['logout_time' => now()]);
+            // Only close the history row created for this browser session.
+            // This prevents an admin logout from changing an older login row.
+            LoginHistory::where('id', $historyId)
+                ->where('user_id', $request->user()->id)
+                ->where('status', 'success')
+                ->whereNull('logout_time')
+                ->update(['logout_time' => now()]);
         }
         Auth::logout(); $request->session()->invalidate(); $request->session()->regenerateToken(); return redirect('/');
     }
