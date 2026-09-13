@@ -30,8 +30,8 @@ function getAttendanceDays($pdo, $employeeId, $periodStart, $periodEnd) {
             COUNT(
                 CASE
                     WHEN COALESCE(total_hours, 0) > 0
-                         OR status_morning IN ('present', 'late', 'halfday')
-                         OR status_afternoon IN ('present', 'late', 'halfday')
+                         OR morning_time_in IS NOT NULL
+                         OR afternoon_time_in IS NOT NULL
                     THEN 1
                 END
             ) AS days_worked,

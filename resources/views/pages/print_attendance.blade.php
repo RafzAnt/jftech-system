@@ -117,15 +117,15 @@
     <table>
         <thead>
             <tr>
-                <th style="width: 12%;">Date</th>
-                <th>Employee</th>
-                <th>Position</th>
-                <th style="width: 12%;">Code</th>
-                <th style="width: 16%;">Morning In</th>
-                <th style="width: 16%;">Morning Out</th>
-                <th style="width: 16%;">Afternoon In</th>
-                <th style="width: 16%;">Afternoon Out</th>
-                <th style="width: 12%;">Status</th>
+                <th style="width: 10%;">Date</th>
+                <th style="width: 13%;">Employee</th>
+                <th style="width: 10%;">Position</th>
+                <th style="width: 12%;">Employee Code</th>
+                <th style="width: 12%;">Morning In</th>
+                <th style="width: 12%;">Morning Out</th>
+                <th style="width: 12%;">Afternoon In</th>
+                <th style="width: 12%;">Afternoon Out</th>
+                <th style="width: 9%;">Status</th>
             </tr>
         </thead>
         <tbody>

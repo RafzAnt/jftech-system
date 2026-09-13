@@ -101,17 +101,7 @@
                         <div class="form-group">
                             <label class="form-label">Late Threshold (minutes)</label>
                             <input type="number" name="settings[late_threshold_minutes]" class="form-input" value="{{ $settings['late_threshold_minutes']['setting_value'] ?? '30' }}" min="1" max="120">
-                            <small style="color: var(--text-muted);">Employee is late if scanned after this many minutes from start time</small>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Morning Attendance Deadline</label>
-                            <input type="time" name="settings[morning_deadline]" class="form-input" value="{{ $settings['morning_deadline']['setting_value'] ?? '08:30' }}">
-                            <small style="color: var(--text-muted);">After this time, employee is marked as late/absent</small>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Afternoon Attendance Deadline</label>
-                            <input type="time" name="settings[afternoon_deadline]" class="form-input" value="{{ $settings['afternoon_deadline']['setting_value'] ?? '13:30' }}">
-                            <small style="color: var(--text-muted);">After this time, employee is marked as late/absent</small>
+                            <small style="color: var(--text-muted);">Status stays blank until this many minutes after the session starts. It becomes absent after the session ends when there is no time in or time out.</small>
                         </div>
                     </div>
                     <button type="submit" class="btn btn-primary">Save Time Settings</button>

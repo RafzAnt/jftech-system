@@ -215,19 +215,21 @@ $afternoonQR = null;
                                     <tr>
                                         <td><strong>{{ htmlspecialchars($record['employee_name']) }}</strong></td>
                                         <td>{{ $record['position'] ?: '—' }}</td>
-                                        <td>{{ $record['attendance_date'] ? date('M d, Y', strtotime($record['attendance_date'])) : '-' }}</td>
+                                        <td>{{ $record['attendance_date'] ? date('M d, Y', strtotime($record['attendance_date'])) : date('M d, Y', strtotime($selectedDate)) }}</td>
                                         <td class="attendance-in">{{ $record['morning_time_in'] ? date('h:i A', strtotime($record['morning_time_in'])) : '-' }}</td>
                                         <td class="attendance-out">{{ $record['morning_time_out'] ? date('h:i A', strtotime($record['morning_time_out'])) : '-' }}</td>
                                         <td class="attendance-in">{{ $record['afternoon_time_in'] ? date('h:i A', strtotime($record['afternoon_time_in'])) : '-' }}</td>
                                         <td class="attendance-out">{{ $record['afternoon_time_out'] ? date('h:i A', strtotime($record['afternoon_time_out'])) : '-' }}</td>
-                                        <td>{{ $record['total_hours'] }}h</td>
+                                        <td>{{ number_format((float) ($record['total_hours'] ?? 0), 2) }}h</td>
                                         <td>
                                             @if ($record['status_morning'] === 'present')
                                                 <span class="badge badge-success">Present</span>
                                             @elseif ($record['status_morning'] === 'late')
                                                 <span class="badge badge-warning">Late ({{ $record['late_minutes_morning'] ?? 0 }} min)</span>
-                                            @else
+                                            @elseif ($record['status_morning'] === 'absent')
                                                 <span class="badge badge-danger">Absent</span>
+                                            @else
+                                                <span style="color: var(--text-muted);">-</span>
                                             @endif
                                         </td>
                                         <td>
@@ -235,8 +237,10 @@ $afternoonQR = null;
                                                 <span class="badge badge-success">Present</span>
                                             @elseif ($record['status_afternoon'] === 'late')
                                                 <span class="badge badge-warning">Late ({{ $record['late_minutes_afternoon'] ?? 0 }} min)</span>
-                                            @else
+                                            @elseif ($record['status_afternoon'] === 'absent')
                                                 <span class="badge badge-danger">Absent</span>
+                                            @else
+                                                <span style="color: var(--text-muted);">-</span>
                                             @endif
                                         </td>
                                     </tr>
@@ -371,20 +375,33 @@ $afternoonQR = null;
     }
 
     function printAttendanceQrSheet() {
-        const pairs = [
+        const qrDisplays = [
             ['morningQR', 'printMorningQr'],
             ['afternoonQR', 'printAfternoonQr'],
         ];
 
-        pairs.forEach(([sourceId, targetId]) => {
+        qrDisplays.forEach(([sourceId, targetId]) => {
             const source = document.getElementById(sourceId);
             const target = document.getElementById(targetId);
             target.replaceChildren();
-            if (source?.firstElementChild) target.appendChild(source.firstElementChild.cloneNode(true));
+
+            const sourceImage = source?.querySelector('img');
+            const sourceCanvas = source?.querySelector('canvas');
+            const imageSource = sourceImage?.currentSrc || sourceImage?.src || (sourceCanvas ? sourceCanvas.toDataURL('image/png') : '');
+
+            if (!imageSource) {
+                target.textContent = 'No active QR code';
+                return;
+            }
+
+            const image = new Image();
+            image.src = imageSource;
+            image.alt = 'Attendance QR code';
+            target.appendChild(image);
         });
 
         document.body.classList.add('printing-attendance-qr');
-        window.print();
+        window.setTimeout(() => window.print(), 50);
     }
 
     window.addEventListener('afterprint', () => document.body.classList.remove('printing-attendance-qr'));

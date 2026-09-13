@@ -43,6 +43,7 @@
 .attendance-qr-print-sheet { display: none; }
 
 @media print {
+    @page { size: A4 portrait; margin: 12mm; }
     body.printing-attendance-qr * { visibility: hidden !important; }
     body.printing-attendance-qr .attendance-qr-print-sheet,
     body.printing-attendance-qr .attendance-qr-print-sheet * { visibility: visible !important; }
@@ -50,18 +51,20 @@
         position: fixed;
         inset: 0;
         display: block;
-        padding: 12mm 16mm;
+        padding: 0;
         background: #fff;
         color: #10213d;
         font-family: Arial, sans-serif;
+        border: 1px solid #94a3b8;
     }
     .attendance-print-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding-bottom: 5mm;
-        border-bottom: 2px solid #1d4ed8;
-        color: #123c7a;
+        gap: 12px;
+        padding: 16px 20px;
+        background: #1e3a8a;
+        color: #fff;
     }
     .attendance-print-header strong { font-size: 15pt; letter-spacing: .06em; }
     .attendance-print-header span { font-size: 9pt; font-weight: 700; letter-spacing: .1em; }
@@ -69,12 +72,12 @@
     .attendance-print-header .print-company-logo { width: auto; height: 17mm; object-fit: contain; }
     .attendance-print-header .company { font-size: 13pt; font-weight: 800; letter-spacing: .06em; }
     .attendance-print-header .sub { margin-top: 1mm; font-size: 8pt; line-height: 1.3; }
-    .attendance-print-qr { min-height: 112mm; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .attendance-print-qr { width: 50%; min-height: 205mm; float: left; display: flex; flex-direction: column; align-items: center; justify-content: center; }
     .attendance-print-qr h2 { margin: 0 0 6mm; color: #123c7a; font-size: 17pt; letter-spacing: .12em; }
     .attendance-print-qr-code { padding: 5mm; border: 1px solid #c7d5ea; border-radius: 3mm; }
     .attendance-print-qr-code img,
     .attendance-print-qr-code canvas { display: block; width: 52mm !important; height: 52mm !important; }
     .attendance-print-qr p { margin: 5mm 0 0; color: #334155; font-size: 10pt; font-weight: 700; }
-    .attendance-print-cut-line { border-top: 1px dashed #94a3b8; }
+    .attendance-print-cut-line { display: none; }
     .qr-section, .tabs, .btn { display: none !important; }
 }

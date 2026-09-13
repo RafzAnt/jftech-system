@@ -89,66 +89,72 @@ $selectedEmployeeId = $request->query('employee_id') ?? '';
 $monthStart = $attendanceView === 'date' ? $selectedDate : date('Y-m-01', strtotime($selectedMonth . '-01'));
 $monthEnd = $attendanceView === 'date' ? $selectedDate : date('Y-m-t', strtotime($selectedMonth . '-01'));
 
-// Auto-mark absent employees for past sessions
-function autoMarkAbsent($pdo, $selectedDate) {
+// Update today's pending sessions without marking an employee absent before the session ends.
+function updateAttendanceStatuses($pdo, $selectedDate) {
     $today = date('Y-m-d');
     $currentTime = date('H:i:s');
-    
-    $stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('morning_deadline', 'afternoon_deadline')");
+
+    if ($selectedDate !== $today) {
+        return;
+    }
+
+    $stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('qr_morning_start', 'qr_morning_end', 'qr_afternoon_start', 'qr_afternoon_end', 'late_threshold_minutes')");
     $settings = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-    $morningDeadline = $settings['morning_deadline'] ?? '08:30:00';
-    $afternoonDeadline = $settings['afternoon_deadline'] ?? '13:30:00';
-    
+    $lateThreshold = max(0, (int) ($settings['late_threshold_minutes'] ?? 30));
+    $sessions = [
+        ['in' => 'morning_time_in', 'out' => 'morning_time_out', 'status' => 'status_morning', 'start' => $settings['qr_morning_start'] ?? '08:00:00', 'end' => $settings['qr_morning_end'] ?? '12:00:00'],
+        ['in' => 'afternoon_time_in', 'out' => 'afternoon_time_out', 'status' => 'status_afternoon', 'start' => $settings['qr_afternoon_start'] ?? '13:00:00', 'end' => $settings['qr_afternoon_end'] ?? '17:00:00'],
+    ];
+
     $stmt = $pdo->query("SELECT id FROM employees WHERE status = 'active'");
     $employeeIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
-    
-    if ($selectedDate === $today) {
-        if (strcmp($currentTime, $morningDeadline) > 0) {
-            foreach ($employeeIds as $empId) {
-                $stmt = $pdo->prepare("SELECT id, morning_time_in, morning_time_out, status_morning FROM attendance WHERE employee_id = ? AND attendance_date = ?");
-                $stmt->execute([$empId, $today]);
-                $att = $stmt->fetch();
-                
-                $noMorningScan = $att && (is_null($att['morning_time_in']) || $att['morning_time_in'] === '') && (is_null($att['morning_time_out']) || $att['morning_time_out'] === '');
-                
-                if (!$att) {
-                    $stmt = $pdo->prepare("INSERT INTO attendance (employee_id, attendance_date, status_morning) VALUES (?, ?, 'absent')");
-                    $stmt->execute([$empId, $today]);
-                } elseif ($noMorningScan && (empty($att['status_morning']) || $att['status_morning'] === '')) {
-                    $stmt = $pdo->prepare("UPDATE attendance SET status_morning = 'absent' WHERE id = ?");
-                    $stmt->execute([$att['id']]);
-                }
+
+    foreach ($employeeIds as $employeeId) {
+        $recordStmt = $pdo->prepare("SELECT * FROM attendance WHERE employee_id = ? AND attendance_date = ?");
+        $recordStmt->execute([$employeeId, $today]);
+        $attendance = $recordStmt->fetch();
+
+        foreach ($sessions as $session) {
+            $lateAt = date('H:i:s', strtotime($session['start']) + ($lateThreshold * 60));
+            $newStatus = null;
+            if (strcmp($currentTime, $session['end']) > 0) {
+                $newStatus = 'absent';
+            } elseif (strcmp($currentTime, $lateAt) > 0) {
+                $newStatus = 'late';
             }
-        }
-        
-        if (strcmp($currentTime, $afternoonDeadline) > 0) {
-            foreach ($employeeIds as $empId) {
-                $stmt = $pdo->prepare("SELECT id, afternoon_time_in, afternoon_time_out, status_afternoon FROM attendance WHERE employee_id = ? AND attendance_date = ?");
-                $stmt->execute([$empId, $today]);
-                $att = $stmt->fetch();
-                
-                if (!$att) {
-                    $stmt = $pdo->prepare("INSERT INTO attendance (employee_id, attendance_date, status_afternoon) VALUES (?, ?, 'absent')");
-                    $stmt->execute([$empId, $today]);
-                } else {
-                    $noAfternoonScan = (is_null($att['afternoon_time_in']) || $att['afternoon_time_in'] === '') && (is_null($att['afternoon_time_out']) || $att['afternoon_time_out'] === '');
-                    if ($noAfternoonScan && (empty($att['status_afternoon']) || $att['status_afternoon'] === '')) {
-                        $stmt = $pdo->prepare("UPDATE attendance SET status_afternoon = 'absent' WHERE id = ?");
-                        $stmt->execute([$att['id']]);
-                    }
-                }
+
+            if ($attendance && (!empty($attendance[$session['in']]) || !empty($attendance[$session['out']]))) {
+                continue;
+            }
+
+            if (!$attendance && $newStatus === null) {
+                continue;
+            }
+
+            if (!$attendance) {
+                $insert = $pdo->prepare("INSERT INTO attendance (employee_id, attendance_date, {$session['status']}) VALUES (?, ?, ?)");
+                $insert->execute([$employeeId, $today, $newStatus]);
+                $recordStmt->execute([$employeeId, $today]);
+                $attendance = $recordStmt->fetch();
+                continue;
+            }
+
+            if ($attendance[$session['status']] !== $newStatus) {
+                $update = $pdo->prepare("UPDATE attendance SET {$session['status']} = ? WHERE id = ?");
+                $update->execute([$newStatus, $attendance['id']]);
+                $attendance[$session['status']] = $newStatus;
             }
         }
     }
 }
 
-// Run auto-mark absent when the current month is being viewed.
+// Update attendance status only for the currently active date.
 if (($attendanceView === 'date' && $selectedDate === date('Y-m-d')) || ($attendanceView === 'month' && $selectedMonth === date('Y-m'))) {
-    autoMarkAbsent($pdo, $selectedDate);
+    updateAttendanceStatuses($pdo, $selectedDate);
 }
 
-// Show only actual attendance records for the selected month.
-$attendanceQuery = "SELECT e.id as employee_id, e.full_name as employee_name, e.position, a.id as attendance_id, a.attendance_date, a.morning_time_in, a.morning_time_out, a.afternoon_time_in, a.afternoon_time_out, a.status_morning, a.status_afternoon, a.total_hours FROM employees e JOIN attendance a ON e.id = a.employee_id WHERE e.status = 'active' AND a.attendance_date BETWEEN ? AND ?";
+// Include active employees without a scan so their status remains blank until it is due.
+$attendanceQuery = "SELECT e.id as employee_id, e.full_name as employee_name, e.position, a.id as attendance_id, a.attendance_date, a.morning_time_in, a.morning_time_out, a.afternoon_time_in, a.afternoon_time_out, a.status_morning, a.status_afternoon, a.total_hours FROM employees e LEFT JOIN attendance a ON e.id = a.employee_id AND a.attendance_date BETWEEN ? AND ? WHERE e.status = 'active'";
 $attendanceParams = [$monthStart, $monthEnd];
 if ($selectedEmployeeId !== '') {
     $attendanceQuery .= " AND e.id = ?";
@@ -175,6 +181,7 @@ foreach ($attendanceRecords as &$record) {
 
     if ($record['status_morning'] === 'late' && $record['morning_time_in']) {
         $stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'qr_morning_start'");
+        $stmt->execute();
         $morningStart = $stmt->fetch()['setting_value'] ?? '08:00:00';
         $startTime = strtotime($morningStart);
         $scanTime = strtotime($record['morning_time_in']);
@@ -186,6 +193,7 @@ foreach ($attendanceRecords as &$record) {
 
     if ($record['status_afternoon'] === 'late' && $record['afternoon_time_in']) {
         $stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'qr_afternoon_start'");
+        $stmt->execute();
         $afternoonStart = $stmt->fetch()['setting_value'] ?? '13:00:00';
         $startTime = strtotime($afternoonStart);
         $scanTime = strtotime($record['afternoon_time_in']);
