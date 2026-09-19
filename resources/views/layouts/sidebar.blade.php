@@ -252,9 +252,9 @@ document.querySelectorAll('[data-submenu-target]').forEach(function (toggle) {
     border-left: 3px solid transparent;
 }
 .submenu-item.active {
-    color: var(--accent);
-    background: rgba(0, 212, 255, 0.05);
-    border-left-color: var(--accent);
+    color: #ffffff;
+    background: #1c1c1c;
+    border-left-color: #8a8a8a;
 }
 @media (max-width: 480px) {
     .submenu-item {

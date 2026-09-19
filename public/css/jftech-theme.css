@@ -656,13 +656,13 @@ input.btn-primary {
 
 .nav-item:hover {
     color: var(--text-primary);
-    background: rgba(0, 212, 255, 0.05);
+    background: rgba(255, 255, 255, 0.07);
 }
 
 .nav-item.active {
-    color: var(--accent);
-    background: rgba(0, 212, 255, 0.08);
-    border-left-color: var(--accent);
+    color: #ffffff;
+    background: #1c1c1c;
+    border-left-color: #8a8a8a;
 }
 
 .nav-item .nav-icon {
@@ -1029,8 +1029,9 @@ html[data-theme="light"] .user-info {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(6, 14, 26, 0.8);
-    backdrop-filter: blur(5px);
+    background: rgba(36, 36, 36, 0.62);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1046,8 +1047,8 @@ html[data-theme="light"] .user-info {
 }
 
 .modal-content {
-    background: var(--card-bg-solid);
-    border: 1px solid var(--glass-border);
+    background: rgba(0, 0, 0, 0.88);
+    border: 1px solid rgba(255, 255, 255, 0.18);
     border-radius: 20px;
     padding: 2rem;
     max-width: 600px;
@@ -1057,6 +1058,9 @@ html[data-theme="light"] .user-info {
     transform: scale(0.9);
     transition: var(--transition);
     box-sizing: border-box;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
 }
 
 .modal-content.modal-large {
@@ -2283,8 +2287,8 @@ html[data-theme="light"] .nav-item:hover {
 .nav-item.active,
 html[data-theme="light"] .nav-item.active {
     color: #ffffff !important;
-    background: rgba(59, 130, 246, 0.28);
-    border-left-color: #60a5fa;
+    background: #1c1c1c;
+    border-left-color: #8a8a8a;
 }
 
 .sidebar-footer,
@@ -2297,6 +2301,92 @@ html[data-theme="light"] .sidebar-footer {
 html[data-theme="light"] .user-info {
     background: rgba(255, 255, 255, 0.06);
     border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* ===== BLACK DARK THEME =====
+ * The default workspace uses neutral blacks rather than the previous navy
+ * palette. The blue accent remains only for controls and active states.
+ */
+html:not([data-theme]),
+html[data-theme="dark"] {
+    --primary: #050505;
+    --primary-light: #0a0a0a;
+    --primary-dark: #000000;
+    --secondary: #0a0a0a;
+    --accent: #60a5fa;
+    --accent-secondary: #3b82f6;
+    --accent-glow: rgba(96, 165, 250, 0.2);
+    --success: #34d399;
+    --success-glow: rgba(52, 211, 153, 0.16);
+    --warning: #fbbf24;
+    --warning-glow: rgba(251, 191, 36, 0.16);
+    --danger: #fb7185;
+    --danger-glow: rgba(251, 113, 133, 0.16);
+    --info: #93c5fd;
+    --text-primary: #f5f5f5;
+    --text-secondary: #d4d4d4;
+    --text-muted: #a3a3a3;
+    --border-color: #292929;
+    --card-bg: #0d0d0d;
+    --card-bg-solid: #0d0d0d;
+    --input-bg: #0a0a0a;
+    --sidebar-bg: #000000;
+    --glass: rgba(13, 13, 13, 0.92);
+    --glass-border: #292929;
+    --gradient-accent: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.55);
+    --shadow-md: 0 8px 22px rgba(0, 0, 0, 0.6);
+    --shadow-lg: 0 20px 48px rgba(0, 0, 0, 0.72);
+    --shadow-glow: 0 8px 20px rgba(59, 130, 246, 0.14);
+    color-scheme: dark;
+}
+
+html:not([data-theme]) .sidebar,
+html[data-theme="dark"] .sidebar {
+    background: #000000 !important;
+    box-shadow: 3px 0 18px rgba(0, 0, 0, 0.65);
+}
+
+html:not([data-theme]) .sidebar-footer,
+html[data-theme="dark"] .sidebar-footer {
+    background: #000000;
+}
+
+html:not([data-theme]) .card-header,
+html:not([data-theme]) .data-table thead,
+html[data-theme="dark"] .card-header,
+html[data-theme="dark"] .data-table thead {
+    background: #0d0d0d;
+}
+
+html:not([data-theme]) .data-table th,
+html[data-theme="dark"] .data-table th {
+    color: #bdbdbd;
+    border-bottom-color: #292929;
+}
+
+html:not([data-theme]) .data-table tbody tr:hover,
+html[data-theme="dark"] .data-table tbody tr:hover {
+    background: #181818;
+}
+
+html:not([data-theme]) .form-input,
+html:not([data-theme]) .form-select,
+html:not([data-theme]) .search-box,
+html[data-theme="dark"] .form-input,
+html[data-theme="dark"] .form-select,
+html[data-theme="dark"] .search-box {
+    background: #0a0a0a;
+    border-color: #303030;
+    color: var(--text-primary);
+}
+
+html:not([data-theme]) .card:hover,
+html:not([data-theme]) .stat-card:hover,
+html[data-theme="dark"] .card:hover,
+html[data-theme="dark"] .stat-card:hover {
+    border-color: #404040;
+    box-shadow: var(--shadow-md);
 }
 
 .user-name,

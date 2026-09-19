@@ -90,7 +90,7 @@
                                 <th>Role</th>
                                 <th>Status</th>
                                 <th>Created</th>
-                                <th>Actions</th>
+                                <th aria-label="User menu"></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -108,37 +108,40 @@
                                     </span>
                                 </td>
                                 <td>{{ date('M d, Y', strtotime($user['created_at'])) }}</td>
-                                <td>
-                                    <div style="display: flex; gap: 0.35rem; flex-wrap: wrap;">
+                                <td class="user-menu-cell">
+                                    <div class="user-action-menu">
+                                        <button class="user-action-menu-btn" type="button" aria-label="Actions for {{ htmlspecialchars($user['username']) }}" aria-expanded="false" onclick="toggleUserActionMenu(this)">&#8942;</button>
+                                        <div class="user-action-menu-dropdown">
                                         @if (!$showArchived)
-                                        <button type="button" class="btn btn-sm btn-primary btn-icon" data-user="{{ json_encode($user, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}" onclick="editUserFromButton(this)" title="Edit">Edit</button>
-                                        <button class="btn btn-sm btn-warning btn-icon" onclick="resetPassword({{ $user['id'] }})" title="Reset Password">Reset</button>
+                                        <button type="button" class="user-menu-item" data-user="{{ json_encode($user, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}" onclick="editUserFromButton(this); closeUserActionMenus()">Edit</button>
+                                        <button class="user-menu-item" type="button" onclick="resetPassword({{ $user['id'] }}); closeUserActionMenus()">Reset Password</button>
                                         @endif
                                         @if ($showArchived)
-                                            <form method="POST" action="" style="display: inline;">
+                                            <form method="POST" action="">
             @csrf
                                                 <input type="hidden" name="restore_user" value="1">
                                                 <input type="hidden" name="user_id" value="{{ $user['id'] }}">
-                                                <button type="submit" class="btn btn-sm btn-success btn-icon" title="Restore">Restore</button>
+                                                <button type="submit" class="user-menu-item">Restore</button>
                                             </form>
                                             @if ($user['id'] != auth()->id())
-                                            <form method="POST" action="" style="display: inline;" onsubmit="return confirmDelete('Permanently delete this archived user? This cannot be undone.')">
+                                            <form method="POST" action="" onsubmit="return confirmDelete('Permanently delete this archived user? This cannot be undone.')">
             @csrf
                                                 <input type="hidden" name="purge_user" value="1">
                                                 <input type="hidden" name="user_id" value="{{ $user['id'] }}">
-                                                <button type="submit" class="btn btn-sm btn-danger btn-icon" title="Delete Permanently">Del</button>
+                                                <button type="submit" class="user-menu-item user-menu-item-danger">Delete Permanently</button>
                                             </form>
                                             @endif
                                         @else
                                             @if ($user['id'] != auth()->id())
-                                            <form method="POST" action="" style="display: inline;" onsubmit="return confirmDelete('Archive this user?')">
+                                            <form method="POST" action="" onsubmit="return confirmDelete('Archive this user?')">
             @csrf
                                                 <input type="hidden" name="delete_user" value="1">
                                                 <input type="hidden" name="user_id" value="{{ $user['id'] }}">
-                                                <button type="submit" class="btn btn-sm btn-danger">Archive</button>
+                                                <button type="submit" class="user-menu-item user-menu-item-danger">Archive</button>
                                             </form>
                                             @endif
                                         @endif
+                                        </div>
                                     </div>
                                 </td>
                             </tr>
@@ -325,6 +328,40 @@
         document.getElementById('resetUserId').value = userId;
         openModal('resetPasswordModal');
     }
+    function closeUserActionMenus() {
+        document.querySelectorAll('.user-action-menu-dropdown.show').forEach(menu => {
+            menu.classList.remove('show');
+            if (menu._userMenuPlaceholder) {
+                menu.removeAttribute('style');
+                menu._userMenuPlaceholder.replaceWith(menu);
+                delete menu._userMenuPlaceholder;
+            }
+        });
+        document.querySelectorAll('.user-action-menu-btn[aria-expanded="true"]').forEach(button => button.setAttribute('aria-expanded', 'false'));
+    }
+    function toggleUserActionMenu(button) {
+        const menu = button.nextElementSibling;
+        const willOpen = !menu.classList.contains('show');
+        closeUserActionMenus();
+        if (!willOpen) return;
+        const placeholder = document.createComment('user action menu');
+        menu.parentNode.replaceChild(placeholder, menu);
+        menu._userMenuPlaceholder = placeholder;
+        document.body.appendChild(menu);
+        menu.style.cssText = 'position:fixed;visibility:hidden;z-index:1000;right:auto;bottom:auto';
+        menu.classList.add('show');
+        const buttonRect = button.getBoundingClientRect();
+        const menuRect = menu.getBoundingClientRect();
+        const top = buttonRect.top >= menuRect.height + 8 ? buttonRect.top - menuRect.height - 6 : Math.min(window.innerHeight - menuRect.height - 8, buttonRect.bottom + 6);
+        const left = Math.max(8, Math.min(window.innerWidth - menuRect.width - 8, buttonRect.right - menuRect.width));
+        menu.style.top = Math.max(8, top) + 'px';
+        menu.style.left = left + 'px';
+        menu.style.visibility = 'visible';
+        button.setAttribute('aria-expanded', 'true');
+    }
+    document.addEventListener('click', event => {
+        if (!event.target.closest('.user-action-menu') && !event.target.closest('.user-action-menu-dropdown')) closeUserActionMenus();
+    });
     function toggleCreatePosition() {
         const role = document.getElementById('createUserRole');
         const positionGroup = document.getElementById('createPositionGroup');

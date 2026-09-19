@@ -10,3 +10,73 @@
     gap: 1rem;
     margin-bottom: 1.5rem;
 }
+
+.inventory-menu-cell {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.inventory-action-menu {
+    position: relative;
+    display: inline-block;
+}
+
+.inventory-action-menu-btn {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    color: var(--text-secondary);
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.inventory-action-menu-btn:hover,
+.inventory-action-menu-btn[aria-expanded="true"] {
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+.inventory-action-menu-dropdown {
+    display: none;
+    min-width: 170px;
+    padding: 0.25rem;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: var(--shadow-lg);
+}
+
+.inventory-action-menu-dropdown.show {
+    display: block;
+}
+
+.inventory-menu-item {
+    display: block;
+    width: 100%;
+    padding: 0.6rem 0.9rem;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    text-align: left;
+    background: transparent;
+    border: 0;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.inventory-menu-item:hover {
+    color: var(--accent);
+    background: rgba(0, 212, 255, 0.08);
+}
+
+.inventory-menu-item-danger {
+    color: var(--danger);
+}
+
+.inventory-menu-item-danger:hover {
+    color: var(--danger);
+    background: rgba(239, 68, 68, 0.1);
+}

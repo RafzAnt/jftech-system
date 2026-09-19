@@ -38,6 +38,76 @@
     margin-top: 0.15rem;
 }
 
+.user-menu-cell {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.user-action-menu {
+    position: relative;
+    display: inline-block;
+}
+
+.user-action-menu-btn {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    color: var(--text-secondary);
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.user-action-menu-btn:hover,
+.user-action-menu-btn[aria-expanded="true"] {
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+.user-action-menu-dropdown {
+    display: none;
+    min-width: 170px;
+    padding: 0.25rem;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: var(--shadow-lg);
+}
+
+.user-action-menu-dropdown.show {
+    display: block;
+}
+
+.user-menu-item {
+    display: block;
+    width: 100%;
+    padding: 0.6rem 0.9rem;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    text-align: left;
+    background: transparent;
+    border: 0;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.user-menu-item:hover {
+    color: var(--accent);
+    background: rgba(0, 212, 255, 0.08);
+}
+
+.user-menu-item-danger {
+    color: var(--danger);
+}
+
+.user-menu-item-danger:hover {
+    color: var(--danger);
+    background: rgba(239, 68, 68, 0.1);
+}
+
 @media (max-width: 600px) {
     .create-user-form {
         grid-template-columns: 1fr;

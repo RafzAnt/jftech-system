@@ -115,7 +115,7 @@
                         <th>Installed</th>
                         <th>Next Due</th>
                         <th>Status</th>
-                        <th>Actions</th>
+                        <th aria-label="Client menu"></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -148,31 +148,34 @@
                                 <span class="badge badge-danger">Suspended</span>
                             @endif
                         </td>
-                        <td>
-                            <div style="display: flex; gap: 0.35rem; flex-wrap: wrap;">
+                        <td class="client-menu-cell">
+                            <div class="client-action-menu">
+                                <button class="client-action-menu-btn" type="button" aria-label="Actions for {{ htmlspecialchars($client['full_name']) }}" aria-expanded="false" onclick="toggleClientActionMenu(this)">&#8942;</button>
+                                <div class="client-action-menu-dropdown">
                                 @if ($showArchived)
-                                    <form method="post" action="" style="display:inline;">
+                                    <form method="post" action="">
                                         @csrf
                                         <input type="hidden" name="action" value="restore">
                                         <input type="hidden" name="client_id" value="{{ $client['id'] }}">
-                                        <button type="submit" class="btn btn-sm btn-success" title="Restore">Restore</button>
+                                        <button type="submit" class="client-menu-item">Restore</button>
                                     </form>
-                                    <form method="post" action="" style="display:inline;" onsubmit="return confirm('Permanently delete this client? This cannot be undone.');">
+                                    <form method="post" action="" onsubmit="return confirm('Permanently delete this client? This cannot be undone.');">
                                         @csrf
                                         <input type="hidden" name="action" value="delete">
                                         <input type="hidden" name="client_id" value="{{ $client['id'] }}">
-                                        <button type="submit" class="btn btn-sm btn-danger" title="Permanently delete">Delete</button>
+                                        <button type="submit" class="client-menu-item client-menu-item-danger">Delete Permanently</button>
                                     </form>
                                 @else
-                                    <a href="clients_update.php?id={{ $client['id'] }}" class="btn btn-sm btn-primary btn-icon" title="Edit">Edit</a>
-                                    <button type="button" class="btn btn-sm btn-secondary btn-icon" onclick="viewClient({{ $client['id'] }})" title="View client details">View</button>
-                                    <form method="post" action="" style="display:inline;margin-left:.35rem;">
+                                    <a href="clients_update.php?id={{ $client['id'] }}" class="client-menu-item">Edit</a>
+                                    <button type="button" class="client-menu-item" onclick="viewClient({{ $client['id'] }}); closeClientActionMenus()">View</button>
+                                    <form method="post" action="">
                                         @csrf
                                         <input type="hidden" name="action" value="archive">
                                         <input type="hidden" name="client_id" value="{{ $client['id'] }}">
-                                        <button type="submit" class="btn btn-sm btn-outline" title="Archive">Archive</button>
+                                        <button type="submit" class="client-menu-item client-menu-item-danger">Archive</button>
                                     </form>
                                 @endif
+                                </div>
                             </div>
                         </td>
                     </tr>
@@ -800,6 +803,41 @@
         document.body.classList.add('printing-client-receipt');
         window.print();
     }
+
+    function closeClientActionMenus() {
+        document.querySelectorAll('.client-action-menu-dropdown.show').forEach(menu => {
+            menu.classList.remove('show');
+            if (menu._clientMenuPlaceholder) {
+                menu.removeAttribute('style');
+                menu._clientMenuPlaceholder.replaceWith(menu);
+                delete menu._clientMenuPlaceholder;
+            }
+        });
+        document.querySelectorAll('.client-action-menu-btn[aria-expanded="true"]').forEach(button => button.setAttribute('aria-expanded', 'false'));
+    }
+    function toggleClientActionMenu(button) {
+        const menu = button.nextElementSibling;
+        const willOpen = !menu.classList.contains('show');
+        closeClientActionMenus();
+        if (!willOpen) return;
+        const placeholder = document.createComment('client action menu');
+        menu.parentNode.replaceChild(placeholder, menu);
+        menu._clientMenuPlaceholder = placeholder;
+        document.body.appendChild(menu);
+        menu.style.cssText = 'position:fixed;visibility:hidden;z-index:1000;right:auto;bottom:auto';
+        menu.classList.add('show');
+        const buttonRect = button.getBoundingClientRect();
+        const menuRect = menu.getBoundingClientRect();
+        const top = buttonRect.top >= menuRect.height + 8 ? buttonRect.top - menuRect.height - 6 : Math.min(window.innerHeight - menuRect.height - 8, buttonRect.bottom + 6);
+        const left = Math.max(8, Math.min(window.innerWidth - menuRect.width - 8, buttonRect.right - menuRect.width));
+        menu.style.top = Math.max(8, top) + 'px';
+        menu.style.left = left + 'px';
+        menu.style.visibility = 'visible';
+        button.setAttribute('aria-expanded', 'true');
+    }
+    document.addEventListener('click', event => {
+        if (!event.target.closest('.client-action-menu') && !event.target.closest('.client-action-menu-dropdown')) closeClientActionMenus();
+    });
 
     // Keep the row actions available even when optional map resources are offline.
     window.viewClient = viewClient;

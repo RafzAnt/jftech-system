@@ -61,7 +61,73 @@
 }
 
 .actions-column {
-    min-width: 112px;
+    min-width: 52px;
+    text-align: right;
+}
+
+.request-action-menu {
+    position: relative;
+    display: inline-block;
+}
+
+.request-action-menu-btn {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    color: var(--text-secondary);
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.request-action-menu-btn:hover,
+.request-action-menu-btn[aria-expanded="true"] {
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+.request-action-menu-dropdown {
+    display: none;
+    min-width: 150px;
+    padding: 0.25rem;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: var(--shadow-lg);
+}
+
+.request-action-menu-dropdown.show {
+    display: block;
+}
+
+.request-menu-item {
+    display: block;
+    width: 100%;
+    padding: 0.6rem 0.9rem;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    text-align: left;
+    background: transparent;
+    border: 0;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.request-menu-item:hover {
+    color: var(--accent);
+    background: rgba(0, 212, 255, 0.08);
+}
+
+.request-menu-item-danger {
+    color: var(--danger);
+}
+
+.request-menu-item-danger:hover {
+    color: var(--danger);
+    background: rgba(239, 68, 68, 0.1);
 }
 
 .request-actions {

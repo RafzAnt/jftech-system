@@ -54,7 +54,14 @@
     padding: 0.25rem 0.5rem;
     border-radius: 8px;
     font-size: 0.75rem;
+    line-height: 1;
     cursor: pointer;
+}
+
+.action-menu-btn:hover,
+.action-menu-btn[aria-expanded="true"] {
+    color: var(--accent);
+    border-color: var(--accent);
 }
 
 .action-menu-dropdown {
@@ -92,6 +99,59 @@
 .action-menu-dropdown .dropdown-item:hover {
     background: rgba(0, 212, 255, 0.08);
     color: var(--accent);
+}
+
+.action-menu-dropdown .dropdown-item-danger {
+    color: var(--danger);
+}
+
+.action-menu-dropdown .dropdown-item-danger:hover {
+    color: var(--danger);
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.plan-menu-cell {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.plan-menu-cell .action-menu-btn {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    font-size: 1.1rem;
+}
+
+.plan-action-menu-dropdown {
+    min-width: 170px;
+}
+
+.plan-action-menu-dropdown .dropdown-item {
+    padding: 0.6rem 0.9rem;
+    font-size: 0.9rem;
+}
+
+.plan-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-weight: 600;
+    font-size: 0.8rem;
+}
+
+.plan-status::before {
+    content: '';
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--text-muted);
+    box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.15);
+}
+
+.plan-status-active { color: var(--success); }
+.plan-status-active::before {
+    background: var(--success);
+    box-shadow: 0 0 0 3px rgba(0, 230, 118, 0.15);
 }
 
 /* Search and filter toolbar */

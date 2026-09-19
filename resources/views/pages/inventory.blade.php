@@ -90,7 +90,7 @@
                                 <th>Total Value</th>
                                 <th>Supplier</th>
                                 <th>Status</th>
-                                <th>Actions</th>
+                                <th aria-label="Item menu"></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -117,25 +117,28 @@ $isLowStock = $item['quantity'] <= $item['reorder_level'];
                                         {{ ucfirst($item['status']) }}
                                     </span>
                                 </td>
-                                <td>
-                                    <div style="display: flex; gap: 0.35rem; flex-wrap: wrap;">
+                                <td class="inventory-menu-cell">
+                                    <div class="inventory-action-menu">
+                                        <button class="inventory-action-menu-btn" type="button" aria-label="Actions for {{ htmlspecialchars($item['item_name']) }}" aria-expanded="false" onclick="toggleInventoryActionMenu(this)">&#8942;</button>
+                                        <div class="inventory-action-menu-dropdown">
                                         @if ($showArchived)
-                                        <form method="POST" action="{{ route('inventory.restore', $item['id']) }}" style="display: inline;">
+                                        <form method="POST" action="{{ route('inventory.restore', $item['id']) }}">
             @csrf
-                                            <button type="submit" class="btn btn-sm btn-success btn-icon">Restore</button>
+                                            <button type="submit" class="inventory-menu-item">Restore</button>
                                         </form>
-                                        <form method="POST" action="{{ route('inventory.destroy', $item['id']) }}" style="display: inline;" onsubmit="return confirm('Permanently delete this archived item? This cannot be undone.')">
+                                        <form method="POST" action="{{ route('inventory.destroy', $item['id']) }}" onsubmit="return confirm('Permanently delete this archived item? This cannot be undone.')">
             @csrf
                                             @method('DELETE')
-                                            <button type="submit" class="btn btn-sm btn-danger btn-icon">Del</button>
+                                            <button type="submit" class="inventory-menu-item inventory-menu-item-danger">Delete Permanently</button>
                                         </form>
                                         @else
-                                        <button class="btn btn-sm btn-primary btn-icon" onclick="editItem({{ htmlspecialchars(json_encode($item)) }})">Edit</button>
-                                        <form method="POST" action="{{ route('inventory.archive', $item['id']) }}" style="display: inline;" onsubmit="return confirm('Archive this item?')">
+                                        <button class="inventory-menu-item" type="button" onclick="editItem({{ htmlspecialchars(json_encode($item)) }}); closeInventoryActionMenus()">Edit</button>
+                                        <form method="POST" action="{{ route('inventory.archive', $item['id']) }}" onsubmit="return confirm('Archive this item?')">
             @csrf
-                                            <button type="submit" class="btn btn-sm btn-danger">Archive</button>
+                                            <button type="submit" class="inventory-menu-item inventory-menu-item-danger">Archive</button>
                                         </form>
                                         @endif
+                                        </div>
                                     </div>
                                 </td>
                             </tr>
@@ -280,6 +283,40 @@ $isLowStock = $item['quantity'] <= $item['reorder_level'];
         document.getElementById('itemDescription').value = item.description || '';
         openModal('inventoryModal');
     }
+    function closeInventoryActionMenus() {
+        document.querySelectorAll('.inventory-action-menu-dropdown.show').forEach(menu => {
+            menu.classList.remove('show');
+            if (menu._inventoryMenuPlaceholder) {
+                menu.removeAttribute('style');
+                menu._inventoryMenuPlaceholder.replaceWith(menu);
+                delete menu._inventoryMenuPlaceholder;
+            }
+        });
+        document.querySelectorAll('.inventory-action-menu-btn[aria-expanded="true"]').forEach(button => button.setAttribute('aria-expanded', 'false'));
+    }
+    function toggleInventoryActionMenu(button) {
+        const menu = button.nextElementSibling;
+        const willOpen = !menu.classList.contains('show');
+        closeInventoryActionMenus();
+        if (!willOpen) return;
+        const placeholder = document.createComment('inventory action menu');
+        menu.parentNode.replaceChild(placeholder, menu);
+        menu._inventoryMenuPlaceholder = placeholder;
+        document.body.appendChild(menu);
+        menu.style.cssText = 'position:fixed;visibility:hidden;z-index:1000;right:auto;bottom:auto';
+        menu.classList.add('show');
+        const buttonRect = button.getBoundingClientRect();
+        const menuRect = menu.getBoundingClientRect();
+        const top = buttonRect.top >= menuRect.height + 8 ? buttonRect.top - menuRect.height - 6 : Math.min(window.innerHeight - menuRect.height - 8, buttonRect.bottom + 6);
+        const left = Math.max(8, Math.min(window.innerWidth - menuRect.width - 8, buttonRect.right - menuRect.width));
+        menu.style.top = Math.max(8, top) + 'px';
+        menu.style.left = left + 'px';
+        menu.style.visibility = 'visible';
+        button.setAttribute('aria-expanded', 'true');
+    }
+    document.addEventListener('click', event => {
+        if (!event.target.closest('.inventory-action-menu') && !event.target.closest('.inventory-action-menu-dropdown')) closeInventoryActionMenus();
+    });
     </script>
     <script src="{{ asset('js/jftech-main.js') }}?{{ $mainJsVersion }}"></script>
 </body>

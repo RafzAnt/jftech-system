@@ -53,7 +53,7 @@
                                 <th>Status</th>
                                 <th>Date</th>
                                 <th>Processed By</th>
-                                <th class="actions-column">Actions</th>
+                                <th class="actions-column" aria-label="Request menu"></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -83,15 +83,18 @@ $statusClass = 'status-' . $req['status'];
                                 <td style="font-size: 0.85rem; color: var(--text-secondary);">{{ $processedBy ?: '-' }}</td>
                                 <td class="actions-column">
                                     @if ($req['status'] === 'pending')
-                                    <div class="request-actions">
+                                    <div class="request-action-menu">
+                                        <button class="request-action-menu-btn" type="button" aria-label="Actions for request #{{ $req['id'] }}" aria-expanded="false" onclick="toggleRequestActionMenu(this)">&#8942;</button>
+                                        <div class="request-action-menu-dropdown">
                                         <form method="POST" action="{{ route('inventory-requests.decide', ['inventoryRequest' => $req['id'], 'decision' => 'approve']) }}" onsubmit="return confirm('Approve this request and release stock?');">
             @csrf
-                                            <button type="submit" class="btn btn-sm btn-success request-action-btn">Approve</button>
+                                            <button type="submit" class="request-menu-item">Approve</button>
                                         </form>
                                         <form method="POST" action="{{ route('inventory-requests.decide', ['inventoryRequest' => $req['id'], 'decision' => 'deny']) }}" onsubmit="return confirm('Deny this request?');">
             @csrf
-                                            <button type="submit" class="btn btn-sm btn-danger request-action-btn">Deny</button>
+                                            <button type="submit" class="request-menu-item request-menu-item-danger">Deny</button>
                                         </form>
+                                        </div>
                                     </div>
                                     @else
                                     <span style="color: var(--text-muted); font-size: 0.85rem;">Processed</span>
@@ -108,6 +111,42 @@ $statusClass = 'status-' . $req['status'];
             </div>
         </div>
     </div>
+    <script>
+    function closeRequestActionMenus() {
+        document.querySelectorAll('.request-action-menu-dropdown.show').forEach(menu => {
+            menu.classList.remove('show');
+            if (menu._requestMenuPlaceholder) {
+                menu.removeAttribute('style');
+                menu._requestMenuPlaceholder.replaceWith(menu);
+                delete menu._requestMenuPlaceholder;
+            }
+        });
+        document.querySelectorAll('.request-action-menu-btn[aria-expanded="true"]').forEach(button => button.setAttribute('aria-expanded', 'false'));
+    }
+    function toggleRequestActionMenu(button) {
+        const menu = button.nextElementSibling;
+        const willOpen = !menu.classList.contains('show');
+        closeRequestActionMenus();
+        if (!willOpen) return;
+        const placeholder = document.createComment('request action menu');
+        menu.parentNode.replaceChild(placeholder, menu);
+        menu._requestMenuPlaceholder = placeholder;
+        document.body.appendChild(menu);
+        menu.style.cssText = 'position:fixed;visibility:hidden;z-index:1000;right:auto;bottom:auto';
+        menu.classList.add('show');
+        const buttonRect = button.getBoundingClientRect();
+        const menuRect = menu.getBoundingClientRect();
+        const top = buttonRect.top >= menuRect.height + 8 ? buttonRect.top - menuRect.height - 6 : Math.min(window.innerHeight - menuRect.height - 8, buttonRect.bottom + 6);
+        const left = Math.max(8, Math.min(window.innerWidth - menuRect.width - 8, buttonRect.right - menuRect.width));
+        menu.style.top = Math.max(8, top) + 'px';
+        menu.style.left = left + 'px';
+        menu.style.visibility = 'visible';
+        button.setAttribute('aria-expanded', 'true');
+    }
+    document.addEventListener('click', event => {
+        if (!event.target.closest('.request-action-menu') && !event.target.closest('.request-action-menu-dropdown')) closeRequestActionMenus();
+    });
+    </script>
     <script src="{{ asset('js/jftech-main.js') }}?{{ $mainJsVersion }}"></script>
 </body>
 </html>
