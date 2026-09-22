@@ -39,13 +39,12 @@ $todayPayments = $stmt->fetch()['total'];
 // Record new payment
 if ($request->isMethod('post') && $request->has('record_payment')) {
     try {
-        $wasFullyPaid = false;
         $data = $request->validate([
             'client_id' => ['required', 'integer', 'exists:clients,id'],
             'bill_id' => ['required', 'integer', 'exists:bills,id'],
             'amount' => ['required', 'numeric', 'gt:0'],
             'payment_date' => ['required', 'date'],
-            'payment_method' => ['required', 'in:cash,gcash,bank_transfer,other'],
+            'payment_method' => ['required', 'in:cash,gcash'],
             'reference_number' => ['nullable', 'string', 'max:100'],
             'notes' => ['nullable', 'string', 'max:2000'],
             'submission_token' => ['required', 'uuid'],
@@ -59,7 +58,7 @@ if ($request->isMethod('post') && $request->has('record_payment')) {
         $notes = trim((string) ($data['notes'] ?? ''));
         $receivedBy = auth()->id();
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($pdo, $data, $clientId, $billId, $amount, $paymentDate, $paymentMethod, $referenceNumber, $notes, $receivedBy, &$wasFullyPaid) {
+        \Illuminate\Support\Facades\DB::transaction(function () use ($pdo, $data, $clientId, $billId, $amount, $paymentDate, $paymentMethod, $referenceNumber, $notes, $receivedBy) {
             $billStmt = $pdo->prepare("SELECT id, amount FROM bills WHERE id = ? AND client_id = ? AND status IN ('pending', 'overdue') FOR UPDATE");
             $billStmt->execute([$billId, $clientId]);
             $bill = $billStmt->fetch();
@@ -72,21 +71,21 @@ if ($request->isMethod('post') && $request->has('record_payment')) {
 
             $stmt = $pdo->prepare("INSERT INTO payments (client_id, bill_id, amount, payment_date, payment_method, reference_number, notes, received_by, submission_token) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
             $stmt->execute([$clientId, $billId, $amount, $paymentDate, $paymentMethod, $referenceNumber, $notes, $receivedBy, $data['submission_token']]);
-            if ((float) $amount === $remaining) {
+            // Mark the bill paid once its remaining balance is cleared. Using a
+            // small tolerance avoids decimal floating-point rounding leaving a
+            // fully paid bill stuck in Pending status.
+            if (($remaining - (float) $amount) <= 0.005) {
                 $pdo->prepare("UPDATE bills SET status = 'paid' WHERE id = ?")->execute([$billId]);
-                $wasFullyPaid = true;
             }
         });
 
-        // If the bill was fully paid, generate the next bill(s) for this client immediately.
-        if ($wasFullyPaid) {
-            try {
-                // Create the next billing period immediately so the client has
-                // a new pending invoice for the upcoming month right after payment.
-                app(\App\Support\BillingService::class)->generateNextBillForClient($clientId);
-            } catch (Exception $e) {
-                // Swallow errors from generation so payment recording doesn't fail for the user.
-            }
+        try {
+            // Make the next month visible as soon as this bill receives its
+            // first payment, including a partial payment. The service prevents
+            // duplicates when another payment is later recorded for this bill.
+            app(\App\Support\BillingService::class)->ensureFollowingBillForBill($clientId, $billId);
+        } catch (Exception $e) {
+            // Payment recording must remain successful even if next-bill generation fails.
         }
 
         $success = 'Payment recorded successfully!';
@@ -111,7 +110,7 @@ if ($request->isMethod('post') && $request->has('record_payment')) {
 // Get pending bills for the selected client (for dropdown)
 $pendingBills = [];
 if ($request->has('client_id') && $request->query('client_id')) {
-    $stmt = $pdo->prepare("SELECT * FROM bills WHERE client_id = ? AND status IN ('pending', 'overdue') ORDER BY due_date");
+    $stmt = $pdo->prepare("SELECT b.*, GREATEST(COALESCE(b.amount, 0) - COALESCE((SELECT SUM(p.amount) FROM payments p WHERE p.bill_id = b.id), 0), 0) AS balance FROM bills b WHERE b.client_id = ? AND b.status IN ('pending', 'overdue') ORDER BY b.due_date");
     $stmt->execute([$request->query('client_id')]);
     $pendingBills = $stmt->fetchAll();
 }

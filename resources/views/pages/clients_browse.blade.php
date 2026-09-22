@@ -359,7 +359,7 @@
                     <p style="margin: 4px 0; font-size: 12px;"><strong>Plan:</strong> ${client.plan}</p>
                     <p style="margin: 4px 0; font-size: 12px;"><strong>Rate:</strong> PHP ${parseFloat(client.rate).toFixed(2)}</p>
                     <p style="margin: 4px 0; font-size: 12px;"><strong>Status:</strong> ${client.status.toUpperCase()}</p>
-                    <button class="directions-btn" data-lat="${client.lat}" data-lng="${client.lng}" data-name="${client.name}" data-color="${client.color}" data-id="${client.id}" style="margin-top: 8px; padding: 6px 12px; background: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer; width: 100%;">
+                    <button class="directions-btn btn btn-primary" data-lat="${client.lat}" data-lng="${client.lng}" data-name="${client.name}" data-color="${client.color}" data-id="${client.id}" style="margin-top: 8px; width: 100%;">
                         Get Directions
                     </button>
                     <a href="https://www.google.com/maps/dir/?api=1&destination=${client.lat},${client.lng}&travelmode=driving" target="_blank" rel="noopener" style="display:block;text-align:center;margin-top:6px;font-size:12px;">Open turn-by-turn navigation</a>
@@ -669,56 +669,43 @@
                 }
 
                 const details = `
-                    <div style="text-align: center; margin-bottom: 1rem;">
-                        <div style="width: 60px; height: 60px; border-radius: 50%; background: ${client.color}; margin: 0 auto; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: white; font-weight: bold;">
-                            ${client.name.charAt(0).toUpperCase()}
-                        </div>
-                        <h3 style="margin: 0.5rem 0 0.25rem 0;">${client.name}</h3>
+                    <div class="cd-profile">
+                        <div class="cd-avatar" style="background: ${client.color};">${client.name.charAt(0).toUpperCase()}</div>
+                        <h3 class="cd-name">${client.name}</h3>
                         <span class="badge badge-${client.status === 'active' ? 'success' : client.status === 'inactive' ? 'warning' : 'danger'}">${client.status.toUpperCase()}</span>
                     </div>
-                    <div class="client-details-grid">
-                        <div class="info-box">
-                            <span class="info-label">CLIENT CODE</span>
-                            <p class="info-value">${client.code}</p>
+                    <div class="cd-fields">
+                        <div class="cd-grid-2">
+                            <div class="client-detail-field cd-field"><span>Client Code</span><strong>${client.code}</strong></div>
+                            <div class="client-detail-field cd-field"><span>Barangay</span><strong>${client.barangay}</strong></div>
+                            <div class="client-detail-field cd-field"><span>Contact</span><strong>${client.contact}</strong></div>
+                            <div class="client-detail-field cd-field"><span>Plan</span><strong>${client.plan}</strong></div>
                         </div>
-                        <div class="info-box">
-                            <span class="info-label">BARANGAY</span>
-                            <p class="info-value">${client.barangay}</p>
-                        </div>
-                        <div class="info-row">
-                            <div class="info-box">
-                                <span class="info-label">CONTACT</span>
-                                <p class="info-value">${client.contact}</p>
-                            </div>
-                            <div class="info-box">
-                                <span class="info-label">PLAN</span>
-                                <p class="info-value">${client.plan}</p>
-                            </div>
-                        </div>
-                        <div class="rate-box">
-                            <span class="info-label">MONTHLY RATE</span>
-                            <p class="rate-value">PHP ${parseFloat(client.rate).toFixed(2)}</p>
-                        </div>
+                        <div class="client-detail-rate"><span>Monthly Rate</span><strong>PHP ${parseFloat(client.rate).toFixed(2)}</strong></div>
                     </div>
-                    <div style="margin-bottom: 0.5rem; font-weight: 600; color: var(--accent);">BILLING HISTORY</div>
-                    <div style="max-height: 200px; overflow-y: auto; margin-bottom: 1rem;">
-                        <table class="client-modal-table" style="width: 100%; font-size: 0.8rem; border-collapse: collapse;">
+                    <section class="cd-section">
+                        <div class="cd-section-title cd-billing">Billing History</div>
+                        <div class="cd-table-wrap">
+                        <table class="cd-table">
                             <thead>
-                                <tr style="border-bottom: 1px solid var(--border-color);">
+                                <tr>
                                     <th class="col-bill">Bill #</th>
                                     <th class="col-period">Period</th>
                                     <th class="col-amount">Amount</th>
+                                    <th class="col-due">Due Date</th>
                                     <th class="col-status">Status</th>
                                 </tr>
                             </thead>
                             <tbody>${billsHTML}</tbody>
                         </table>
-                    </div>
-                    <div style="margin-bottom: 0.5rem; font-weight: 600; color: var(--success);">PAYMENT HISTORY</div>
-                    <div style="max-height: 200px; overflow-y: auto; margin-bottom: 1rem;">
-                        <table class="client-modal-table" style="width: 100%; font-size: 0.8rem; border-collapse: collapse;">
+                        </div>
+                    </section>
+                    <section class="cd-section">
+                    <div class="cd-section-title cd-payment">Payment History</div>
+                    <div class="cd-table-wrap">
+                        <table class="cd-table">
                             <thead>
-                                <tr style="border-bottom: 1px solid var(--border-color);">
+                                <tr>
                                     <th class="col-date">Date</th>
                                     <th class="col-bill">Bill</th>
                                     <th class="col-amount">Bill Amount</th>
@@ -730,9 +717,10 @@
                             <tbody>${paymentsHTML}</tbody>
                         </table>
                     </div>
-                    <div style="text-align: center; margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: center;">
-                        <a href="bill_inquiry.php?client_id=${client.id}" class="btn btn-primary">View Records</a>
-                        <a href="payment_history.php?client_id=${client.id}" class="btn btn-success">Record Payment</a>
+                    </section>
+                    <div class="cd-actions">
+                        <a href="bill_inquiry.php?client_id=${client.id}" class="btn btn-primary cd-btn-block">View Records</a>
+                        <a href="payment_history.php?client_id=${client.id}" class="btn btn-success cd-btn-block">Record Payment</a>
                     </div>
                 `;
 
@@ -749,39 +737,22 @@
                 console.error('Error loading client billing:', err);
                 // Still show basic client details on error
                 const details = `
-                    <div style="text-align: center; margin-bottom: 1rem;">
-                        <div style="width: 60px; height: 60px; border-radius: 50%; background: ${client.color}; margin: 0 auto; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: white; font-weight: bold;">
-                            ${client.name.charAt(0).toUpperCase()}
-                        </div>
-                        <h3 style="margin: 0.5rem 0 0.25rem 0;">${client.name}</h3>
+                    <div class="cd-profile">
+                        <div class="cd-avatar" style="background: ${client.color};">${client.name.charAt(0).toUpperCase()}</div>
+                        <h3 class="cd-name">${client.name}</h3>
                         <span class="badge badge-${client.status === 'active' ? 'success' : client.status === 'inactive' ? 'warning' : 'danger'}">${client.status.toUpperCase()}</span>
                     </div>
-                    <div style="display: grid; gap: 0.75rem; margin-bottom: 1rem;">
-                        <div style="background: rgba(0,212,255,0.05); padding: 0.75rem; border-radius: 8px;">
-                            <span style="color: var(--text-muted); font-size: 0.75rem;">CLIENT CODE</span>
-                            <p style="margin: 0; font-weight: 600;">${client.code}</p>
+                    <div class="cd-fields">
+                        <div class="cd-grid-2">
+                            <div class="client-detail-field cd-field"><span>Client Code</span><strong>${client.code}</strong></div>
+                            <div class="client-detail-field cd-field"><span>Barangay</span><strong>${client.barangay}</strong></div>
+                            <div class="client-detail-field cd-field"><span>Contact</span><strong>${client.contact}</strong></div>
+                            <div class="client-detail-field cd-field"><span>Plan</span><strong>${client.plan}</strong></div>
                         </div>
-                        <div style="background: rgba(0,212,255,0.05); padding: 0.75rem; border-radius: 8px;">
-                            <span style="color: var(--text-muted); font-size: 0.75rem;">BARANGAY</span>
-                            <p style="margin: 0; font-weight: 600;">${client.barangay}</p>
-                        </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
-                            <div style="background: rgba(0,212,255,0.05); padding: 0.75rem; border-radius: 8px;">
-                                <span style="color: var(--text-muted); font-size: 0.75rem;">CONTACT</span>
-                                <p style="margin: 0; font-weight: 600;">${client.contact}</p>
-                            </div>
-                            <div style="background: rgba(0,212,255,0.05); padding: 0.75rem; border-radius: 8px;">
-                                <span style="color: var(--text-muted); font-size: 0.75rem;">PLAN</span>
-                                <p style="margin: 0; font-weight: 600;">${client.plan}</p>
-                            </div>
-                        </div>
-                        <div style="background: rgba(0,230,118,0.1); padding: 0.75rem; border-radius: 8px; text-align: center;">
-                            <span style="color: var(--text-muted); font-size: 0.75rem;">MONTHLY RATE</span>
-                            <p style="margin: 0; font-weight: 700; font-size: 1.25rem; color: var(--success);">PHP ${parseFloat(client.rate).toFixed(2)}</p>
-                        </div>
+                        <div class="client-detail-rate"><span>Monthly Rate</span><strong>PHP ${parseFloat(client.rate).toFixed(2)}</strong></div>
                     </div>
-                    <div style="text-align: center; margin-top: 1rem;">
-                        <a href="bill_inquiry.php?client_id=${client.id}" class="btn btn-primary">View Records</a>
+                    <div class="cd-actions">
+                        <a href="bill_inquiry.php?client_id=${client.id}" class="btn btn-primary cd-btn-block">View Records</a>
                     </div>
                 `;
                 document.getElementById('clientDetails').innerHTML = details;

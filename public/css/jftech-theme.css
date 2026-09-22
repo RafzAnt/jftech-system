@@ -2397,3 +2397,80 @@ html[data-theme="light"] .user-name {
 html[data-theme="light"] .btn-logout {
     color: var(--danger) !important;
 }
+
+/* ===== SYSTEM ACTION BUTTON THEME =====
+ * Keep action meaning visible without using overly bright colors on the dark
+ * workspace: blue for normal actions, green for positive/payment actions.
+ */
+.btn-primary,
+button.btn-primary,
+a.btn-primary,
+input.btn-primary {
+    background: linear-gradient(135deg, #1d4ed8 0%, #172554 100%) !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(59, 130, 246, 0.38);
+    box-shadow: 0 4px 14px rgba(29, 78, 216, 0.22) !important;
+}
+
+.btn-success,
+button.btn-success,
+a.btn-success,
+input.btn-success {
+    background: linear-gradient(135deg, #047857 0%, #064e3b 100%) !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(16, 185, 129, 0.32);
+    box-shadow: 0 4px 14px rgba(4, 120, 87, 0.22) !important;
+}
+
+.btn-info,
+button.btn-info,
+a.btn-info,
+input.btn-info {
+    background: linear-gradient(135deg, #0369a1 0%, #0c4a6e 100%) !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    box-shadow: 0 4px 14px rgba(3, 105, 161, 0.2) !important;
+}
+
+.btn-secondary {
+    background: var(--secondary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+    box-shadow: none;
+}
+
+.btn-secondary:hover {
+    background: var(--card-bg-solid);
+    color: var(--accent);
+    border-color: var(--accent-secondary);
+}
+
+.btn-warning {
+    background: linear-gradient(135deg, #a16207 0%, #713f12 100%);
+    color: #ffffff;
+    border: 1px solid rgba(251, 191, 36, 0.28);
+    box-shadow: 0 4px 14px var(--warning-glow);
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #b91c1c 0%, #7f1d1d 100%);
+    color: #ffffff;
+    border: 1px solid rgba(251, 113, 133, 0.28);
+    box-shadow: 0 4px 14px var(--danger-glow);
+}
+
+.btn-primary:hover,
+.btn-info:hover {
+    filter: brightness(1.1);
+    box-shadow: 0 7px 18px rgba(37, 99, 235, 0.3) !important;
+}
+
+.btn-success:hover {
+    filter: brightness(1.1);
+    box-shadow: 0 7px 18px rgba(5, 150, 105, 0.28) !important;
+}
+
+.btn-warning:hover,
+.btn-danger:hover {
+    filter: brightness(1.08);
+}

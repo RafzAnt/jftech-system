@@ -184,14 +184,26 @@
 }
 
 /* ===== CLIENT DETAILS MODAL LAYOUT ===== */
-.cd-modal {
-    max-height: 88vh;
+.modal-content.cd-modal {
+    width: min(92vw, 680px);
+    max-width: 680px;
+    max-height: 82vh;
+    padding: 0;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
 }
 
+.cd-modal .modal-header {
+    flex: 0 0 auto;
+    margin: 0;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
 .cd-body {
-    padding: 1.5rem;
+    min-height: 0;
+    padding: 1.25rem;
     overflow-y: auto;
 }
 
@@ -226,6 +238,10 @@
     margin-bottom: 1rem;
 }
 
+.cd-field {
+    min-width: 0;
+}
+
 .cd-grid-2 {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -257,6 +273,7 @@
 .cd-table-wrap {
     overflow-x: auto;
     border-radius: 10px;
+    border: 1px solid var(--border-color);
 }
 
 .cd-table {

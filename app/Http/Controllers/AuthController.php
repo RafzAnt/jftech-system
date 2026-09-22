@@ -26,7 +26,7 @@ class AuthController extends Controller
         $historyRecord = LoginHistory::create($history);
         if (! $ok) return back()->withInput()->withErrors(['username' => 'Invalid username or password.']);
         Auth::login($user); $request->session()->regenerate();
-        $request->session()->put(['user_id' => $user->id, 'username' => $user->username, 'full_name' => $user->full_name, 'role' => $user->role, 'login_history_id' => $historyRecord->id]);
+        $request->session()->put(['user_id' => $user->id, 'username' => $user->username, 'full_name' => $user->full_name, 'role' => $user->role, 'login_history_id' => $historyRecord->id, 'last_activity_at' => time()]);
         return redirect('/pages/dashboard.php');
     }
     public function destroy(Request $request): RedirectResponse

@@ -115,7 +115,7 @@
                 <div class="stats-grid" style="margin-bottom: 0;">
                     <div class="stat-card" style="padding: 1rem;">
                         <div class="stat-value" style="font-size: 1.5rem;">PHP {{ number_format($totalDue, 2) }}</div>
-                        <div class="stat-label">Total Due</div>
+                        <div class="stat-label">Outstanding Balance</div>
                     </div>
                     <div class="stat-card" style="padding: 1rem;">
                         <div class="stat-value" style="font-size: 1.5rem; color: var(--success);">PHP {{ number_format($totalPaid, 2) }}</div>
@@ -123,7 +123,7 @@
                     </div>
                     <div class="stat-card" style="padding: 1rem;">
                         <div class="stat-value" style="font-size: 1.5rem;">{{ count($bills) }}</div>
-                        <div class="stat-label">Total Bills</div>
+                        <div class="stat-label">Open Bills</div>
                     </div>
                 </div>
             </div>
@@ -145,6 +145,9 @@
                                 <th>Bill #</th>
                                 <th>Period</th>
                                 <th>Amount</th>
+                                @if ($hasPartialBills)
+                                <th>Balance</th>
+                                @endif
                                 <th>Due Date</th>
                                 <th>Status</th>
                                 <th>Action</th>
@@ -152,13 +155,25 @@
                         </thead>
                         <tbody>
                             @foreach ($bills as $bill)
+                            @php($isUpcomingBill = strtotime($bill['billing_period_start']) > strtotime(today()->toDateString()))
                             <tr>
                                 <td><strong>{{ $bill['bill_number'] }}</strong></td>
                                 <td>{{ date('M d', strtotime($bill['billing_period_start'])) }} - {{ date('M d, Y', strtotime($bill['billing_period_end'])) }}</td>
                                 <td style="font-weight: 600;">PHP {{ number_format($bill['amount'], 2) }}</td>
+                                @if ($hasPartialBills)
+                                <td>
+                                    @if ((float) $bill['balance'] > 0 && (float) $bill['balance'] < (float) $bill['amount'])
+                                    <span class="badge badge-warning">Balance: PHP {{ number_format($bill['balance'], 2) }}</span>
+                                    @else
+                                    <span style="color: var(--text-muted);">—</span>
+                                    @endif
+                                </td>
+                                @endif
                                 <td>{{ date('M d, Y', strtotime($bill['due_date'])) }}</td>
                                 <td>
-                                    @if ($bill['status'] === 'pending')
+                                    @if ($isUpcomingBill)
+                                        <span class="badge badge-info">Incoming</span>
+                                    @elseif ($bill['status'] === 'pending')
                                         <span class="badge badge-warning">Pending</span>
                                     @elseif ($bill['status'] === 'overdue')
                                         <span class="badge badge-danger">Overdue</span>
@@ -172,7 +187,7 @@
                             </tr>
                             @endforeach
                             @if (empty($bills))
-                            <tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">No billing records found</td></tr>
+                            <tr><td colspan="{{ $hasPartialBills ? 7 : 6 }}" style="text-align: center; color: var(--text-muted); padding: 2rem;">No billing records found</td></tr>
                             @endif
                         </tbody>
                     </table>
@@ -209,7 +224,7 @@
                                 <td>{{ $payment['bill_number'] ?: '<span style="color: var(--text-muted);">-</span>' }}</td>
                                 <td>{{ $payment['bill_amount'] ? 'PHP ' . number_format($payment['bill_amount'], 2) : '-' }}</td>
                                 <td style="font-weight: 600; color: var(--success);">PHP {{ number_format($payment['amount'], 2) }}</td>
-                                <td style="font-weight: 600; color: var(--warning);">PHP {{ number_format($payment['balance'], 2) }}</td>
+                                <td style="font-weight: 600; color: {{ (float) $payment['balance'] > 0 ? 'var(--warning)' : 'var(--success)' }};">PHP {{ number_format(max(0, (float) $payment['balance']), 2) }}</td>
                                 <td><span class="badge badge-info">{{ ucfirst($payment['payment_method']) }}</span></td>
                                 <td>{{ $payment['reference_number'] ?: '-' }}</td>
                                 <td>{{ htmlspecialchars($payment['received_by_name'] ?: 'System') }}</td>

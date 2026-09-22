@@ -107,6 +107,43 @@ class BillingService
         return $inserted ? 1 : 0;
     }
 
+    /**
+     * Ensure the billing period immediately following a paid-or-partially-paid
+     * bill exists. Unlike generateNextBillForClient(), this is safe to call on
+     * every payment because it checks the specific following period first.
+     */
+    public function ensureFollowingBillForBill(int $clientId, int $billId): int
+    {
+        return DB::transaction(function () use ($clientId, $billId): int {
+            $client = DB::table('clients')->where('id', $clientId)->lockForUpdate()->first();
+            $bill = DB::table('bills')->where('id', $billId)->where('client_id', $clientId)->lockForUpdate()->first();
+            if (! $client || ! $bill) return 0;
+
+            $start = CarbonImmutable::parse($bill->billing_period_end)->addDay();
+            $end = $start->addMonth()->subDay();
+
+            $exists = DB::table('bills')
+                ->where('client_id', $clientId)
+                ->whereDate('billing_period_start', $start->toDateString())
+                ->exists();
+            if ($exists) return 0;
+
+            DB::table('bills')->insert([
+                'client_id' => $clientId,
+                'bill_number' => 'BILL-' . $start->format('Ymd') . '-' . str_pad((string) $clientId, 5, '0', STR_PAD_LEFT),
+                'billing_period_start' => $start->toDateString(),
+                'billing_period_end' => $end->toDateString(),
+                'amount' => $client->monthly_rate,
+                'due_date' => $start->addDays(30)->toDateString(),
+                'status' => 'pending',
+                'notes' => 'Automatically generated following monthly bill.',
+                'created_at' => now(),
+            ]);
+
+            return 1;
+        });
+    }
+
     public function markOverdueBills(): int
     {
         // Mark bills as overdue only if they remain unpaid 5 days past the due date.

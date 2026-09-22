@@ -22,7 +22,7 @@ Route::get('/assets/jftech-logo.png', function () {
 });
 Route::post('/', [AuthController::class, 'store'])->middleware('throttle:login')->name('login.store');
 Route::prefix('backend/api')->middleware('throttle:api')->group(function () {
-    Route::middleware('auth')->group(function () {
+    Route::middleware(['auth', 'inactivity'])->group(function () {
         Route::get('get_pending_bills.php', [ApiController::class, 'pendingBills']);
         Route::get('get_client_billing.php', [ApiController::class, 'clientBilling']);
     });
@@ -36,7 +36,7 @@ Route::prefix('backend/api')->middleware('throttle:api')->group(function () {
 });
 Route::post('/pages/logout.php', [AuthController::class, 'destroy'])->middleware('auth')->name('logout');
 
-Route::middleware(['auth', 'role:admin'])->group(function () {
+Route::middleware(['auth', 'inactivity', 'role:admin'])->group(function () {
     Route::get('/locations/balilihan-search', [LocationController::class, 'searchBalilihan'])->middleware('throttle:10,1')->name('locations.balilihan-search');
     Route::post('/billing/generate', [BillingController::class, 'generate'])->name('billing.generate');
     Route::get('/pages/inventory.php', [InventoryController::class, 'index']);

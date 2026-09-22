@@ -16,6 +16,7 @@ $bills = [];
 $payments = [];
 $totalDue = 0;
 $totalPaid = 0;
+$hasPartialBills = false;
 
 // Search and select client
 if ($request->has('client_id') && $request->query('client_id')) {
@@ -24,9 +25,12 @@ if ($request->has('client_id') && $request->query('client_id')) {
     $selectedClient = $stmt->fetch();
 
     if ($selectedClient) {
-        $stmt = $pdo->prepare("SELECT * FROM bills WHERE client_id = ? AND status IN ('pending', 'overdue') ORDER BY billing_period_start DESC");
+        $stmt = $pdo->prepare("SELECT b.*, GREATEST(COALESCE(b.amount, 0) - COALESCE((SELECT SUM(p.amount) FROM payments p WHERE p.bill_id = b.id), 0), 0) AS balance FROM bills b WHERE b.client_id = ? AND b.status IN ('pending', 'overdue') ORDER BY b.billing_period_start DESC");
         $stmt->execute([$request->query('client_id')]);
         $bills = $stmt->fetchAll();
+        $hasPartialBills = ! empty(array_filter($bills, static fn (array $bill): bool =>
+            (float) $bill['balance'] > 0 && (float) $bill['balance'] < (float) $bill['amount']
+        ));
 
         $stmt = $pdo->prepare("SELECT p.*, b.bill_number, b.amount as bill_amount, b.status as bill_status, u.full_name as received_by_name,
               (COALESCE(b.amount, 0) - COALESCE((SELECT SUM(amount) FROM payments WHERE bill_id = p.bill_id), 0)) AS balance

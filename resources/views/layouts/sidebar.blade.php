@@ -270,4 +270,26 @@ document.querySelectorAll('[data-submenu-target]').forEach(function (toggle) {
     document.querySelector('[data-logout-cancel]')?.addEventListener('click', () => {
         document.getElementById('logout-confirmation')?.close();
     });
+
+    // Browser-side timer gives an immediate logout at two minutes; the
+    // inactivity middleware independently enforces the same rule on server requests.
+    (() => {
+        const timeoutMs = 2 * 60 * 1000;
+        const logoutForm = document.getElementById('logout-form');
+        let timeoutId;
+
+        const logoutForInactivity = () => {
+            if (logoutForm) logoutForm.requestSubmit();
+        };
+
+        const resetInactivityTimer = () => {
+            window.clearTimeout(timeoutId);
+            timeoutId = window.setTimeout(logoutForInactivity, timeoutMs);
+        };
+
+        ['pointerdown', 'keydown', 'scroll', 'touchstart'].forEach((eventName) => {
+            window.addEventListener(eventName, resetInactivityTimer, { passive: true });
+        });
+        resetInactivityTimer();
+    })();
 </script>

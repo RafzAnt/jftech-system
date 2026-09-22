@@ -13,7 +13,13 @@ class ApiController extends Controller
     public function pendingBills(Request $request): JsonResponse
     {
         $data = $request->validate(['client_id' => ['required', 'integer']]);
-        return response()->json(['success' => true, 'bills' => DB::table('bills')->select('id', 'bill_number', 'amount', 'due_date')->where('client_id', $data['client_id'])->whereIn('status', ['pending', 'overdue'])->orderBy('due_date')->get()]);
+        return response()->json(['success' => true, 'bills' => DB::table('bills')
+            ->select('id', 'bill_number', 'amount', 'due_date')
+            ->selectRaw('GREATEST(COALESCE(amount, 0) - COALESCE((SELECT SUM(p.amount) FROM payments p WHERE p.bill_id = bills.id), 0), 0) AS balance')
+            ->where('client_id', $data['client_id'])
+            ->whereIn('status', ['pending', 'overdue'])
+            ->orderBy('due_date')
+            ->get()]);
     }
     public function clientBilling(Request $request): JsonResponse
     {

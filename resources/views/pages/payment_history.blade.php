@@ -63,18 +63,18 @@
                         </div>
                         <div class="form-group">
                             <label class="form-label">Pending Bill *</label>
-                            <select name="bill_id" class="form-select" id="billSelect" required>
+                            <select name="bill_id" class="form-select" id="billSelect" required onchange="setPaymentBalance(this)">
                                 <option value="">Select a pending bill</option>
                                 @foreach ($pendingBills as $bill)
-                                <option value="{{ $bill['id'] }}" {{ (null !== request()->query('bill_id') && request()->query('bill_id') == $bill['id']) ? 'selected' : '' }}>
-                                    {{ $bill['bill_number'] }} - PHP {{ number_format($bill['amount'], 2) }}
+                                <option value="{{ $bill['id'] }}" data-balance="{{ $bill['balance'] }}" {{ (null !== request()->query('bill_id') && request()->query('bill_id') == $bill['id']) ? 'selected' : '' }}>
+                                    {{ $bill['bill_number'] }} - Balance: PHP {{ number_format($bill['balance'], 2) }}
                                 </option>
                                 @endforeach
                             </select>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Amount (PHP) *</label>
-                            <input type="number" name="amount" class="form-input" placeholder="0.00" step="0.01" required>
+                            <input type="number" name="amount" id="paymentAmount" class="form-input" placeholder="0.00" step="0.01" min="0.01" required>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Payment Date *</label>
@@ -85,8 +85,6 @@
                             <select name="payment_method" class="form-select">
                                 <option value="cash">Cash</option>
                                 <option value="gcash">GCash</option>
-                                <option value="bank_transfer">Bank Transfer</option>
-                                <option value="other">Other</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -134,7 +132,7 @@
                                         <td>@if ($payment['bill_number']){{ $payment['bill_number'] }}@else<span style="color: var(--text-muted);">—</span>@endif</td>
                                         <td>{{ $payment['bill_amount'] ? 'PHP ' . number_format($payment['bill_amount'], 2) : '-' }}</td>
                                         <td style="color: var(--success); font-weight: 700;">PHP {{ number_format($payment['amount'], 2) }}</td>
-                                        <td style="color: var(--warning); font-weight: 700;">PHP {{ number_format($payment['balance'], 2) }}</td>
+                                        <td style="color: {{ (float) $payment['balance'] > 0 ? 'var(--warning)' : 'var(--success)' }}; font-weight: 700;">PHP {{ number_format(max(0, (float) $payment['balance']), 2) }}</td>
                                         <td>{{ date('M d, Y', strtotime($payment['payment_date'])) }}</td>
                                         <td><span class="badge badge-info">{{ ucfirst($payment['payment_method']) }}</span></td>
                                         <td>{{ $payment['reference_number'] ?: '-' }}</td>
@@ -153,7 +151,17 @@
 
     <script>
     // Load pending bills for selected client
-    function loadPendingBills(clientId) {
+    function setPaymentBalance(select) {
+        const option = select.options[select.selectedIndex];
+        const balance = option?.dataset.balance;
+        const amount = document.getElementById('paymentAmount');
+        if (!balance || !amount) return;
+
+        amount.value = Number(balance).toFixed(2);
+        amount.max = Number(balance).toFixed(2);
+    }
+
+    function loadPendingBills(clientId, selectedBillId = null) {
         if (!clientId) return;
         
         fetch('../backend/api/get_pending_bills.php?client_id=' + clientId)
@@ -164,16 +172,19 @@
                 (data.bills || []).forEach(bill => {
                     const option = document.createElement('option');
                     option.value = bill.id;
-                    option.textContent = bill.bill_number + ' - PHP ' + parseFloat(bill.amount).toFixed(2);
+                    option.dataset.balance = bill.balance;
+                    option.textContent = bill.bill_number + ' - Balance: PHP ' + parseFloat(bill.balance).toFixed(2);
+                    option.selected = String(bill.id) === String(selectedBillId);
                     select.appendChild(option);
                 });
+                setPaymentBalance(select);
             })
             .catch(err => console.error('Error loading bills:', err));
     }
 
     // Load on page load if client pre-selected
     @if (null !== request()->query('client_id') && request()->query('client_id'))
-    loadPendingBills({{ request()->query('client_id') }});
+    loadPendingBills({{ request()->query('client_id') }}, {{ request()->query('bill_id') ? (int) request()->query('bill_id') : 'null' }});
     @endif
     </script>
     <script src="{{ asset('js/jftech-main.js') }}?{{ $mainJsVersion }}"></script>
