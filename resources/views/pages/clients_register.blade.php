@@ -35,12 +35,20 @@
             <div class="card-body">
                 <div class="form-grid">
                     <div class="form-group">
-                        <label class="form-label">Full Name *</label>
-                        <input type="text" name="full_name" class="form-input" placeholder="Juan Dela Cruz" required>
+                        <label class="form-label">First Name *</label>
+                        <input type="text" name="first_name" class="form-input" placeholder="Juan" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Middle Name <span style="color: var(--text-muted);">(Optional)</span></label>
+                        <input type="text" name="middle_name" class="form-input" placeholder="Santos">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Last Name *</label>
+                        <input type="text" name="last_name" class="form-input" placeholder="Dela Cruz" required>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Contact Number *</label>
-                        <input type="text" name="contact_number" class="form-input" placeholder="09123456789" required>
+                        <input type="text" name="contact_number" class="form-input" placeholder="09123456789" inputmode="numeric" pattern="[0-9]{11}" minlength="11" maxlength="11" required>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Email *</label>

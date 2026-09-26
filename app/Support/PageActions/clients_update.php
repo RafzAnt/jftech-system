@@ -46,13 +46,22 @@ if ($request->has('id') && $request->query('id')) {
 if ($request->isMethod('post') && $request->has('update_client')) {
     try {
         $clientId = $request->input('client_id');
-        $fullName = trim($request->input('full_name'));
+        $firstName = trim((string) $request->input('first_name'));
+        $middleName = trim((string) $request->input('middle_name'));
+        $lastName = trim((string) $request->input('last_name'));
+        $fullName = implode(' ', array_filter([$firstName, $middleName, $lastName], fn ($part) => $part !== ''));
         $contactNumber = trim($request->input('contact_number'));
         $email = trim($request->input('email'));
         $barangayId = $request->input('barangay_id');
         $exactAddress = trim($request->input('exact_address'));
         $latitude = (float) $request->input('latitude');
         $longitude = (float) $request->input('longitude');
+        if ($firstName === '' || $lastName === '') {
+            throw new \RuntimeException('First name and last name are required. Middle name is optional.');
+        }
+        if (! preg_match('/^\d{11}$/', $contactNumber)) {
+            throw new \RuntimeException('Contact number must contain exactly 11 digits.');
+        }
         if ($latitude < 9.60 || $latitude > 9.90 || $longitude < 123.85 || $longitude > 124.10) {
             throw new \RuntimeException('Please place the client pin within the Balilihan, Bohol service area.');
         }

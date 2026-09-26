@@ -25,15 +25,21 @@ $plans = $stmt->fetchAll();
 if ($request->isMethod('post')) {
     try {
         $clientCode = 'JFT-' . date('Y') . '-' . strtoupper(uniqid());
-        $fullName = trim($request->input('full_name'));
+        $firstName = trim((string) $request->input('first_name'));
+        $middleName = trim((string) $request->input('middle_name'));
+        $lastName = trim((string) $request->input('last_name'));
+        $fullName = implode(' ', array_filter([$firstName, $middleName, $lastName], fn ($part) => $part !== ''));
         $contactNumber = trim($request->input('contact_number'));
         $email = trim($request->input('email'));
         $barangayId = $request->input('barangay_id');
         $exactAddress = trim($request->input('exact_address'));
         $installationDate = trim((string) $request->input('installation_date'));
 
-        if ($fullName === '' || $contactNumber === '' || $email === '' || ! $barangayId || $exactAddress === '' || $installationDate === '') {
+        if ($firstName === '' || $lastName === '' || $contactNumber === '' || $email === '' || ! $barangayId || $exactAddress === '' || $installationDate === '') {
             throw new \RuntimeException('Please complete all required client registration fields.');
+        }
+        if (! preg_match('/^\d{11}$/', $contactNumber)) {
+            throw new \RuntimeException('Contact number must contain exactly 11 digits.');
         }
         if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
             throw new \RuntimeException('Please enter a valid email address.');

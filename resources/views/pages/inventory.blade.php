@@ -193,9 +193,10 @@ $isLowStock = $item['quantity'] <= $item['reorder_level'];
                 </div>
                 <button class="modal-close" onclick="closeModal('inventoryModal')">&times;</button>
             </div>
-            <form method="POST" action="">
+            <form method="POST" action="" id="inventoryForm" onsubmit="return submitInventoryForm(this)">
             @csrf
                 <input type="hidden" name="item_id" id="itemId">
+                <input type="hidden" name="submission_token" value="{{ $submissionToken }}">
                 <div class="form-grid">
                     <div class="form-group">
                         <label class="form-label">Item Name *</label>
@@ -235,7 +236,7 @@ $isLowStock = $item['quantity'] <= $item['reorder_level'];
                 </div>
                 <div style="display: flex; gap: 1rem; justify-content: flex-end; flex-wrap: wrap;">
                     <button type="button" class="btn btn-secondary" onclick="closeModal('inventoryModal')">Cancel</button>
-                    <button type="submit" name="save_item" class="btn btn-success">Save Item</button>
+                    <button type="submit" class="btn btn-success" id="saveInventoryButton">Save Item</button>
                 </div>
             </form>
         </div>
@@ -282,6 +283,16 @@ $isLowStock = $item['quantity'] <= $item['reorder_level'];
         document.getElementById('itemSupplier').value = item.supplier;
         document.getElementById('itemDescription').value = item.description || '';
         openModal('inventoryModal');
+    }
+    function submitInventoryForm(form) {
+        const categorySelect = document.getElementById('categorySelect');
+        const category = document.getElementById('customCategory');
+        const submitButton = document.getElementById('saveInventoryButton');
+        category.value = categorySelect.value === '__other__' ? category.value.trim() : categorySelect.value;
+        if (submitButton.disabled) return false;
+        submitButton.disabled = true;
+        submitButton.textContent = 'Saving...';
+        return true;
     }
     function closeInventoryActionMenus() {
         document.querySelectorAll('.inventory-action-menu-dropdown.show').forEach(menu => {

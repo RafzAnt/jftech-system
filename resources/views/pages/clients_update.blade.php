@@ -99,14 +99,29 @@
                     <input type="hidden" name="client_id" value="{{ $client['id'] }}">
                     <input type="hidden" name="update_client" value="1">
 
+                    @php
+                        $clientNameParts = preg_split('/\s+/', trim($client['full_name'])) ?: [];
+                        $clientFirstName = array_shift($clientNameParts) ?? '';
+                        $clientLastName = count($clientNameParts) ? array_pop($clientNameParts) : '';
+                        $clientMiddleName = implode(' ', $clientNameParts);
+                    @endphp
+
                     <div class="form-grid">
                         <div class="form-group">
-                            <label class="form-label">Full Name *</label>
-                            <input type="text" name="full_name" class="form-input" value="{{ htmlspecialchars($client['full_name']) }}" required>
+                            <label class="form-label">First Name *</label>
+                            <input type="text" name="first_name" class="form-input" value="{{ htmlspecialchars($clientFirstName) }}" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Middle Name <span style="color: var(--text-muted);">(Optional)</span></label>
+                            <input type="text" name="middle_name" class="form-input" value="{{ htmlspecialchars($clientMiddleName) }}">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Last Name *</label>
+                            <input type="text" name="last_name" class="form-input" value="{{ htmlspecialchars($clientLastName) }}" required>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Contact Number *</label>
-                            <input type="text" name="contact_number" class="form-input" value="{{ htmlspecialchars($client['contact_number']) }}" required>
+                            <input type="text" name="contact_number" class="form-input" value="{{ htmlspecialchars($client['contact_number']) }}" inputmode="numeric" pattern="[0-9]{11}" minlength="11" maxlength="11" required>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Email</label>

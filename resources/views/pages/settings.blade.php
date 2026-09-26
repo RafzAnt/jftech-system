@@ -52,15 +52,11 @@
                         </div>
                         <div class="form-group">
                             <label class="form-label">Contact Number</label>
-                            <input type="text" name="settings[company_contact]" class="form-input" value="{{ htmlspecialchars($settings['company_contact']['setting_value'] ?? '') }}">
+                            <input type="text" name="settings[company_contact]" class="form-input" value="{{ htmlspecialchars($settings['company_contact']['setting_value'] ?? '') }}" inputmode="numeric" pattern="[0-9]{11}" minlength="11" maxlength="11">
                         </div>
                         <div class="form-group">
                             <label class="form-label">Email Address</label>
                             <input type="email" name="settings[company_email]" class="form-input" value="{{ htmlspecialchars($settings['company_email']['setting_value'] ?? '') }}">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Overdue Penalty (PHP)</label>
-                            <input type="number" name="settings[penalty_rate]" class="form-input" value="{{ $settings['penalty_rate']['setting_value'] ?? '50' }}" step="0.01">
                         </div>
                         <div class="form-group">
                             <label class="form-label">Currency</label>

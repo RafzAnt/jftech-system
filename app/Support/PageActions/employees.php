@@ -64,6 +64,10 @@ function generateTemporaryPassword(): string {
     return 'JFTECH' . random_int(1000, 9999);
 }
 
+function employeeFullName(string $firstName, string $middleName, string $lastName): string {
+    return implode(' ', array_filter([$firstName, $middleName, $lastName], fn ($part) => $part !== ''));
+}
+
 function formatScheduleTime(string $time): string {
     $parsed = strtotime($time);
     return $parsed !== false ? date('g:i A', $parsed) : $time;
@@ -253,7 +257,10 @@ if ($request->isMethod('post') && $request->has('generate_qr')) {
 if ($request->isMethod('post') && $request->has('save_employee')) {
     try {
         $employeeId = $request->input('employee_id') ?? null;
-        $fullName = trim($request->input('full_name'));
+        $firstName = trim((string) $request->input('first_name'));
+        $middleName = trim((string) $request->input('middle_name'));
+        $lastName = trim((string) $request->input('last_name'));
+        $fullName = employeeFullName($firstName, $middleName, $lastName);
         $position = trim((string) $request->input('position'));
         $contactNumber = trim($request->input('contact_number'));
         $email = trim($request->input('email'));
@@ -261,11 +268,14 @@ if ($request->isMethod('post') && $request->has('save_employee')) {
         $dateHired = $request->input('date_hired');
         $dailyRate = $request->input('daily_rate');
 
-        if ($fullName === '') {
-            throw new Exception('Full name is required.');
+        if ($firstName === '' || $lastName === '') {
+            throw new Exception('First name and last name are required. Middle name is optional.');
         }
         if (! in_array($position, $employeePositions, true)) {
             throw new Exception('Select a valid employee position.');
+        }
+        if ($contactNumber !== '' && ! preg_match('/^\d{11}$/', $contactNumber)) {
+            throw new Exception('Contact number must contain exactly 11 digits.');
         }
 
         $pdo->beginTransaction();

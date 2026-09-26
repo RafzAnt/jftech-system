@@ -38,20 +38,43 @@ $success = '';
 $error = '';
 $employeePositions = ['Technician', 'Technician I', 'Technician II', 'Master Technician', 'Intern'];
 
+function accountFullName(string $firstName, string $middleName, string $lastName): string {
+    return implode(' ', array_filter([$firstName, $middleName, $lastName], fn ($part) => $part !== ''));
+}
+
 // CRUD Operations
 if ($verified && $request->isMethod('post')) {
     try {
         if ($request->has('create_user')) {
-            $username = trim($request->input('username'));
-            $password = password_hash($request->input('password'), PASSWORD_DEFAULT);
-            $fullName = trim($request->input('full_name'));
+            $username = trim((string) $request->input('username'));
+            $plainPassword = (string) $request->input('password');
+            $firstName = trim((string) $request->input('first_name'));
+            $middleName = trim((string) $request->input('middle_name'));
+            $lastName = trim((string) $request->input('last_name'));
+            $fullName = accountFullName($firstName, $middleName, $lastName);
             $email = trim($request->input('email'));
             $phone = trim($request->input('phone'));
             $role = $request->input('role');
-            $employeePosition = trim((string) $request->input('employee_position'));
+            $employeeId = (int) $request->input('employee_id');
+            if (!in_array($role, ['admin', 'employee'], true)) throw new Exception('Select a valid account role.');
+            if ($username === '' || $plainPassword === '') throw new Exception('Username and password are required.');
+
             if ($role === 'employee') {
-                if (! in_array($employeePosition, $employeePositions, true)) throw new Exception('Select a valid employee position.');
+                $stmt = $pdo->prepare("SELECT * FROM employees WHERE id = ? AND status = 'active' AND user_id IS NULL");
+                $stmt->execute([$employeeId]);
+                $employee = $stmt->fetch();
+                if (!$employee) throw new Exception('Select an active employee without an existing account.');
+
+                // Employee details come from the employee record, so an account cannot create a duplicate employee.
+                $fullName = $employee['full_name'];
+                $email = $employee['email'] ?? '';
+                $phone = $employee['contact_number'] ?? '';
+            } elseif ($firstName === '' || $lastName === '') {
+                throw new Exception('First name and last name are required. Middle name is optional.');
             }
+            if ($phone !== '' && ! preg_match('/^\d{11}$/', $phone)) throw new Exception('Phone number must contain exactly 11 digits.');
+
+            $password = password_hash($plainPassword, PASSWORD_DEFAULT);
 
             $pdo->beginTransaction();
             $stmt = $pdo->prepare("INSERT INTO users (username, password, full_name, email, phone, role, status) VALUES (?, ?, ?, ?, ?, ?, 'active')");
@@ -59,9 +82,8 @@ if ($verified && $request->isMethod('post')) {
             $userId = $pdo->lastInsertId();
 
             if ($role === 'employee') {
-                $employeeCode = 'EMP-' . date('Y') . '-' . strtoupper(uniqid());
-                $stmt = $pdo->prepare("INSERT INTO employees (employee_code, user_id, full_name, position, contact_number, email, date_hired, daily_rate, status) VALUES (?, ?, ?, ?, ?, ?, ?, 0, 'active')");
-                $stmt->execute([$employeeCode, $userId, $fullName, $employeePosition, $phone, $email, date('Y-m-d')]);
+                $stmt = $pdo->prepare('UPDATE employees SET user_id = ? WHERE id = ?');
+                $stmt->execute([$userId, $employeeId]);
             }
 
             $pdo->commit();
@@ -70,19 +92,24 @@ if ($verified && $request->isMethod('post')) {
         
         if ($request->has('update_user')) {
             $userId = $request->input('user_id');
-            $fullName = trim($request->input('full_name'));
+            $firstName = trim((string) $request->input('first_name'));
+            $middleName = trim((string) $request->input('middle_name'));
+            $lastName = trim((string) $request->input('last_name'));
+            $fullName = accountFullName($firstName, $middleName, $lastName);
             $email = trim($request->input('email'));
             $phone = trim($request->input('phone'));
             $role = $request->input('role');
             $status = $request->input('status');
             $employeePosition = trim((string) $request->input('employee_position'));
+            if ($firstName === '' || $lastName === '') throw new Exception('First name and last name are required. Middle name is optional.');
             if ($role === 'employee' && ! in_array($employeePosition, $employeePositions, true)) throw new Exception('Select a valid employee position.');
+            if ($phone !== '' && ! preg_match('/^\d{11}$/', $phone)) throw new Exception('Phone number must contain exactly 11 digits.');
             
             $stmt = $pdo->prepare("UPDATE users SET full_name = ?, email = ?, phone = ?, role = ?, status = ? WHERE id = ?");
             $stmt->execute([$fullName, $email, $phone, $role, $status, $userId]);
             if ($role === 'employee') {
-                $stmt = $pdo->prepare("UPDATE employees SET position = ? WHERE user_id = ?");
-                $stmt->execute([$employeePosition, $userId]);
+                $stmt = $pdo->prepare("UPDATE employees SET full_name = ?, position = ?, contact_number = ?, email = ? WHERE user_id = ?");
+                $stmt->execute([$fullName, $employeePosition, $phone, $email, $userId]);
             }
             $success = 'User updated successfully!';
         }
@@ -150,6 +177,8 @@ if ($verified) {
     }
     $users = $stmt->fetchAll();
     $archivedCount = (int) $pdo->query("SELECT COUNT(*) FROM users WHERE archived = 1")->fetchColumn();
+
+    $availableEmployees = $pdo->query("SELECT id, full_name, position FROM employees WHERE status = 'active' AND user_id IS NULL ORDER BY position, full_name")->fetchAll();
 }
     return get_defined_vars();
 };

@@ -175,17 +175,36 @@
             <form method="POST" action="" class="create-user-form">
             @csrf
                 <input type="hidden" name="create_user" value="1">
-                <div class="form-group">
-                    <label class="form-label">Username *</label>
-                    <input type="text" name="username" class="form-input" required>
+                <div id="createEmployeeGroup" class="form-group">
+                    <label class="form-label">Employee to Create an Account For *</label>
+                    <select name="employee_id" id="createEmployeeId" class="form-select" onchange="showSelectedEmployeeName()">
+                        <option value="">Select an employee</option>
+                        @forelse (collect($availableEmployees)->groupBy(fn ($employee) => $employee['position'] ?: 'No position') as $position => $employeesByPosition)
+                            <optgroup label="{{ $position }}">
+                                @foreach ($employeesByPosition as $employee)
+                                <option value="{{ $employee['id'] }}" data-name="{{ htmlspecialchars($employee['full_name']) }}">{{ htmlspecialchars($employee['full_name']) }}</option>
+                                @endforeach
+                            </optgroup>
+                        @empty
+                            <option value="" disabled>No active employees without an account</option>
+                        @endforelse
+                    </select>
+                    <small class="form-help">Employees are listed by position. Their employee record will be linked to this account.</small>
+                    <input type="text" id="selectedEmployeeName" class="form-input" style="margin-top:.5rem;" placeholder="Selected employee name" readonly>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">Password *</label>
-                    <input type="password" name="password" class="form-input" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Full Name *</label>
-                    <input type="text" name="full_name" class="form-input" required>
+                <div id="createManualNameGroups" class="form-grid" style="display:none;">
+                    <div class="form-group">
+                        <label class="form-label">First Name *</label>
+                        <input type="text" name="first_name" id="createFirstName" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Middle Name <span style="color: var(--text-muted);">(Optional)</span></label>
+                        <input type="text" name="middle_name" id="createMiddleName" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Last Name *</label>
+                        <input type="text" name="last_name" id="createLastName" class="form-input">
+                    </div>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Email</label>
@@ -193,7 +212,7 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">Phone</label>
-                    <input type="text" name="phone" class="form-input" placeholder="09123456789">
+                    <input type="text" name="phone" class="form-input" placeholder="09123456789" inputmode="numeric" pattern="[0-9]{11}" minlength="11" maxlength="11">
                 </div>
                 <div class="form-group">
                     <label class="form-label">Role</label>
@@ -202,14 +221,15 @@
                         <option value="admin">Admin</option>
                     </select>
                 </div>
-                <div class="form-group" id="createPositionGroup">
-                    <label class="form-label">Position *</label>
-                    <select name="employee_position" id="createEmployeePosition" class="form-select">
-                        <option value="">Select position</option>
-                        @foreach ($employeePositions as $position)
-                        <option value="{{ $position }}">{{ $position }}</option>
-                        @endforeach
-                    </select>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label">Username *</label>
+                        <input type="text" name="username" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Password *</label>
+                        <input type="password" name="password" class="form-input" required>
+                    </div>
                 </div>
                 <div class="create-user-actions" style="display: flex; gap: 1rem; justify-content: flex-end; flex-wrap: wrap;">
                     <button type="button" class="btn btn-secondary" onclick="closeModal('createUserModal')">Cancel</button>
@@ -233,9 +253,19 @@
             @csrf
                 <input type="hidden" name="update_user" value="1">
                 <input type="hidden" name="user_id" id="editUserId">
-                <div class="form-group">
-                    <label class="form-label">Full Name</label>
-                    <input type="text" name="full_name" id="editFullName" class="form-input">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label">First Name *</label>
+                        <input type="text" name="first_name" id="editFirstName" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Middle Name <span style="color: var(--text-muted);">(Optional)</span></label>
+                        <input type="text" name="middle_name" id="editMiddleName" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Last Name *</label>
+                        <input type="text" name="last_name" id="editLastName" class="form-input" required>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Email</label>
@@ -243,7 +273,7 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">Phone</label>
-                    <input type="text" name="phone" id="editPhone" class="form-input">
+                    <input type="text" name="phone" id="editPhone" class="form-input" inputmode="numeric" pattern="[0-9]{11}" minlength="11" maxlength="11">
                 </div>
                 <div class="form-group">
                     <label class="form-label">Role</label>
@@ -314,7 +344,10 @@
 
     function editUser(user) {
         document.getElementById('editUserId').value = user.id;
-        document.getElementById('editFullName').value = user.full_name;
+        const nameParts = String(user.full_name || '').trim().split(/\s+/);
+        document.getElementById('editFirstName').value = nameParts.shift() || '';
+        document.getElementById('editLastName').value = nameParts.length ? nameParts.pop() : '';
+        document.getElementById('editMiddleName').value = nameParts.join(' ');
         document.getElementById('editEmail').value = user.email;
         document.getElementById('editPhone').value = user.phone;
         document.getElementById('editRole').value = user.role;
@@ -362,14 +395,26 @@
     document.addEventListener('click', event => {
         if (!event.target.closest('.user-action-menu') && !event.target.closest('.user-action-menu-dropdown')) closeUserActionMenus();
     });
+    function showSelectedEmployeeName() {
+        const select = document.getElementById('createEmployeeId');
+        const display = document.getElementById('selectedEmployeeName');
+        display.value = select?.selectedOptions[0]?.dataset.name || '';
+    }
     function toggleCreatePosition() {
         const role = document.getElementById('createUserRole');
-        const positionGroup = document.getElementById('createPositionGroup');
-        const position = document.getElementById('createEmployeePosition');
-        if (!role || !positionGroup || !position) return;
+        const employeeGroup = document.getElementById('createEmployeeGroup');
+        const employee = document.getElementById('createEmployeeId');
+        const nameGroups = document.getElementById('createManualNameGroups');
+        const firstName = document.getElementById('createFirstName');
+        const lastName = document.getElementById('createLastName');
+        if (!role || !employeeGroup || !employee || !nameGroups || !firstName || !lastName) return;
         const isEmployee = role.value === 'employee';
-        positionGroup.style.display = isEmployee ? '' : 'none';
-        position.required = isEmployee;
+        employeeGroup.style.display = isEmployee ? '' : 'none';
+        employee.required = isEmployee;
+        nameGroups.style.display = isEmployee ? 'none' : '';
+        firstName.required = !isEmployee;
+        lastName.required = !isEmployee;
+        if (!isEmployee) showSelectedEmployeeName();
     }
     function toggleEditPosition() {
         const role = document.getElementById('editRole');

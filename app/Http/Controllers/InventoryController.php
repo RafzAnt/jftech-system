@@ -7,6 +7,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class InventoryController extends Controller
 {
@@ -27,15 +28,33 @@ class InventoryController extends Controller
             ->limit(100)
             ->get();
 
-        return view('pages.inventory', ['themeCssVersion' => @filemtime(public_path('css/jftech-theme.css')) ?: 1, 'inventoryCssVersion' => @filemtime(public_path('css/inventory.css')) ?: 1, 'showArchived' => $showArchived, 'success' => session('success', ''), 'error' => session('error', ''), 'inventoryItems' => $items, 'categories' => $categories, 'archivedCount' => Inventory::where('archived', true)->count(), 'filterCategory' => $filterCategory, 'filteredItems' => $filteredItems, 'totalItems' => count($filteredItems), 'totalValue' => array_sum(array_map(fn ($item) => $item['quantity'] * $item['unit_price'], $filteredItems)), 'lowStock' => count(array_filter($filteredItems, fn ($item) => $item['quantity'] <= $item['reorder_level'])), 'tab' => $tab, 'movements' => $movements]);
+        $submissionToken = (string) $request->session()->get('inventory_submission_token', '');
+        if ($submissionToken === '') {
+            $submissionToken = (string) Str::uuid();
+            $request->session()->put('inventory_submission_token', $submissionToken);
+        }
+
+        return view('pages.inventory', ['themeCssVersion' => @filemtime(public_path('css/jftech-theme.css')) ?: 1, 'inventoryCssVersion' => @filemtime(public_path('css/inventory.css')) ?: 1, 'showArchived' => $showArchived, 'success' => session('success', ''), 'error' => session('error', ''), 'inventoryItems' => $items, 'categories' => $categories, 'archivedCount' => Inventory::where('archived', true)->count(), 'filterCategory' => $filterCategory, 'filteredItems' => $filteredItems, 'totalItems' => count($filteredItems), 'totalValue' => array_sum(array_map(fn ($item) => $item['quantity'] * $item['unit_price'], $filteredItems)), 'lowStock' => count(array_filter($filteredItems, fn ($item) => $item['quantity'] <= $item['reorder_level'])), 'tab' => $tab, 'movements' => $movements, 'submissionToken' => $submissionToken]);
     }
     public function store(Request $request): RedirectResponse
     {
+        if (! hash_equals((string) $request->session()->pull('inventory_submission_token', ''), (string) $request->input('submission_token', ''))) {
+            return back()->with('error', 'This inventory form was already submitted or has expired. Please try again.');
+        }
+
         $data = $request->validate(['item_id' => ['nullable', 'integer', 'exists:inventory,id'], 'item_name' => ['required', 'string', 'max:100'], 'category' => ['required', 'string', 'max:50'], 'quantity' => ['required', 'integer', 'min:0'], 'unit_price' => ['required', 'numeric', 'min:0'], 'description' => ['nullable', 'string'], 'supplier' => ['nullable', 'string', 'max:100'], 'reorder_level' => ['required', 'integer', 'min:0']]);
         $id = $data['item_id'] ?? null;
         unset($data['item_id']);
         DB::transaction(function () use ($id, $data) {
             if (! $id) {
+                $duplicate = Inventory::query()
+                    ->where('archived', false)
+                    ->whereRaw('LOWER(item_name) = ?', [strtolower($data['item_name'])])
+                    ->whereRaw('LOWER(category) = ?', [strtolower($data['category'])])
+                    ->exists();
+                if ($duplicate) {
+                    throw \Illuminate\Validation\ValidationException::withMessages(['item_name' => 'This item already exists in the selected category. Edit the existing item to update its stock.']);
+                }
                 $item = Inventory::create($data + ['status' => 'active', 'archived' => false]);
                 $this->recordMovement($item, $item->quantity, 'opening_balance', 'Opening stock when item was added.');
                 return;

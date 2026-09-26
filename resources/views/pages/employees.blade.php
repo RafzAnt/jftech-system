@@ -273,12 +273,20 @@ $afternoonQR = null;
                 <input type="hidden" name="employee_id" id="employeeId">
                 <div class="form-grid">
                     <div class="form-group">
-                        <label class="form-label">Full Name *</label>
-                        <input type="text" name="full_name" class="form-input" id="empFullName" required>
+                        <label class="form-label">First Name *</label>
+                        <input type="text" name="first_name" class="form-input" id="empFirstName" required>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Position</label>
-                        <select name="position" class="form-select" id="empPosition">
+                        <label class="form-label">Middle Name <span style="color: var(--text-muted);">(Optional)</span></label>
+                        <input type="text" name="middle_name" class="form-input" id="empMiddleName">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Last Name *</label>
+                        <input type="text" name="last_name" class="form-input" id="empLastName" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Position *</label>
+                        <select name="position" class="form-select" id="empPosition" required>
                             @foreach ($employeePositions ?? ['Technician', 'Technician I', 'Technician II', 'Master Technician', 'Intern'] as $position)
                             <option value="{{ $position }}">{{ $position }}</option>
                             @endforeach
@@ -286,7 +294,7 @@ $afternoonQR = null;
                     </div>
                     <div class="form-group">
                         <label class="form-label">Contact Number</label>
-                        <input type="text" name="contact_number" class="form-input" id="empContact" placeholder="09123456789">
+                        <input type="text" name="contact_number" class="form-input" id="empContact" placeholder="09123456789" inputmode="numeric" pattern="[0-9]{11}" minlength="11" maxlength="11">
                     </div>
                     <div class="form-group">
                         <label class="form-label">Email</label>
@@ -340,7 +348,9 @@ $afternoonQR = null;
     function openEmployeeModal() {
         document.getElementById('modalTitle').textContent = 'Add Employee';
         document.getElementById('employeeId').value = '';
-        document.getElementById('empFullName').value = '';
+        document.getElementById('empFirstName').value = '';
+        document.getElementById('empMiddleName').value = '';
+        document.getElementById('empLastName').value = '';
         document.getElementById('empPosition').value = 'Technician';
         document.getElementById('empContact').value = '';
         document.getElementById('empEmail').value = '';
@@ -364,7 +374,10 @@ $afternoonQR = null;
     function editEmployee(emp) {
         document.getElementById('modalTitle').textContent = 'Edit Employee';
         document.getElementById('employeeId').value = emp.id;
-        document.getElementById('empFullName').value = emp.full_name;
+        const nameParts = String(emp.full_name || '').trim().split(/\s+/);
+        document.getElementById('empFirstName').value = nameParts.shift() || '';
+        document.getElementById('empLastName').value = nameParts.length ? nameParts.pop() : '';
+        document.getElementById('empMiddleName').value = nameParts.join(' ');
         document.getElementById('empPosition').value = emp.position || 'Technician';
         document.getElementById('empContact').value = emp.contact_number;
         document.getElementById('empEmail').value = emp.email;

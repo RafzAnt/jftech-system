@@ -337,6 +337,20 @@ html[data-theme="light"] .login-page::after {
     box-shadow: 0 0 0 3px var(--accent-glow);
 }
 
+/* Shared required-field feedback for every form in the system. */
+.form-field-invalid :is(input, select, textarea) {
+    border-color: var(--danger) !important;
+    box-shadow: 0 0 0 3px var(--danger-glow) !important;
+}
+
+.required-field-message {
+    display: block;
+    margin-top: 0.35rem;
+    color: var(--danger);
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
 .form-input::placeholder {
     color: var(--text-muted);
 }
@@ -2164,6 +2178,37 @@ html[data-theme="light"] .search-box input::placeholder {
 html[data-theme="light"] .page-title {
     -webkit-text-fill-color: #111827;
     color: #111827;
+}
+
+/* Every dialog uses the active light palette instead of the dark modal glass. */
+html[data-theme="light"] .modal-overlay {
+    background: rgba(15, 23, 42, 0.28);
+}
+
+html[data-theme="light"] .modal-content,
+html[data-theme="light"] .modal-content.modal-small,
+html[data-theme="light"] .modal-content.modal-medium,
+html[data-theme="light"] .modal-content.modal-large,
+html[data-theme="light"] .modal-content.modal-xl,
+html[data-theme="light"] .modal-content.xl {
+    background: var(--card-bg-solid);
+    border-color: var(--border-color);
+    box-shadow: 0 24px 64px rgba(15, 23, 42, 0.2);
+}
+
+html[data-theme="light"] .modal-content input,
+html[data-theme="light"] .modal-content select,
+html[data-theme="light"] .modal-content textarea,
+html[data-theme="light"] .modal-content .field-control {
+    background-color: var(--input-bg);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+html[data-theme="light"] .modal-content option,
+html[data-theme="light"] .modal-content optgroup {
+    background: var(--card-bg-solid);
+    color: var(--text-primary);
 }
 
 /* The navigation is deliberately a stable, dark workspace rail in both themes.

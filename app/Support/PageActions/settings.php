@@ -24,7 +24,11 @@ foreach ($stmt->fetchAll() as $row) {
 if ($request->isMethod('post')) {
     try {
         if ($request->has('update_settings')) {
-            foreach ($request->input('settings') as $key => $value) {
+            $submittedSettings = $request->input('settings', []);
+            if (isset($submittedSettings['company_contact']) && ! preg_match('/^\d{11}$/', trim((string) $submittedSettings['company_contact']))) {
+                throw new Exception('Company contact number must contain exactly 11 digits.');
+            }
+            foreach ($submittedSettings as $key => $value) {
                 $stmt = $pdo->prepare("UPDATE system_settings SET setting_value = ? WHERE setting_key = ?");
                 $stmt->execute([$value, $key]);
             }
