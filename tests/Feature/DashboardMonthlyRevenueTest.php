@@ -22,6 +22,7 @@ class DashboardMonthlyRevenueTest extends TestCase
             $table->id();
             $table->string('full_name');
             $table->string('status')->default('active');
+            $table->boolean('archived')->default(false);
             $table->unsignedBigInteger('barangay_id')->nullable();
             $table->string('marker_color', 20)->default('#00BFFF');
             $table->timestamps();
@@ -169,5 +170,59 @@ class DashboardMonthlyRevenueTest extends TestCase
         }
 
         $this->assertSame($expected, $actual);
+    }
+
+    public function test_recent_payments_match_payment_history_order(): void
+    {
+        DB::table('payments')->insert([
+            ['id' => 1, 'client_id' => 1, 'amount' => 100, 'payment_date' => '2026-09-01', 'payment_method' => 'cash', 'created_at' => '2026-09-10 09:00:00'],
+            ['id' => 2, 'client_id' => 1, 'amount' => 200, 'payment_date' => '2026-09-03', 'payment_method' => 'cash', 'created_at' => '2026-09-09 09:00:00'],
+            ['id' => 3, 'client_id' => 2, 'amount' => 300, 'payment_date' => '2026-09-03', 'payment_method' => 'gcash', 'created_at' => '2026-09-08 09:00:00'],
+            // This entry was recorded most recently but is backdated, so it
+            // must not displace newer transactions on the dashboard.
+            ['id' => 4, 'client_id' => 2, 'amount' => 400, 'payment_date' => '2026-08-01', 'payment_method' => 'cash', 'created_at' => '2026-09-11 09:00:00'],
+            ['id' => 5, 'client_id' => 1, 'amount' => 500, 'payment_date' => '2026-09-02', 'payment_method' => 'cash', 'created_at' => '2026-09-07 09:00:00'],
+            ['id' => 6, 'client_id' => 2, 'amount' => 600, 'payment_date' => '2026-09-04', 'payment_method' => 'gcash', 'created_at' => '2026-09-06 09:00:00'],
+        ]);
+
+        $action = require app_path('Support/PageActions/dashboard.php');
+        $result = $action(new Request());
+
+        $this->assertSame([6, 3, 2, 5, 1], array_column($result['recentPayments'], 'id'));
+        $this->assertSame(
+            [
+                [2, 600.0, '2026-09-04', 'gcash'],
+                [2, 300.0, '2026-09-03', 'gcash'],
+                [1, 200.0, '2026-09-03', 'cash'],
+                [1, 500.0, '2026-09-02', 'cash'],
+                [1, 100.0, '2026-09-01', 'cash'],
+            ],
+            array_map(
+                fn (array $payment) => [
+                    (int) $payment['client_id'],
+                    (float) $payment['amount'],
+                    $payment['payment_date'],
+                    $payment['payment_method'],
+                ],
+                $result['recentPayments'],
+            ),
+        );
+    }
+
+    public function test_dashboard_excludes_archived_clients_from_client_counts(): void
+    {
+        DB::table('clients')->insert([
+            ['id' => 3, 'full_name' => 'Archived Client One', 'status' => 'inactive', 'archived' => true],
+            ['id' => 4, 'full_name' => 'Archived Client Two', 'status' => 'inactive', 'archived' => true],
+        ]);
+
+        $action = require app_path('Support/PageActions/dashboard.php');
+        $result = $action(new Request());
+
+        $this->assertSame(2, (int) $result['stats']['total_clients']);
+        $this->assertSame(2, (int) $result['stats']['active_clients']);
+        $this->assertCount(1, $result['clientStatusStats']);
+        $this->assertSame('active', $result['clientStatusStats'][0]['status']);
+        $this->assertSame(2, (int) $result['clientStatusStats'][0]['client_count']);
     }
 }

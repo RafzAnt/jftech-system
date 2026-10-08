@@ -6,8 +6,6 @@
     <title>JFTECH - Browse Clients</title>
     <link rel="stylesheet" href="{{ asset('css/jftech-theme.css') }}?{{ $themeCssVersion }}">
     <link rel="stylesheet" href="{{ asset('css/clients_browse.css') }}?{{ $clientsBrowseCssVersion }}">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
         #receiptModal .print-company-brand { display: flex; align-items: flex-start; gap: 8px; }
         #receiptModal .print-company-logo { width: auto; height: 36px; object-fit: contain; }
@@ -46,8 +44,15 @@
                 <h1 class="page-title">Browse Clients</h1>
                 <p style="color: var(--text-muted); font-size: 0.85rem;">View and manage all registered clients</p>
             </div>
-            <a href="clients_register.php" class="btn btn-success">+ Register New Client</a>
+            <button type="button" class="btn btn-success" onclick="openModal('registerClientModal')">+ Register New Client</button>
         </div>
+
+        @if ($success)
+        <div class="alert alert-success">{{ $success }}</div>
+        @endif
+        @if ($error)
+        <div class="alert alert-danger">{{ $error }}</div>
+        @endif
 
 <!-- Tabs -->
 <div class="tabs-container">
@@ -65,7 +70,7 @@
             <select class="form-select" id="barangayFilter" onchange="filterByBarangay(this.value)">
                 <option value="">All Barangays</option>
                 @foreach ($barangays as $barangay)
-                <option value="{{ $barangay['id'] }}" data-lat="{{ $barangay['latitude'] }}" data-lng="{{ $barangay['longitude'] }}" {{ $selectedBarangay == $barangay['id'] ? 'selected' : '' }}>
+                <option value="{{ $barangay['id'] }}" {{ $selectedBarangay == $barangay['id'] ? 'selected' : '' }}>
                     {{ $barangay['barangay_name'] }}
                 </option>
                 @endforeach
@@ -80,22 +85,6 @@
     </div>
 </div>
 
-<!-- Map Section -->
-<div class="card" style="margin-bottom: 1.5rem;">
-    <div class="card-header">
-        <span class="card-title">Client Locations Map</span>
-        @if ($selectedBarangayData)
-        <span class="badge badge-success">{{ $selectedBarangayData['barangay_name'] }}</span>
-        @else
-        <span class="badge badge-info">All Barangays</span>
-        @endif
-    </div>
-    <div id="map" class="map-container"></div>
-    <div class="card-footer" style="font-size: 0.8rem; color: var(--text-muted);">
-        Each client is marked with their assigned color. Click on a marker to view client details.
-    </div>
-</div>
-
 <!-- Clients Table -->
 <div class="card">
     <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
@@ -106,48 +95,34 @@
             <table class="data-table" id="clientsTable">
                 <thead>
                     <tr>
-                        <th>Code</th>
-                        <th>Name</th>
+                        <th>First Name</th>
+                        <th>Middle Name</th>
+                        <th>Last Name</th>
                         <th>Barangay</th>
                         <th>Contact</th>
                         <th>Plan</th>
                         <th>Rate</th>
                         <th>Installed</th>
-                        <th>Next Due</th>
-                        <th>Status</th>
                         <th aria-label="Client menu"></th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach ($clients as $client)
-                    <tr data-lat="{{ $client['latitude'] }}" data-lng="{{ $client['longitude'] }}" data-name="{{ htmlspecialchars($client['full_name']) }}">
-                        <td><strong>{{ $client['client_code'] }}</strong></td>
-                        <td>{{ htmlspecialchars($client['full_name']) }}</td>
+                    @php
+                        $nameParts = preg_split('/\s+/', trim($client['full_name'])) ?: [];
+                        $firstName = array_shift($nameParts) ?: '--';
+                        $lastName = count($nameParts) ? array_pop($nameParts) : '--';
+                        $middleName = implode(' ', $nameParts) ?: '--';
+                    @endphp
+                    <tr>
+                        <td>{{ htmlspecialchars($firstName) }}</td>
+                        <td>{{ htmlspecialchars($middleName) }}</td>
+                        <td>{{ htmlspecialchars($lastName) }}</td>
                         <td>{{ $client['barangay_name'] ?: 'N/A' }}</td>
                         <td>{{ $client['contact_number'] }}</td>
                         <td>{{ $client['wifi_plan'] }}</td>
                         <td style="color: var(--success); font-weight: 600;">PHP {{ number_format($client['monthly_rate'], 2) }}</td>
                         <td>{{ $client['installation_date'] ? date('M d, Y', strtotime($client['installation_date'])) : '-' }}</td>
-                        <td>
-                            @if (!empty($client['next_due_date']))
-                                @if ($client['next_due_status'] === 'overdue')
-                                    <span style="color: var(--danger); font-weight: 700;">{{ date('M d, Y', strtotime($client['next_due_date'])) }} <small class="badge badge-danger">Overdue</small></span>
-                                @else
-                                    <span>{{ date('M d, Y', strtotime($client['next_due_date'])) }}</span>
-                                @endif
-                            @else
-                                -
-                            @endif
-                        </td>
-                        <td>
-                            @if ($client['status'] === 'active')
-                                <span class="badge badge-success">Active</span>
-                            @elseif ($client['status'] === 'inactive')
-                                <span class="badge badge-warning">Inactive</span>
-                            @else
-                                <span class="badge badge-danger">Suspended</span>
-                            @endif
-                        </td>
                         <td class="client-menu-cell">
                             <div class="client-action-menu">
                                 <button class="client-action-menu-btn" type="button" aria-label="Actions for {{ htmlspecialchars($client['full_name']) }}" aria-expanded="false" onclick="toggleClientActionMenu(this)">&#8942;</button>
@@ -182,8 +157,16 @@
                     @endforeach
                     @if (empty($clients))
                     <tr>
-                        <td colspan="10" style="text-align: center; color: var(--text-muted); padding: 2rem;">
-                            {{ $showArchived ? 'No archived clients.' : 'No clients found. <a href="clients_register.php" style="color: var(--accent);">Register a new client</a>' }}
+                        <td colspan="9" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                            @if ($showArchived)
+                                No archived clients.
+                            @elseif ($selectedBarangayData)
+                                No clients found in {{ $selectedBarangayData['barangay_name'] }}.
+                                <a href="clients_register.php" style="color: var(--accent);">Register a new client</a>
+                            @else
+                                No clients found.
+                                <a href="clients_register.php" style="color: var(--accent);">Register a new client</a>
+                            @endif
                         </td>
                     </tr>
                     @endif
@@ -192,6 +175,39 @@
         </div>
     </div>
 </div>
+
+    <!-- Register Client Modal -->
+    <div class="modal-overlay" id="registerClientModal" onclick="if (event.target === this) closeModal('registerClientModal');">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <div style="display:flex;align-items:center;gap:.5rem">
+                    @include('partials.modal_logo')
+                    <h3 class="modal-title">Register New Client</h3>
+                </div>
+                <button type="button" class="modal-close" onclick="closeModal('registerClientModal')">&times;</button>
+            </div>
+            <form method="POST" action="" class="cd-body">
+                @csrf
+                <input type="hidden" name="action" value="register">
+                <div class="form-grid">
+                    <div class="form-group"><label class="form-label">First Name *</label><input type="text" name="first_name" class="form-input" placeholder="Juan" required value="{{ old('first_name') }}"></div>
+                    <div class="form-group"><label class="form-label">Middle Name</label><input type="text" name="middle_name" class="form-input" placeholder="Santos" value="{{ old('middle_name') }}"></div>
+                    <div class="form-group"><label class="form-label">Last Name *</label><input type="text" name="last_name" class="form-input" placeholder="Dela Cruz" required value="{{ old('last_name') }}"></div>
+                    <div class="form-group"><label class="form-label">Contact Number *</label><input type="text" name="contact_number" class="form-input" placeholder="09123456789" inputmode="numeric" pattern="[0-9]{11}" minlength="11" maxlength="11" required value="{{ old('contact_number') }}"></div>
+                    <div class="form-group"><label class="form-label">Email *</label><input type="email" name="email" class="form-input" placeholder="juan@email.com" required value="{{ old('email') }}"></div>
+                    <div class="form-group"><label class="form-label">WiFi Plan *</label><select name="internet_plan_id" class="form-select" id="registerWifiPlan" required onchange="syncRegisterPlanPrice()"><option value="">Select Plan</option>@foreach ($plans as $plan)<option value="{{ $plan['id'] }}" data-price="{{ $plan['monthly_price'] }}" {{ old('internet_plan_id') == $plan['id'] ? 'selected' : '' }}>{{ $plan['plan_name'] }} ({{ $plan['speed_mbps'] }} Mbps) - ₱{{ number_format($plan['monthly_price'], 2) }}/mo</option>@endforeach</select></div>
+                    <div class="form-group"><label class="form-label">Monthly Rate (PHP)</label><input type="number" class="form-input" id="registerMonthlyRate" step="0.01" readonly></div>
+                    <div class="form-group"><label class="form-label">Installation Date *</label><input type="date" name="installation_date" class="form-input" value="{{ old('installation_date', date('Y-m-d')) }}" required></div>
+                    <div class="form-group"><label class="form-label">Barangay *</label><select name="barangay_id" class="form-select" required><option value="">Select Barangay</option>@foreach ($barangays as $barangay)<option value="{{ $barangay['id'] }}" {{ old('barangay_id') == $barangay['id'] ? 'selected' : '' }}>{{ $barangay['barangay_name'] }}</option>@endforeach</select></div>
+                    <div class="form-group"><label class="form-label">Exact Address *</label><input type="text" name="exact_address" class="form-input" placeholder="Purok 1, Sitio..." required value="{{ old('exact_address') }}"></div>
+                </div>
+                <div style="display:flex;gap:1rem;justify-content:flex-end;margin-top:1rem;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('registerClientModal')">Cancel</button>
+                    <button type="submit" class="btn btn-success">Save Client</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <!-- Client details are rendered dynamically via viewClient() (AJAX) to always reflect live billing/payment status -->
 
@@ -214,7 +230,7 @@
         <div class="modal-content modal-small">
             <div class="modal-header">
                 <div style="display:flex;align-items:center;gap:.5rem">
-                    @include('partials.print_company')
+                    @include('partials.print_company', ['noLogo' => true])
                     <h3 class="modal-title">Client Receipt</h3>
                 </div>
                 <button class="modal-close" onclick="this.closest('.modal-overlay').classList.remove('active')">&times;</button>
@@ -227,366 +243,25 @@
     </div>
 
     <script>
-    // Client data for map
-    const clients = {!! json_encode(array_map(function($c) {
+    function syncRegisterPlanPrice() {
+        const plan = document.getElementById('registerWifiPlan');
+        document.getElementById('registerMonthlyRate').value = plan.options[plan.selectedIndex]?.dataset.price || '';
+    }
+
+    @if ($registerClientOpen)
+    document.addEventListener('DOMContentLoaded', () => {
+        syncRegisterPlanPrice();
+        openModal('registerClientModal');
+    });
+    @endif
+
+    const clients = {!! json_encode(array_map(function ($c) {
         return [
-            'id' => $c['id'],
-            'name' => $c['full_name'],
-            'code' => $c['client_code'],
-            'lat' => (float)$c['latitude'],
-            'lng' => (float)$c['longitude'],
-            'color' => $c['marker_color'],
-            'barangay' => $c['barangay_name'],
-            'contact' => $c['contact_number'],
-            'plan' => $c['wifi_plan'],
-            'rate' => $c['monthly_rate'],
-            'status' => $c['status']
+            'id' => $c['id'], 'name' => $c['full_name'],
+            'barangay' => $c['barangay_name'], 'contact' => $c['contact_number'],
+            'plan' => $c['wifi_plan'], 'rate' => $c['monthly_rate'], 'status' => $c['status']
         ];
     }, $clients), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) !!};
-
-    const barangays = {!! json_encode(array_map(function($b) {
-        return [
-            'id' => $b['id'],
-            'name' => $b['barangay_name'],
-            'lat' => (float)$b['latitude'],
-            'lng' => (float)$b['longitude']
-        ];
-    }, $barangays), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) !!};
-
-    const selectedBarangayId = '{{ $selectedBarangay }}';
-
-    // Initialize map
-    let mapCenter = [9.7562, 123.9718];
-    let mapZoom = 13;
-
-    if (selectedBarangayId) {
-        const barangay = barangays.find(b => b.id == selectedBarangayId);
-        if (barangay) {
-            mapCenter = [barangay.lat, barangay.lng];
-            mapZoom = 15;
-        }
-    }
-
-    let map = null;
-    const markers = {};
-
-    if (window.L) {
-    map = L.map('map', {
-        center: mapCenter,
-        zoom: mapZoom,
-        zoomControl: true,
-        scaleControl: true
-    });
-
-    // Define base tile layers
-    const osmStandard = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        maxZoom: 19
-    });
-
-    const esriSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        attribution: 'Tiles &copy; Esri',
-        maxZoom: 19,
-        maxNativeZoom: 16
-    });
-
-    const esriStreets = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
-        attribution: 'Tiles &copy; Esri',
-        maxZoom: 19,
-        maxNativeZoom: 18
-    });
-
-    // Add default layer
-    osmStandard.addTo(map);
-
-    // Add layer control
-    L.control.layers({
-        'OpenStreetMap': osmStandard,
-        'Esri Streets': esriStreets,
-        'Satellite': esriSatellite
-    }).addTo(map);
-
-    // Add barangay markers with distinct pins
-    barangays.forEach(barangay => {
-        if (!selectedBarangayId || barangay.id == selectedBarangayId) {
-            // Create barangay marker with teal/cyan pin
-            const barangayIcon = L.divIcon({
-                className: 'barangay-marker',
-                html: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#00BCD4" width="30" height="30" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));">
-                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
-                        <circle cx="12" cy="9" r="3" fill="white"/>
-                       </svg>`,
-                iconSize: [30, 30],
-                iconAnchor: [15, 30],
-                popupAnchor: [0, -30]
-            });
-
-            L.marker([barangay.lat, barangay.lng], { icon: barangayIcon })
-                .addTo(map)
-                .bindPopup('<strong>' + barangay.name + '</strong><br>Barangay Center');
-        }
-    });
-
-    // Directions layer (route polyline and markers)
-    let directionsLayer = null;
-    let userLocationMarker = null;
-    let currentUserCoords = null;
-    let selectedBarangayMarker = null;
-    const isWithinBohol = (lat, lng) => lat >= 9.35 && lat <= 10.20 && lng >= 123.55 && lng <= 124.75;
-
-    // Add client markers with location icons and directions button
-    clients.forEach(client => {
-        if (client.lat && client.lng) {
-            // Create custom location marker icon with client color
-            const markerIcon = L.divIcon({
-                className: 'custom-location-marker',
-                html: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="${client.color}" width="32" height="32" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));">
-                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
-                        <circle cx="12" cy="9" r="2.5" fill="white"/>
-                       </svg>`,
-                iconSize: [32, 32],
-                iconAnchor: [16, 32],
-                popupAnchor: [0, -32]
-            });
-
-            const marker = L.marker([client.lat, client.lng], { icon: markerIcon }).addTo(map);
-
-            marker.bindPopup(`
-                <div style="min-width: 200px;">
-                    <h4 style="margin: 0 0 8px 0; color: ${client.color};">${client.name}</h4>
-                    <p style="margin: 4px 0; font-size: 12px;"><strong>Code:</strong> ${client.code}</p>
-                    <p style="margin: 4px 0; font-size: 12px;"><strong>Barangay:</strong> ${client.barangay}</p>
-                    <p style="margin: 4px 0; font-size: 12px;"><strong>Plan:</strong> ${client.plan}</p>
-                    <p style="margin: 4px 0; font-size: 12px;"><strong>Rate:</strong> PHP ${parseFloat(client.rate).toFixed(2)}</p>
-                    <p style="margin: 4px 0; font-size: 12px;"><strong>Status:</strong> ${client.status.toUpperCase()}</p>
-                    <button class="directions-btn btn btn-primary" data-lat="${client.lat}" data-lng="${client.lng}" data-name="${client.name}" data-color="${client.color}" data-id="${client.id}" style="margin-top: 8px; width: 100%;">
-                        Get Directions
-                    </button>
-                    <a href="https://www.google.com/maps/dir/?api=1&destination=${client.lat},${client.lng}&travelmode=driving" target="_blank" rel="noopener" style="display:block;text-align:center;margin-top:6px;font-size:12px;">Open turn-by-turn navigation</a>
-                    <div class="directions-info" id="directions-info-${client.id}" style="margin-top: 8px; font-size: 12px;"></div>
-                </div>
-            `);
-
-            markers[client.id] = marker;
-        }
-    });
-
-    // Event delegation for directions buttons
-    document.addEventListener('click', function(e) {
-        if (e.target && e.target.classList.contains('directions-btn')) {
-            const btn = e.target;
-            const lat = parseFloat(btn.dataset.lat);
-            const lng = parseFloat(btn.dataset.lng);
-            const name = btn.dataset.name;
-            const color = btn.dataset.color;
-            const id = btn.dataset.id;
-            getDirections(lat, lng, name, color, id);
-        }
-    });
-
-    // Get directions from user's location to client
-    async function getDirections(destLat, destLng, destName, destColor, clientId) {
-        // Request user location
-        if (!navigator.geolocation) {
-            alert('Geolocation is not supported by your browser.');
-            return;
-        }
-
-        const infoDiv = document.getElementById('directions-info-' + clientId);
-        if (infoDiv) {
-            infoDiv.innerHTML = '<em>Getting your location...</em>';
-        }
-
-        navigator.geolocation.getCurrentPosition(
-            async (position) => {
-                const userLat = position.coords.latitude;
-                const userLng = position.coords.longitude;
-                if (!isWithinBohol(userLat, userLng)) {
-                    if (infoDiv) infoDiv.innerHTML = '<em>Your browser location is outside Bohol. Enable precise device location before requesting directions.</em>';
-                    return;
-                }
-                currentUserCoords = { lat: userLat, lng: userLng };
-
-                // Add/update user location marker
-                if (userLocationMarker) {
-                    map.removeLayer(userLocationMarker);
-                }
-                userLocationMarker = L.marker([userLat, userLng], {
-                    icon: L.divIcon({
-                        className: 'user-location-marker',
-                        html: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#4285F4" width="28" height="28" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));">
-                                <circle cx="12" cy="12" r="10"/>
-                                <circle cx="12" cy="12" r="4" fill="white"/>
-                               </svg>`,
-                        iconSize: [28, 28],
-                        iconAnchor: [14, 14]
-                    })
-                }).addTo(map).bindPopup('Your Location');
-
-                // Remove previous route
-                if (directionsLayer) {
-                    map.removeLayer(directionsLayer);
-                }
-
-                // Get route from OSRM
-                const url = `https://router.project-osrm.org/route/v1/driving/${userLng},${userLat};${destLng},${destLat}?overview=full&geometries=geojson`;
-                
-                try {
-                    const response = await fetch(url);
-                    const data = await response.json();
-                    
-                    if (data.code === 'Ok' && data.routes.length > 0) {
-                        const route = data.routes[0];
-                        const distance = (route.distance / 1000).toFixed(2); // km
-                        const duration = Math.round(route.duration / 60); // minutes
-                        
-                        // Draw route
-                        const routeCoordinates = route.geometry.coordinates.map(coord => [coord[1], coord[0]]);
-                        directionsLayer = L.polyline(routeCoordinates, {
-                            color: destColor,
-                            weight: 5,
-                            opacity: 0.8
-                        }).addTo(map);
-
-                        // Fit map to show entire route
-                        map.fitBounds(directionsLayer.getBounds(), { padding: [50, 50] });
-
-                        // Update info
-                        if (infoDiv) {
-                            infoDiv.innerHTML = `
-                                <div style="color: ${destColor}; font-weight: bold;">
-                                    📍 ${distance} km
-                                </div>
-                                <div>
-                                    ⏱️ ~${duration} min
-                                </div>
-                            `;
-                        }
-                    } else {
-                        if (infoDiv) {
-                            infoDiv.innerHTML = '<em>No route found</em>';
-                        }
-                    }
-                } catch (error) {
-                    console.error('Routing error:', error);
-                    if (infoDiv) {
-                        infoDiv.innerHTML = '<em>Error getting directions</em>';
-                    }
-                }
-            },
-            (error) => {
-                let msg = 'Unable to get your location.';
-                if (error.code === 1) msg = 'Location access denied.';
-                if (infoDiv) {
-                    infoDiv.innerHTML = '<em>' + msg + '</em>';
-                }
-            },
-            {
-                enableHighAccuracy: true,
-                timeout: 10000,
-                maximumAge: 0
-            }
-        );
-    }
-
-    function updateUserLocationMarker(lat, lng) {
-        currentUserCoords = { lat, lng };
-        if (userLocationMarker) {
-            map.removeLayer(userLocationMarker);
-        }
-
-        userLocationMarker = L.marker([lat, lng], {
-            icon: L.divIcon({
-                className: 'user-location-marker',
-                html: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#4285F4" width="28" height="28" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));">
-                        <circle cx="12" cy="12" r="10"/>
-                        <circle cx="12" cy="12" r="4" fill="white"/>
-                       </svg>`,
-                iconSize: [28, 28],
-                iconAnchor: [14, 14]
-            })
-        }).addTo(map).bindPopup('Your Location');
-    }
-
-    function updateSelectedBarangayMarker(barangay) {
-        if (selectedBarangayMarker) {
-            map.removeLayer(selectedBarangayMarker);
-        }
-
-        selectedBarangayMarker = L.marker([barangay.lat, barangay.lng], {
-            icon: L.divIcon({
-                className: 'barangay-marker',
-                html: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#00BCD4" width="34" height="34" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));">
-                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
-                        <circle cx="12" cy="9" r="3" fill="white"/>
-                       </svg>`,
-                iconSize: [34, 34],
-                iconAnchor: [17, 34],
-                popupAnchor: [0, -34]
-            })
-        }).addTo(map).bindPopup(`<strong>${barangay.name}</strong><br>Barangay Center`);
-    }
-
-    async function drawBarangayRoute(barangay) {
-        if (!navigator.geolocation) {
-            return;
-        }
-
-        navigator.geolocation.getCurrentPosition(
-            async (position) => {
-                const userLat = position.coords.latitude;
-                const userLng = position.coords.longitude;
-                if (!isWithinBohol(userLat, userLng)) return;
-
-                updateUserLocationMarker(userLat, userLng);
-                updateSelectedBarangayMarker(barangay);
-
-                if (directionsLayer) {
-                    map.removeLayer(directionsLayer);
-                }
-
-                const url = `https://router.project-osrm.org/route/v1/driving/${userLng},${userLat};${barangay.lng},${barangay.lat}?overview=full&geometries=geojson`;
-
-                try {
-                    const response = await fetch(url);
-                    const data = await response.json();
-
-                    if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
-                        const routeCoords = data.routes[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
-                        directionsLayer = L.polyline(routeCoords, {
-                            color: '#00BCD4',
-                            weight: 5,
-                            opacity: 0.85
-                        }).addTo(map);
-
-                        const bounds = L.latLngBounds([[userLat, userLng], [barangay.lat, barangay.lng]]);
-                        bounds.extend(directionsLayer.getBounds());
-                        map.fitBounds(bounds, { padding: [50, 50] });
-                    }
-                } catch (error) {
-                    console.error('Routing error:', error);
-                }
-            },
-            (error) => {
-                console.error('Location error:', error);
-            },
-            {
-                enableHighAccuracy: true,
-                timeout: 10000,
-                maximumAge: 0
-            }
-        );
-    }
-
-    if (selectedBarangayId) {
-        const selectedBarangay = barangays.find(b => b.id == selectedBarangayId);
-        if (selectedBarangay) {
-            drawBarangayRoute(selectedBarangay);
-        }
-    }
-    } else {
-        document.getElementById('map').innerHTML = '<div class="map-unavailable">Map is unavailable while Leaflet is offline. Client View and Print remain available.</div>';
-    }
 
     // Filter by barangay
     function filterByBarangay(barangayId) {
@@ -660,7 +335,7 @@
                             <td class="col-bill">${p.bill_number || '-'}</td>
                             <td class="col-amount">PHP ${(p.bill_amount ? parseFloat(p.bill_amount) : 0).toFixed(2)}</td>
                             <td class="col-amount" style="color: var(--success); font-weight: 600;">PHP ${parseFloat(p.amount).toFixed(2)}</td>
-                            <td class="col-amount" style="color: var(--warning); font-weight: 600;">PHP ${parseFloat(p.balance || 0).toFixed(2)}</td>
+                            <td class="col-amount" style="color: ${Number(p.balance || 0) > 0 ? 'var(--warning)' : 'var(--text-muted)'}; font-weight: 600;">${Number(p.balance || 0) > 0 ? `PHP ${parseFloat(p.balance).toFixed(2)}` : '--'}</td>
                             <td class="col-method"><span class="badge badge-info">${p.payment_method.toUpperCase()}</span></td>
                         </tr>
                     `).join('');
@@ -670,13 +345,12 @@
 
                 const details = `
                     <div class="cd-profile">
-                        <div class="cd-avatar" style="background: ${client.color};">${client.name.charAt(0).toUpperCase()}</div>
+                        <div class="cd-avatar" style="background: var(--accent);">${client.name.charAt(0).toUpperCase()}</div>
                         <h3 class="cd-name">${client.name}</h3>
                         <span class="badge badge-${client.status === 'active' ? 'success' : client.status === 'inactive' ? 'warning' : 'danger'}">${client.status.toUpperCase()}</span>
                     </div>
                     <div class="cd-fields">
                         <div class="cd-grid-2">
-                            <div class="client-detail-field cd-field"><span>Client Code</span><strong>${client.code}</strong></div>
                             <div class="client-detail-field cd-field"><span>Barangay</span><strong>${client.barangay}</strong></div>
                             <div class="client-detail-field cd-field"><span>Contact</span><strong>${client.contact}</strong></div>
                             <div class="client-detail-field cd-field"><span>Plan</span><strong>${client.plan}</strong></div>
@@ -718,33 +392,23 @@
                         </table>
                     </div>
                     </section>
-                    <div class="cd-actions">
-                        <a href="bill_inquiry.php?client_id=${client.id}" class="btn btn-primary cd-btn-block">View Records</a>
-                        <a href="payment_history.php?client_id=${client.id}" class="btn btn-success cd-btn-block">Record Payment</a>
-                    </div>
                 `;
 
                 document.getElementById('clientDetails').innerHTML = details;
                 openModal('clientModal');
 
-                // Center map on client
-                if (map && markers[client.id]) {
-                    map.setView([client.lat, client.lng], 16);
-                    markers[client.id].openPopup();
-                }
             })
             .catch(err => {
                 console.error('Error loading client billing:', err);
                 // Still show basic client details on error
                 const details = `
                     <div class="cd-profile">
-                        <div class="cd-avatar" style="background: ${client.color};">${client.name.charAt(0).toUpperCase()}</div>
+                        <div class="cd-avatar" style="background: var(--accent);">${client.name.charAt(0).toUpperCase()}</div>
                         <h3 class="cd-name">${client.name}</h3>
                         <span class="badge badge-${client.status === 'active' ? 'success' : client.status === 'inactive' ? 'warning' : 'danger'}">${client.status.toUpperCase()}</span>
                     </div>
                     <div class="cd-fields">
                         <div class="cd-grid-2">
-                            <div class="client-detail-field cd-field"><span>Client Code</span><strong>${client.code}</strong></div>
                             <div class="client-detail-field cd-field"><span>Barangay</span><strong>${client.barangay}</strong></div>
                             <div class="client-detail-field cd-field"><span>Contact</span><strong>${client.contact}</strong></div>
                             <div class="client-detail-field cd-field"><span>Plan</span><strong>${client.plan}</strong></div>
@@ -757,10 +421,6 @@
                 `;
                 document.getElementById('clientDetails').innerHTML = details;
                 openModal('clientModal');
-                if (map && markers[client.id]) {
-                    map.setView([client.lat, client.lng], 16);
-                    markers[client.id].openPopup();
-                }
             });
     }
 
@@ -810,7 +470,7 @@
         if (!event.target.closest('.client-action-menu') && !event.target.closest('.client-action-menu-dropdown')) closeClientActionMenus();
     });
 
-    // Keep the row actions available even when optional map resources are offline.
+    // Keep row actions available after client details are loaded.
     window.viewClient = viewClient;
     window.printReceipt = printReceipt;
     window.printClientReceiptContent = printClientReceiptContent;

@@ -53,16 +53,6 @@ if ($request->isMethod('post')) {
         if (! $barangayStmt->fetch()) {
             throw new \RuntimeException('Please select a valid barangay.');
         }
-        $latitude = (float) $request->input('latitude');
-        $longitude = (float) $request->input('longitude');
-        if ($latitude < 9.60 || $latitude > 9.90 || $longitude < 123.85 || $longitude > 124.10) {
-            throw new \RuntimeException('Please place the client pin within the Balilihan, Bohol service area.');
-        }
-        $markerColor = $request->input('marker_color');
-        $markerColors = ['#00BFFF', '#00E676', '#FF1744', '#FFAB00', '#E040FB', '#2979FF', '#76FF03', '#FF4081'];
-        if (! in_array($markerColor, $markerColors, true)) {
-            throw new \RuntimeException('Please select a valid marker color.');
-        }
         $planId = (int) $request->input('internet_plan_id');
         $planStmt = $pdo->prepare("SELECT * FROM internet_plans WHERE id = ? AND status = 'active' AND archived = 0");
         $planStmt->execute([$planId]);
@@ -74,8 +64,8 @@ if ($request->isMethod('post')) {
         $wifiPlan = $plan['plan_name'];
         $monthlyRate = $plan['monthly_price'];
         $installationFee = $plan['installation_fee'];
-        $stmt = $pdo->prepare("INSERT INTO clients (client_code, full_name, contact_number, email, barangay_id, exact_address, latitude, longitude, marker_color, wifi_plan, internet_plan_id, monthly_rate, installation_fee, installation_date, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')");
-        $stmt->execute([$clientCode, $fullName, $contactNumber, $email, $barangayId, $exactAddress, $latitude, $longitude, $markerColor, $wifiPlan, $planId, $monthlyRate, $installationFee, $installationDate]);
+        $stmt = $pdo->prepare("INSERT INTO clients (client_code, full_name, contact_number, email, barangay_id, exact_address, wifi_plan, internet_plan_id, monthly_rate, installation_fee, installation_date, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')");
+        $stmt->execute([$clientCode, $fullName, $contactNumber, $email, $barangayId, $exactAddress, $wifiPlan, $planId, $monthlyRate, $installationFee, $installationDate]);
 
         // Create initial bill
         $clientId = $pdo->lastInsertId();

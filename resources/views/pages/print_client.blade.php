@@ -64,7 +64,7 @@
     <div class="toolbar"><button type="button" onclick="window.print()">Print / Save as PDF</button></div>
     <main class="receipt">
         @if ($thermal)
-            @include('partials.print_company', ['compact' => true])
+            @include('partials.print_company', ['compact' => true, 'noLogo' => true])
             <div class="center small">TIN # 476-882-950-000</div>
             <div class="center small">{{ now()->format('M d, Y') }}</div>
 
@@ -102,7 +102,7 @@
             <div class="center tiny stars">************************</div>
         @else
             <header class="header">
-                @include('partials.print_company')
+                @include('partials.print_company', ['noLogo' => true])
                 <div class="muted" style="text-align:right;">CLIENT INFORMATION<br>{{ now()->format('M d, Y h:i A') }}</div>
             </header>
 

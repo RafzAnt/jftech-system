@@ -13,8 +13,10 @@ RUN apt-get update \
         libpng-dev \
         libjpeg-dev \
         libfreetype6-dev \
+        libpq-dev \
     && docker-php-ext-install \
         pdo_mysql \
+        pdo_pgsql \
         mbstring \
         bcmath \
         intl \

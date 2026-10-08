@@ -54,7 +54,7 @@
     </div>
 
     <main class="receipt">
-        @include('partials.print_company', ['compact' => true])
+        @include('partials.print_company', ['compact' => true, 'noLogo' => true])
         <div class="center small">TIN # 476-882-950-000</div>
         <div class="center small">{{ date('M d, Y', strtotime($payment['payment_date'])) }}</div>
 

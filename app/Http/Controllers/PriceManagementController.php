@@ -45,23 +45,23 @@ class PriceManagementController extends Controller
         if (! in_array($action, ['create', 'update'], true)) return back()->with('error', 'Unknown price-management action.');
 
         $data = $request->validate([
+            'plan_id' => [$action === 'update' ? 'required' : 'nullable', 'integer', 'exists:internet_plans,id'],
             'plan_name' => ['required', 'string', 'max:100', 'unique:internet_plans,plan_name,'.$request->integer('plan_id')],
             'speed_mbps' => ['required', 'integer', 'min:1', 'max:100000'],
             'monthly_price' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
-            'installation_fee' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
             'description' => ['nullable', 'string', 'max:1000'], 'status' => ['required', 'in:active,inactive'],
             'reason' => ['nullable', 'string', 'max:1000'],
         ]);
         if ($action === 'create') {
-            $plan = InternetPlan::create(collect($data)->except('reason')->all());
+            $plan = InternetPlan::create(collect($data)->except('reason')->all() + ['installation_fee' => 0]);
             $this->history($plan, null, null, 'created', null, $data['reason'] ?? 'Plan created');
             return back()->with('success', 'Internet plan added. It is available for new client registrations when active.');
         }
         DB::transaction(function () use ($request, $data) {
-            $plan = InternetPlan::where('archived', false)->lockForUpdate()->findOrFail($request->integer('plan_id'));
+            $plan = InternetPlan::where('archived', false)->lockForUpdate()->findOrFail($data['plan_id']);
             $oldMonthly = $plan->monthly_price; $oldFee = $plan->installation_fee;
             $plan->update(collect($data)->except('reason')->all());
-            if ((float) $oldMonthly !== (float) $plan->monthly_price || (float) $oldFee !== (float) $plan->installation_fee) {
+            if ((float) $oldMonthly !== (float) $plan->monthly_price) {
                 $this->history($plan, $oldMonthly, $oldFee, 'immediate', now()->toDateString(), $data['reason'] ?? 'Price updated');
             }
         });
@@ -73,12 +73,11 @@ class PriceManagementController extends Controller
         $data = $request->validate([
             'plan_id' => ['required', 'integer', 'exists:internet_plans,id'],
             'scheduled_monthly_price' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
-            'scheduled_installation_fee' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
             'price_effective_on' => ['required', 'date', 'after:today'], 'reason' => ['required', 'string', 'max:1000'],
         ]);
         DB::transaction(function () use ($data) {
             $plan = InternetPlan::where('archived', false)->lockForUpdate()->findOrFail($data['plan_id']);
-            $plan->update(['scheduled_monthly_price' => $data['scheduled_monthly_price'], 'scheduled_installation_fee' => $data['scheduled_installation_fee'], 'price_effective_on' => $data['price_effective_on']]);
+            $plan->update(['scheduled_monthly_price' => $data['scheduled_monthly_price'], 'scheduled_installation_fee' => $plan->installation_fee, 'price_effective_on' => $data['price_effective_on']]);
             $this->history($plan, $plan->monthly_price, $plan->installation_fee, 'scheduled', $data['price_effective_on'], $data['reason']);
         });
         return back()->with('success', 'Price change scheduled. It will apply automatically on the selected date.');

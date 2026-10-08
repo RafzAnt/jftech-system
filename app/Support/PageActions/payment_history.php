@@ -14,27 +14,48 @@ $paymentHistoryCssVersion = filemtime(public_path('css/payment_history.css'));
 
 $success = '';
 $error = '';
+$selectedBarangay = trim((string) $request->query('barangay', ''));
+$selectedBarangay = ctype_digit($selectedBarangay) && (int) $selectedBarangay > 0 ? $selectedBarangay : '';
+$searchTerm = trim((string) $request->query('search', ''));
+
+$stmt = $pdo->query('SELECT id, barangay_name FROM barangays ORDER BY barangay_name');
+$barangays = $stmt->fetchAll();
 
 // Get clients for dropdown
 $stmt = $pdo->query("SELECT id, client_code, full_name FROM clients WHERE status = 'active' ORDER BY full_name");
 $clients = $stmt->fetchAll();
 
-// Get all payments with client info
-    $stmt = $pdo->query("SELECT p.*, c.full_name as client_name, c.client_code, u.full_name as received_by_name, b.bill_number, b.amount as bill_amount,
-              (COALESCE(b.amount, 0) - COALESCE((SELECT SUM(amount) FROM payments WHERE bill_id = p.bill_id), 0)) AS balance
-             FROM payments p
-             JOIN clients c ON p.client_id = c.id
-             LEFT JOIN users u ON p.received_by = u.id
-             LEFT JOIN bills b ON p.bill_id = b.id
-             ORDER BY p.payment_date DESC, p.id DESC");
-    $payments = $stmt->fetchAll();
+// Get payments with optional barangay and client-name filters.
+$paymentQuery = "SELECT p.*, c.full_name as client_name, br.barangay_name, u.full_name as received_by_name, b.bill_number, b.amount as bill_amount,
+                 (COALESCE(b.amount, 0) - COALESCE((SELECT SUM(amount) FROM payments WHERE bill_id = p.bill_id), 0)) AS balance
+                 FROM payments p
+                 JOIN clients c ON p.client_id = c.id
+                 LEFT JOIN barangays br ON c.barangay_id = br.id
+                 LEFT JOIN users u ON p.received_by = u.id
+                 LEFT JOIN bills b ON p.bill_id = b.id
+                 WHERE 1 = 1";
+$paymentParams = [];
 
-// Calculate totals
-$stmt = $pdo->query("SELECT COALESCE(SUM(amount), 0) as total FROM payments");
-$totalPayments = $stmt->fetch()['total'];
+if ($selectedBarangay !== '') {
+    $paymentQuery .= ' AND c.barangay_id = ?';
+    $paymentParams[] = $selectedBarangay;
+}
+if ($searchTerm !== '') {
+    $paymentQuery .= ' AND c.full_name LIKE ?';
+    $paymentParams[] = '%' . $searchTerm . '%';
+}
 
-$stmt = $pdo->query("SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE payment_date = CURDATE()");
-$todayPayments = $stmt->fetch()['total'];
+$paymentQuery .= ' ORDER BY p.payment_date DESC, p.id DESC';
+$stmt = $pdo->prepare($paymentQuery);
+$stmt->execute($paymentParams);
+$payments = $stmt->fetchAll();
+
+// Keep the summary cards in sync with the selected barangay/search filter.
+$totalPayments = array_sum(array_map(static fn (array $payment): float => (float) $payment['amount'], $payments));
+$todayPayments = array_sum(array_map(
+    static fn (array $payment): float => $payment['payment_date'] === now()->toDateString() ? (float) $payment['amount'] : 0,
+    $payments
+));
 
 // Record new payment
 if ($request->isMethod('post') && $request->has('record_payment')) {
@@ -80,10 +101,10 @@ if ($request->isMethod('post') && $request->has('record_payment')) {
         });
 
         try {
-            // Make the next month visible as soon as this bill receives its
-            // first payment, including a partial payment. The service prevents
-            // duplicates when another payment is later recorded for this bill.
-            app(\App\Support\BillingService::class)->ensureFollowingBillForBill($clientId, $billId);
+            // Refresh the client's complete billing timeline after payment:
+            // remaining current bills, overdue status, and exactly one future
+            // Incoming bill. The service prevents duplicates on repeat calls.
+            app(\App\Support\BillingService::class)->syncClientBilling($clientId);
         } catch (Exception $e) {
             // Payment recording must remain successful even if next-bill generation fails.
         }
@@ -94,10 +115,11 @@ if ($request->isMethod('post') && $request->has('record_payment')) {
         session(['payment_submission_token' => $paymentToken]);
 
         // Refresh payments
-        $stmt = $pdo->query("SELECT p.*, c.full_name as client_name, c.client_code, u.full_name as received_by_name, b.bill_number, b.amount as bill_amount,
+        $stmt = $pdo->query("SELECT p.*, c.full_name as client_name, c.client_code, br.barangay_name, u.full_name as received_by_name, b.bill_number, b.amount as bill_amount,
               (COALESCE(b.amount, 0) - COALESCE((SELECT SUM(amount) FROM payments WHERE bill_id = p.bill_id), 0)) AS balance
              FROM payments p
              JOIN clients c ON p.client_id = c.id
+             LEFT JOIN barangays br ON c.barangay_id = br.id
              LEFT JOIN users u ON p.received_by = u.id
              LEFT JOIN bills b ON p.bill_id = b.id
              ORDER BY p.payment_date DESC, p.id DESC");

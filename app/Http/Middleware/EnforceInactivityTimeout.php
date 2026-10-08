@@ -10,7 +10,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 class EnforceInactivityTimeout
 {
-    private const TIMEOUT_SECONDS = 120;
+    private const TIMEOUT_SECONDS = 300;
 
     public function handle(Request $request, Closure $next): Response
     {
@@ -39,7 +39,7 @@ class EnforceInactivityTimeout
                 return response()->json(['message' => 'Your session expired because of inactivity. Please log in again.'], 401);
             }
 
-            return redirect('/')->with('status', 'You were logged out after 2 minutes of inactivity.');
+            return redirect('/')->with('status', 'You were logged out after 5 minutes of inactivity.');
         }
 
         $request->session()->put('last_activity_at', time());

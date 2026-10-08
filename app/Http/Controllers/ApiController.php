@@ -28,7 +28,18 @@ class ApiController extends Controller
     }
     public function inventoryItems(): JsonResponse
     {
-        return response()->json(['success' => true, 'data' => DB::table('inventory')->where('status', 'active')->where('archived', 0)->orderBy('item_name')->get()]);
+        // Pending employee requests reserve stock immediately. The mobile app
+        // must only offer quantity that can still be released by the admin.
+        $items = DB::table('inventory')
+            ->select('inventory.*')
+            ->selectRaw("GREATEST(inventory.quantity - COALESCE((SELECT SUM(requests.quantity) FROM inventory_requests AS requests WHERE requests.inventory_id = inventory.id AND requests.status = 'pending'), 0), 0) AS available_quantity")
+            ->where('inventory.status', 'active')
+            ->where('inventory.archived', 0)
+            ->having('available_quantity', '>', 0)
+            ->orderBy('inventory.item_name')
+            ->get();
+
+        return response()->json(['success' => true, 'data' => $items]);
     }
     public function attendanceHistory(Request $request): JsonResponse
     {
@@ -81,8 +92,7 @@ class ApiController extends Controller
         $data = $request->validate([
             'employee_id' => ['required', 'integer', 'exists:employees,id'],
             'items' => ['required', 'array', 'min:1'],
-            'items.*.inventory_id' => ['nullable', 'integer', 'exists:inventory,id'],
-            'items.*.item_name' => ['required_without:items.*.inventory_id', 'nullable', 'string', 'max:100'],
+            'items.*.inventory_id' => ['required', 'integer', 'exists:inventory,id'],
             'items.*.quantity' => ['required', 'integer', 'min:1'],
             'items.*.comments' => ['nullable', 'string'],
         ]);
@@ -91,15 +101,32 @@ class ApiController extends Controller
         if (! $employee) return response()->json(['success' => false, 'message' => 'Employee account is inactive.'], 422);
 
         $createdIds = [];
-        DB::transaction(function () use (&$createdIds, $employee, $data) {
+        try {
+            DB::transaction(function () use (&$createdIds, $employee, $data) {
             foreach ($data['items'] as $item) {
-                $inv = ! empty($item['inventory_id']) ? DB::table('inventory')->where('id', $item['inventory_id'])->where('status', 'active')->first() : null;
-                if (! empty($item['inventory_id']) && ! $inv) continue;
+                $inv = DB::table('inventory')
+                    ->where('id', $item['inventory_id'])
+                    ->where('status', 'active')
+                    ->where('archived', 0)
+                    ->lockForUpdate()
+                    ->first();
+                if (! $inv) {
+                    throw new \DomainException('One or more requested items are no longer available. Please refresh the inventory list.');
+                }
+
+                $reserved = (int) DB::table('inventory_requests')
+                    ->where('inventory_id', $inv->id)
+                    ->where('status', 'pending')
+                    ->sum('quantity');
+                $available = max(0, (int) $inv->quantity - $reserved);
+                if ((int) $item['quantity'] > $available) {
+                    throw new \DomainException("{$inv->item_name} only has {$available} unit(s) available for request.");
+                }
                 $id = DB::table('inventory_requests')->insertGetId([
                     'employee_id' => $employee->id,
                     'employee_name' => $employee->full_name,
                     'inventory_id' => $inv?->id,
-                    'item_name' => $inv?->item_name ?? $item['item_name'],
+                    'item_name' => $inv->item_name,
                     'quantity' => $item['quantity'],
                     'comments' => $item['comments'] ?? null,
                     'status' => 'pending',
@@ -108,7 +135,10 @@ class ApiController extends Controller
                 ]);
                 $createdIds[] = $id;
             }
-        });
+            });
+        } catch (\DomainException $exception) {
+            return response()->json(['success' => false, 'message' => $exception->getMessage()], 422);
+        }
 
         if (empty($createdIds)) {
             return response()->json(['success' => false, 'message' => 'No valid inventory items to request.'], 422);

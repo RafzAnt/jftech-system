@@ -41,6 +41,7 @@ Route::middleware(['auth', 'inactivity', 'role:admin'])->group(function () {
     Route::post('/billing/generate', [BillingController::class, 'generate'])->name('billing.generate');
     Route::get('/pages/inventory.php', [InventoryController::class, 'index']);
     Route::post('/pages/inventory.php', [InventoryController::class, 'store']);
+    Route::post('/inventory/{inventory}/movement', [InventoryController::class, 'recordStockMovement'])->name('inventory.movement');
     Route::post('/inventory/{inventory}/archive', [InventoryController::class, 'archive'])->name('inventory.archive');
     Route::post('/inventory/{inventory}/restore', [InventoryController::class, 'restore'])->name('inventory.restore');
     Route::delete('/inventory/{inventory}', [InventoryController::class, 'destroy'])->name('inventory.destroy');

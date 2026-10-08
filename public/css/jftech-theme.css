@@ -2031,6 +2031,118 @@ svg {
     }
 }
 
+/* ===== DEVICE-SAFE LAYOUT RULES =====
+ * These apply to every module, including pages that use small inline grids or
+ * filter forms. They keep the desktop layout spacious while making controls,
+ * dialogs, and data-heavy tables usable on touch screens.
+ */
+.row-grid,
+.top-bar > *,
+.card-header > *,
+.main-content > * {
+    min-width: 0;
+}
+
+@media (min-width: 1440px) {
+    .main-content {
+        padding: clamp(1.5rem, 2vw, 2.5rem);
+    }
+
+    .stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .row-grid {
+        grid-template-columns: minmax(0, 1fr) !important;
+    }
+
+    .card-header > .btn,
+    .card-header > div {
+        max-width: 100%;
+    }
+
+    .data-table-container {
+        border-radius: 0;
+        scrollbar-color: var(--accent-secondary) transparent;
+        scrollbar-width: thin;
+    }
+}
+
+@media (max-width: 640px) {
+    body {
+        overflow-x: clip;
+    }
+
+    .main-content {
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+    }
+
+    .top-bar > div:last-child,
+    .top-bar-actions {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .top-bar > div:last-child:not(:only-child) {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .top-bar > div:last-child .btn {
+        flex: 1 1 130px;
+    }
+
+    .main-content .form-group[style*="min-width"] {
+        min-width: 100% !important;
+        flex-basis: 100%;
+    }
+
+    .main-content form .form-input,
+    .main-content form .form-select {
+        max-width: 100% !important;
+    }
+
+    /* Prevent mobile browsers from zooming unexpectedly when a field gains focus. */
+    input,
+    select,
+    textarea {
+        font-size: 16px !important;
+    }
+
+    .btn:not(.btn-sm),
+    .menu-toggle {
+        min-height: 40px;
+    }
+
+    .modal-overlay {
+        align-items: flex-end;
+        padding: 0.5rem;
+    }
+
+    .modal-content,
+    .modal-content.modal-large,
+    .modal-content.modal-xl,
+    .modal-content.modal-medium,
+    .modal-content.modal-small {
+        width: 100%;
+        max-width: 100%;
+        max-height: calc(100dvh - 1rem);
+        padding: 1rem;
+        border-radius: 14px;
+    }
+
+    .card-header {
+        padding: 0.8rem;
+    }
+
+    .card-body {
+        padding: 0.8rem;
+    }
+}
+
 /* ===== CORPORATE BUSINESS UI ===== */
 :root {
     --primary: #f5f7fb;
@@ -2279,8 +2391,7 @@ html[data-theme="light"] .modal-content optgroup {
     color: var(--text-primary);
 }
 
-/* The navigation is deliberately a stable, dark workspace rail in both themes.
- * Light mode is reserved for the working pages and their business data. */
+/* Keep the navigation rail black in both themes while the workspace changes. */
 .sidebar,
 html[data-theme="light"] .sidebar {
     background: #11172b !important;
@@ -2505,3 +2616,126 @@ input.btn-info {
 .btn-danger:hover {
     filter: brightness(1.08);
 }
+
+/* ===== BUSINESS MANAGEMENT THEME =====
+ * A calm, executive workspace for operational data: a dependable navy rail,
+ * neutral surfaces, and a small set of meaningful status colours.
+ */
+html:not([data-theme]),
+html[data-theme="dark"] {
+    --primary: #101827;
+    --primary-light: #172235;
+    --primary-dark: #0b1220;
+    --secondary: #1b283b;
+    --accent: #7db5ff;
+    --accent-secondary: #3b82f6;
+    --accent-glow: rgba(59, 130, 246, 0.22);
+    --success: #4ade80;
+    --warning: #fbbf24;
+    --danger: #fb7185;
+    --info: #93c5fd;
+    --text-primary: #f8fafc;
+    --text-secondary: #c8d4e5;
+    --text-muted: #8fa1bb;
+    --border-color: rgba(148, 163, 184, 0.18);
+    --card-bg: #172235;
+    --card-bg-solid: #172235;
+    --input-bg: #111c2d;
+    --sidebar-bg: #0b1220;
+    --glass: rgba(23, 34, 53, 0.92);
+    --glass-border: rgba(148, 163, 184, 0.2);
+    --gradient-accent: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    --shadow-sm: 0 2px 8px rgba(2, 8, 23, 0.2);
+    --shadow-md: 0 10px 28px rgba(2, 8, 23, 0.26);
+    --shadow-lg: 0 24px 56px rgba(2, 8, 23, 0.38);
+    --shadow-glow: 0 10px 28px rgba(37, 99, 235, 0.18);
+}
+
+html:not([data-theme]) .sidebar,
+html[data-theme="dark"] .sidebar,
+.sidebar,
+html[data-theme="light"] .sidebar { background: linear-gradient(180deg, #0c1526 0%, #111d33 100%) !important; }
+.sidebar-header { padding: 1.35rem 1.2rem 1.15rem; background: rgba(255, 255, 255, 0.025); }
+.sidebar-brand__logo { filter: drop-shadow(0 8px 14px rgba(59, 130, 246, 0.28)); }
+.sidebar-brand__text h1 { font-size: 1.2rem; letter-spacing: 0.08em; }
+.sidebar-brand__text p { color: #91a5c3 !important; font-size: 0.57rem; letter-spacing: 0.16em; }
+.sidebar-nav { padding: 1rem 0.75rem; }
+.nav-group { margin-bottom: 0.2rem; }
+.nav-item { min-height: 44px; padding: 0.72rem 0.9rem; border-left: 0; border-radius: 9px; color: #b8c6db !important; }
+.nav-item:hover { background: rgba(148, 163, 184, 0.1); }
+.nav-item.active { background: linear-gradient(90deg, rgba(59, 130, 246, 0.28), rgba(59, 130, 246, 0.08)) !important; box-shadow: inset 3px 0 #60a5fa; color: #ffffff !important; }
+.submenu { padding: 0.15rem 0 0.35rem; }
+.submenu-item { margin-left: 2.8rem; min-height: 36px; padding: 0.5rem 0.75rem; font-size: 0.79rem; }
+.sidebar-footer { padding: 1rem 1.15rem; background: rgba(5, 12, 24, 0.45) !important; }
+.main-content { padding: clamp(1.35rem, 2vw, 2.25rem); }
+.top-bar { margin-bottom: 1.5rem; padding-bottom: 1.1rem; }
+.page-title { font-size: clamp(1.55rem, 2vw, 2rem); font-weight: 750; letter-spacing: -0.035em; }
+.card, .stat-card { border-radius: 12px; box-shadow: var(--shadow-sm); }
+.card:hover, .stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.card-header { min-height: 60px; padding: 1rem 1.25rem; }
+.card-body { padding: 1.25rem; }
+.card-title { font-size: 1rem; letter-spacing: -0.01em; }
+.stat-card { min-height: 132px; padding: 1.25rem; }
+.stat-value { font-size: clamp(1.5rem, 2vw, 2rem); letter-spacing: -0.035em; }
+.stat-label { color: var(--text-muted); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; }
+.data-table thead { background: rgba(148, 163, 184, 0.07); }
+.data-table th { padding: 0.85rem 1.1rem; color: var(--text-muted); font-size: 0.68rem; letter-spacing: 0.09em; }
+.data-table td { padding: 0.95rem 1.1rem; }
+.data-table tbody tr:hover { background: rgba(59, 130, 246, 0.055); }
+.form-input, .form-select, .search-box { border-radius: 9px; box-shadow: none; }
+.form-input:focus, .form-select:focus { box-shadow: 0 0 0 3px var(--accent-glow); }
+.btn { border-radius: 8px; font-weight: 700; letter-spacing: 0.02em; text-transform: none; }
+.badge { border-radius: 6px; font-size: 0.67rem; letter-spacing: 0.04em; }
+html[data-theme="light"] .card-header, html[data-theme="light"] .data-table thead { background: #f7f9fc; }
+html[data-theme="light"] .nav-item.active { background: linear-gradient(90deg, rgba(59, 130, 246, 0.28), rgba(59, 130, 246, 0.08)) !important; }
+@media (max-width: 768px) { .main-content { padding: 4.75rem 1rem 1.25rem; } .sidebar-nav { padding: 0.8rem 0.6rem; } .stats-grid { gap: 0.85rem; } }
+
+/* Light workspace: white, structured, and intentionally low-gloss. */
+html[data-theme="light"] body { background: #f3f6fa !important; }
+html[data-theme="light"] .main-content { color: #172033; }
+html[data-theme="light"] .top-bar { border-bottom-color: #d8e1ec; }
+html[data-theme="light"] .page-title { color: #172033; -webkit-text-fill-color: #172033; }
+html[data-theme="light"] .card, html[data-theme="light"] .stat-card { background: #ffffff; border-color: #dbe3ed; box-shadow: 0 3px 12px rgba(30,55,90,.06); }
+html[data-theme="light"] .card:hover, html[data-theme="light"] .stat-card:hover { border-color: #b9cbe0; box-shadow: 0 10px 24px rgba(30,55,90,.1); }
+html[data-theme="light"] .card-header { border-bottom-color: #e3e9f1; }
+html[data-theme="light"] .data-table th { color: #66758a; border-bottom-color: #dbe3ed; }
+html[data-theme="light"] .data-table td { border-bottom-color: #e8edf3; color: #273449; }
+html[data-theme="light"] .data-table tbody tr:hover { background: #f5f8fc; }
+html[data-theme="light"] .form-input, html[data-theme="light"] .form-select, html[data-theme="light"] .search-box { background: #ffffff; border-color: #cbd7e5; color: #172033; }
+html[data-theme="light"] .form-input:focus, html[data-theme="light"] .form-select:focus, html[data-theme="light"] .search-box:focus-within { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,.12); }
+html[data-theme="light"] .stat-label { color: #65758b; }
+html[data-theme="light"] .theme-toggle { background: #ffffff; border-color: #cbd7e5; }
+
+/* Softer white workspace and restrained business actions. */
+html[data-theme="light"] { --primary:#e8edf3; --primary-light:#f1f4f7; --primary-dark:#dfe6ee; --secondary:#e4eaf1; --card-bg:#f5f7f9; --card-bg-solid:#f5f7f9; --input-bg:#f9fafb; --border-color:#cbd5e1; --text-primary:#1f2a3a; --text-secondary:#455468; --text-muted:#69788b; --accent:#285f9e; --accent-secondary:#1f4f87; --accent-glow:rgba(40,95,158,.14); --gradient-accent:linear-gradient(135deg,#285f9e 0%,#1f4f87 100%); --shadow-sm:0 2px 7px rgba(36,55,77,.07); --shadow-md:0 8px 20px rgba(36,55,77,.11); }
+html[data-theme="light"] .card, html[data-theme="light"] .stat-card { background:#f5f7f9; }
+html[data-theme="light"] .card-header, html[data-theme="light"] .card-footer { background:#edf1f5; }
+html[data-theme="light"] .btn-primary, html[data-theme="light"] button.btn-primary, html[data-theme="light"] a.btn-primary, html[data-theme="light"] input.btn-primary { background:#285f9e !important; border-color:#214f85; box-shadow:0 3px 8px rgba(40,95,158,.2) !important; }
+html[data-theme="light"] .btn-success, html[data-theme="light"] button.btn-success, html[data-theme="light"] a.btn-success { background:#287652 !important; border-color:#236746; box-shadow:0 3px 8px rgba(40,118,82,.17) !important; }
+html[data-theme="light"] .btn-danger, html[data-theme="light"] button.btn-danger, html[data-theme="light"] a.btn-danger { background:#a33b45 !important; border-color:#8d323b; box-shadow:0 3px 8px rgba(163,59,69,.16) !important; }
+html[data-theme="light"] .btn-warning, html[data-theme="light"] button.btn-warning, html[data-theme="light"] a.btn-warning { background:#9a681d !important; border-color:#805616; box-shadow:0 3px 8px rgba(154,104,29,.16) !important; }
+html[data-theme="light"] .btn-secondary { background:#e2e8ef; color:#34445a; border-color:#bdc9d7; }
+html[data-theme="light"] .btn { min-height:36px; padding:.52rem .9rem; font-size:.78rem; }
+
+/* Muted container surfaces: the page stays light while work areas sit back. */
+html[data-theme="light"] { --card-bg:#dfe6ed; --card-bg-solid:#dfe6ed; }
+html[data-theme="light"] .card, html[data-theme="light"] .stat-card { background:#dfe6ed; border-color:#c3ceda; }
+html[data-theme="light"] .card-header, html[data-theme="light"] .card-footer { background:#d5dee8; border-color:#c3ceda; }
+html[data-theme="light"] .data-table thead { background:#d5dee8; }
+html[data-theme="light"] .data-table tbody tr:hover { background:#e7edf3; }
+
+/* High-contrast business typography for the light workspace. */
+html[data-theme="light"] .main-content, html[data-theme="light"] .main-content .card-title, html[data-theme="light"] .main-content .stat-value, html[data-theme="light"] .main-content .data-table td, html[data-theme="light"] .main-content .form-input, html[data-theme="light"] .main-content .form-select, html[data-theme="light"] .main-content label { color:#111827; }
+html[data-theme="light"] .main-content .page-title, html[data-theme="light"] .main-content h1, html[data-theme="light"] .main-content h2, html[data-theme="light"] .main-content h3 { color:#111827; -webkit-text-fill-color:#111827; }
+html[data-theme="light"] .main-content .stat-value, html[data-theme="light"] .main-content .report-metric strong, html[data-theme="light"] .main-content .status-summary strong, html[data-theme="light"] .main-content .revenue-total { font-weight:800; color:#0b1220; }
+html[data-theme="light"] .main-content .data-table th, html[data-theme="light"] .main-content .stat-label { color:#263548; font-weight:750; }
+html[data-theme="light"] .main-content p, html[data-theme="light"] .main-content .dashboard-subtitle, html[data-theme="light"] .main-content .text-muted { color:#3f4d5f; }
+html[data-theme="light"] .main-content td.amount, html[data-theme="light"] .main-content .amount, html[data-theme="light"] .main-content .low-stock-number, html[data-theme="light"] .main-content .donut-total { font-weight:800; color:#0b1220; }
+/* Form controls belong to the same muted palette as the containers. */
+html[data-theme="light"] .form-input, html[data-theme="light"] .form-select, html[data-theme="light"] .search-box, html[data-theme="light"] textarea, html[data-theme="light"] input[type="text"], html[data-theme="light"] input[type="number"], html[data-theme="light"] input[type="date"], html[data-theme="light"] input[type="month"], html[data-theme="light"] input[type="email"], html[data-theme="light"] input[type="password"], html[data-theme="light"] input[type="search"] { background:#d5dee8 !important; border-color:#b9c6d4; color:#111827; }
+html[data-theme="light"] .form-input::placeholder, html[data-theme="light"] .search-box input::placeholder { color:#58687b; }
+html[data-theme="light"] .form-input:focus, html[data-theme="light"] .form-select:focus, html[data-theme="light"] textarea:focus, html[data-theme="light"] input:focus { background:#e0e7ee !important; border-color:#285f9e; }
+html[data-theme="light"] .form-input, html[data-theme="light"] .form-select, html[data-theme="light"] .search-input, html[data-theme="light"] .field-control input { box-shadow:inset 0 1px 2px rgba(39,56,75,.08),0 0 0 1px rgba(255,255,255,.2); border-radius:8px; }
+html[data-theme="light"] .form-input:focus, html[data-theme="light"] .form-select:focus, html[data-theme="light"] .search-input:focus, html[data-theme="light"] .field-control input:focus { box-shadow:0 0 0 3px rgba(40,95,158,.14),inset 0 1px 2px rgba(39,56,75,.06); }
+html[data-theme="light"] [class*="action-menu-btn"], html[data-theme="light"] .action-menu-btn { color:#000 !important; font-size:1.35rem; font-weight:900; line-height:1; text-shadow:none; }
+html[data-theme="light"] button[class*="action-menu-btn"], html[data-theme="light"] button[class*="menu-btn"] { color:#000 !important; -webkit-text-fill-color:#000 !important; opacity:1 !important; font-weight:900 !important; }

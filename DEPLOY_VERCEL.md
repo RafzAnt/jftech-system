@@ -6,21 +6,20 @@ Vercel build command, output directory, or a `vercel.json` file for this app.
 
 ## Before importing the repository
 
-1. Create a **remote MySQL-compatible database** that is reachable from the
-   public internet. Local XAMPP/MySQL at `127.0.0.1` cannot be reached by
-   Vercel.
-2. Create a database and a database user with full access to that database.
-   If the provider has an IP allow-list, allow Vercel or temporarily allow all
-   IPs while completing the first deployment.
-3. From a machine that can reach that database, run the migrations once:
+1. Create a Supabase project. Local XAMPP/MySQL at `127.0.0.1` cannot be
+   reached by Vercel.
+2. In Supabase, open **Connect** and copy the **Transaction pooler** database
+   values. This connection type is appropriate for short-lived Vercel requests.
+3. In Supabase SQL Editor, run the PostgreSQL schema supplied for this project
+   before the first deployment. Do not run the current MySQL-only Laravel
+   migrations against Supabase.
+4. Continue using the normal Laravel migrations only for local XAMPP/MySQL:
 
    ```bash
    php artisan migrate --force
    ```
 
-   This creates the application tables plus the production `cache` and
-   `sessions` tables. Do not run `migrate:fresh` on production because it
-   deletes existing data.
+   Do not run `migrate:fresh` on either database when it contains real data.
 
 ## Vercel project settings
 
@@ -44,27 +43,27 @@ Vercel build command, output directory, or a `vercel.json` file for this app.
    LOG_CHANNEL=stderr
    LOG_LEVEL=warning
 
-   DB_CONNECTION=mysql
-   DB_HOST=YOUR_DATABASE_HOST
-   DB_PORT=3306
-   DB_DATABASE=YOUR_DATABASE_NAME
-   DB_USERNAME=YOUR_DATABASE_USER
-   DB_PASSWORD=YOUR_DATABASE_PASSWORD
+   DB_CONNECTION=pgsql
+   DB_HOST=YOUR_SUPABASE_TRANSACTION_POOLER_HOST
+   DB_PORT=6543
+   DB_DATABASE=postgres
+   DB_USERNAME=postgres.YOUR_PROJECT_REF
+   DB_PASSWORD=YOUR_SUPABASE_DATABASE_PASSWORD
+   DB_SSLMODE=require
    SESSION_DRIVER=database
    CACHE_STORE=database
    QUEUE_CONNECTION=sync
    FILESYSTEM_DISK=local
    SESSION_SECURE_COOKIE=true
    SESSION_SAME_SITE=lax
-   RUN_MIGRATIONS=true
+   RUN_MIGRATIONS=false
    ```
 
    Generate `APP_KEY` locally with `php artisan key:generate --show`; use the
    same value on every deployment. Never paste `.env` into GitHub or Vercel.
-5. Click **Deploy**. With `RUN_MIGRATIONS=true`, future pushes to the
-   connected production branch automatically deploy and run only new Laravel
-   migration files before the app starts. This requires a working remote MySQL
-   connection.
+5. Click **Deploy**. Keep `RUN_MIGRATIONS=false` because the existing Laravel
+   migration files contain MySQL-specific SQL. Apply future PostgreSQL schema
+   changes through Supabase SQL Editor or Supabase CLI first, then deploy.
 
 ## After deployment
 

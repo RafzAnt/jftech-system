@@ -38,7 +38,7 @@
                 <span class="card-title">General Settings</span>
             </div>
             <div class="card-body">
-                <form method="POST" action="">
+                <form method="POST" action="" class="settings-form">
             @csrf
                     <input type="hidden" name="update_settings" value="1">
                     <div class="form-grid">
@@ -63,7 +63,29 @@
                             <input type="text" name="settings[currency]" class="form-input" value="{{ $settings['currency']['setting_value'] ?? 'PHP' }}">
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-primary">Save Settings</button>
+                    <div class="settings-form-actions"><button type="submit" class="btn btn-primary">Save Settings</button></div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card" style="margin-bottom: 1.5rem;">
+            <div class="card-header">
+                <span class="card-title">Weekly Payroll Deductions</span>
+            </div>
+            <div class="card-body">
+                <p style="margin:0 0 1rem;color:var(--text-muted);font-size:.85rem;">These amounts are filled automatically when payroll is generated. They are matched using the employee’s saved daily rate. The system automatically creates processed payroll every Sunday at 11:55 PM (Asia/Manila) after the attendance week ends; the administrator only reviews it and marks it paid when released.</p>
+                <form method="POST" action="" class="settings-form">
+                    @csrf
+                    <input type="hidden" name="update_settings" value="1">
+                    <div class="form-grid">
+                        @foreach ([500 => 'Technician', 580 => 'Technician II', 600 => 'Admin'] as $rate => $role)
+                        <div class="form-group" style="grid-column:1/-1;margin-bottom:0;"><strong>PHP {{ $rate }}/day — {{ $role }}</strong></div>
+                        <div class="form-group"><label class="form-label">Pag-IBIG / HDMF</label><input type="number" name="settings[payroll_{{ $rate }}_pagibig]" class="form-input" step="0.01" min="0" value="{{ $settings['payroll_' . $rate . '_pagibig']['setting_value'] ?? '0.00' }}"></div>
+                        <div class="form-group"><label class="form-label">SSS</label><input type="number" name="settings[payroll_{{ $rate }}_sss]" class="form-input" step="0.01" min="0" value="{{ $settings['payroll_' . $rate . '_sss']['setting_value'] ?? '0.00' }}"></div>
+                        <div class="form-group"><label class="form-label">PhilHealth</label><input type="number" name="settings[payroll_{{ $rate }}_philhealth]" class="form-input" step="0.01" min="0" value="{{ $settings['payroll_' . $rate . '_philhealth']['setting_value'] ?? '0.00' }}"></div>
+                        @endforeach
+                    </div>
+                    <div class="settings-form-actions"><button type="submit" class="btn btn-primary">Save Payroll Deductions</button></div>
                 </form>
             </div>
         </div>
@@ -74,25 +96,37 @@
                 <span class="card-title">Attendance QR Time Settings</span>
             </div>
             <div class="card-body">
-                <form method="POST" action="">
+                <form method="POST" action="" class="settings-form">
             @csrf
                     <input type="hidden" name="update_settings" value="1">
                     <div class="form-grid">
                         <div class="form-group">
-                            <label class="form-label">Morning QR Start Time</label>
-                            <input type="time" name="settings[qr_morning_start]" class="form-input" value="{{ $settings['qr_morning_start']['setting_value'] ?? '08:00' }}">
+                            <label class="form-label" for="morningStartTime">Morning QR Start Time</label>
+                            <div class="time-input-control">
+                                <input type="time" id="morningStartTime" name="settings[qr_morning_start]" class="form-input" value="{{ $settings['qr_morning_start']['setting_value'] ?? '08:00' }}">
+                                <button type="button" class="time-picker-button" onclick="openTimePicker('morningStartTime')" aria-label="Choose morning QR start time"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><path d="M12 8v4l3 2"></path></svg></button>
+                            </div>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Morning QR End Time</label>
-                            <input type="time" name="settings[qr_morning_end]" class="form-input" value="{{ $settings['qr_morning_end']['setting_value'] ?? '12:00' }}">
+                            <label class="form-label" for="morningEndTime">Morning QR End Time</label>
+                            <div class="time-input-control">
+                                <input type="time" id="morningEndTime" name="settings[qr_morning_end]" class="form-input" value="{{ $settings['qr_morning_end']['setting_value'] ?? '12:00' }}">
+                                <button type="button" class="time-picker-button" onclick="openTimePicker('morningEndTime')" aria-label="Choose morning QR end time"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><path d="M12 8v4l3 2"></path></svg></button>
+                            </div>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Afternoon QR Start Time</label>
-                            <input type="time" name="settings[qr_afternoon_start]" class="form-input" value="{{ $settings['qr_afternoon_start']['setting_value'] ?? '13:00' }}">
+                            <label class="form-label" for="afternoonStartTime">Afternoon QR Start Time</label>
+                            <div class="time-input-control">
+                                <input type="time" id="afternoonStartTime" name="settings[qr_afternoon_start]" class="form-input" value="{{ $settings['qr_afternoon_start']['setting_value'] ?? '13:00' }}">
+                                <button type="button" class="time-picker-button" onclick="openTimePicker('afternoonStartTime')" aria-label="Choose afternoon QR start time"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><path d="M12 8v4l3 2"></path></svg></button>
+                            </div>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Afternoon QR End Time</label>
-                            <input type="time" name="settings[qr_afternoon_end]" class="form-input" value="{{ $settings['qr_afternoon_end']['setting_value'] ?? '17:00' }}">
+                            <label class="form-label" for="afternoonEndTime">Afternoon QR End Time</label>
+                            <div class="time-input-control">
+                                <input type="time" id="afternoonEndTime" name="settings[qr_afternoon_end]" class="form-input" value="{{ $settings['qr_afternoon_end']['setting_value'] ?? '17:00' }}">
+                                <button type="button" class="time-picker-button" onclick="openTimePicker('afternoonEndTime')" aria-label="Choose afternoon QR end time"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><path d="M12 8v4l3 2"></path></svg></button>
+                            </div>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Late Threshold (minutes)</label>
@@ -100,12 +134,82 @@
                             <small style="color: var(--text-muted);">Status stays blank until this many minutes after the session starts. It becomes absent after the session ends when there is no time in or time out.</small>
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-primary">Save Time Settings</button>
+                    <div class="settings-form-actions"><button type="submit" class="btn btn-primary">Save Time Settings</button></div>
                 </form>
             </div>
         </div>
 
     </div>
+    <div class="modal-overlay" id="timePickerModal" onclick="if (event.target === this) closeTimePicker()">
+        <div class="modal-content modal-small" role="dialog" aria-modal="true" aria-labelledby="timePickerTitle">
+            <div class="modal-header">
+                <h3 class="modal-title" id="timePickerTitle">Choose Time</h3>
+                <button type="button" class="modal-close" onclick="closeTimePicker()" aria-label="Close time picker">&times;</button>
+            </div>
+            <div class="time-picker-selectors">
+                <div class="form-group">
+                    <label class="form-label" for="timePickerHour">Hour</label>
+                    <select class="form-select" id="timePickerHour"></select>
+                </div>
+                <span class="time-picker-separator">:</span>
+                <div class="form-group">
+                    <label class="form-label" for="timePickerMinute">Minute</label>
+                    <select class="form-select" id="timePickerMinute"></select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="timePickerPeriod">Period</label>
+                    <select class="form-select" id="timePickerPeriod"><option value="AM">AM</option><option value="PM">PM</option></select>
+                </div>
+            </div>
+            <div class="time-picker-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeTimePicker()">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="applyTimePicker()">Set Time</button>
+            </div>
+        </div>
+    </div>
+    <script>
+    let activeTimeInput = null;
+
+    const timePickerHour = document.getElementById('timePickerHour');
+    const timePickerMinute = document.getElementById('timePickerMinute');
+    const timePickerPeriod = document.getElementById('timePickerPeriod');
+    for (let number = 1; number <= 12; number += 1) {
+        const value = String(number).padStart(2, '0');
+        timePickerHour.add(new Option(value, value));
+    }
+    for (let number = 0; number < 60; number += 1) {
+        const value = String(number).padStart(2, '0');
+        timePickerMinute.add(new Option(value, value));
+    }
+
+    function openTimePicker(inputId) {
+        const input = document.getElementById(inputId);
+        if (!input) return;
+        activeTimeInput = input;
+        const [hourValue = '00', minute = '00'] = input.value.split(':');
+        const hour24 = Number(hourValue);
+        timePickerPeriod.value = hour24 >= 12 ? 'PM' : 'AM';
+        timePickerHour.value = String(hour24 % 12 || 12).padStart(2, '0');
+        timePickerMinute.value = minute;
+        document.getElementById('timePickerModal').classList.add('active');
+        timePickerHour.focus();
+    }
+
+    function applyTimePicker() {
+        if (activeTimeInput) {
+            let hour24 = Number(timePickerHour.value) % 12;
+            if (timePickerPeriod.value === 'PM') hour24 += 12;
+            activeTimeInput.value = `${String(hour24).padStart(2, '0')}:${timePickerMinute.value}`;
+            activeTimeInput.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        closeTimePicker();
+    }
+
+    function closeTimePicker() {
+        document.getElementById('timePickerModal').classList.remove('active');
+        activeTimeInput = null;
+    }
+    </script>
     <script src="{{ asset('js/jftech-main.js') }}?{{ $mainJsVersion }}"></script>
 </body>
 </html>

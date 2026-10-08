@@ -1,6 +1,10 @@
 <?php
 return function (\Illuminate\Http\Request $request): array {
+    app(\App\Http\Controllers\PriceManagementController::class)->applyDueScheduledPrices();
     $pdo = \Illuminate\Support\Facades\DB::connection()->getPdo();
+    $success = '';
+    $error = '';
+    $registerClientOpen = false;
 
     // Handle archive / restore / delete actions
     if ($request->isMethod('post') && $request->has('action') && $request->has('client_id')) {
@@ -44,17 +48,75 @@ $showArchived = $request->query('view') === 'archived';
 $stmt = $pdo->query("SELECT * FROM barangays ORDER BY barangay_name");
 $barangays = $stmt->fetchAll();
 
+// The registration modal uses the same active plans as the standalone form.
+$stmt = $pdo->query("SELECT * FROM internet_plans WHERE status = 'active' AND archived = 0 ORDER BY monthly_price");
+$plans = $stmt->fetchAll();
+
+if ($request->isMethod('post') && $request->input('action') === 'register') {
+    $registerClientOpen = true;
+    try {
+        $firstName = trim((string) $request->input('first_name'));
+        $middleName = trim((string) $request->input('middle_name'));
+        $lastName = trim((string) $request->input('last_name'));
+        $contactNumber = trim((string) $request->input('contact_number'));
+        $email = trim((string) $request->input('email'));
+        $barangayId = (int) $request->input('barangay_id');
+        $exactAddress = trim((string) $request->input('exact_address'));
+        $installationDate = trim((string) $request->input('installation_date'));
+        $planId = (int) $request->input('internet_plan_id');
+
+        if ($firstName === '' || $lastName === '' || $contactNumber === '' || $email === '' || ! $barangayId || $exactAddress === '' || $installationDate === '') {
+            throw new \RuntimeException('Please complete all required client registration fields.');
+        }
+        if (! preg_match('/^\d{11}$/', $contactNumber)) {
+            throw new \RuntimeException('Contact number must contain exactly 11 digits.');
+        }
+        if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            throw new \RuntimeException('Please enter a valid email address.');
+        }
+        $date = \DateTime::createFromFormat('Y-m-d', $installationDate);
+        if (! $date || $date->format('Y-m-d') !== $installationDate) {
+            throw new \RuntimeException('Please enter a valid installation date.');
+        }
+
+        $barangayStmt = $pdo->prepare('SELECT id FROM barangays WHERE id = ?');
+        $barangayStmt->execute([$barangayId]);
+        if (! $barangayStmt->fetch()) {
+            throw new \RuntimeException('Please select a valid barangay.');
+        }
+        $planStmt = $pdo->prepare("SELECT * FROM internet_plans WHERE id = ? AND status = 'active' AND archived = 0");
+        $planStmt->execute([$planId]);
+        $plan = $planStmt->fetch();
+        if (! $plan) {
+            throw new \RuntimeException('Please select an active internet plan.');
+        }
+
+        $fullName = implode(' ', array_filter([$firstName, $middleName, $lastName], fn ($part) => $part !== ''));
+        $clientCode = 'JFT-' . date('Y') . '-' . strtoupper(uniqid());
+        \Illuminate\Support\Facades\DB::transaction(function () use ($pdo, $clientCode, $fullName, $contactNumber, $email, $barangayId, $exactAddress, $plan, $installationDate): void {
+            $pdo->prepare("INSERT INTO clients (client_code, full_name, contact_number, email, barangay_id, exact_address, wifi_plan, internet_plan_id, monthly_rate, installation_fee, installation_date, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')")
+                ->execute([$clientCode, $fullName, $contactNumber, $email, $barangayId, $exactAddress, $plan['plan_name'], $plan['id'], $plan['monthly_price'], $plan['installation_fee'], $installationDate]);
+            $clientId = $pdo->lastInsertId();
+            $billingStart = date('Y-m-d');
+            $pdo->prepare("INSERT INTO bills (client_id, bill_number, billing_period_start, billing_period_end, amount, due_date, status) VALUES (?, ?, ?, ?, ?, ?, 'pending')")
+                ->execute([$clientId, 'BILL-' . date('Ymd') . '-' . strtoupper(uniqid()), $billingStart, date('Y-m-d', strtotime($billingStart . ' +30 days')), $plan['monthly_price'], date('Y-m-d', strtotime($billingStart . ' +30 days'))]);
+        });
+
+        $success = 'Client registered successfully!';
+        $registerClientOpen = false;
+    } catch (\Throwable $exception) {
+        $error = 'Error: ' . $exception->getMessage();
+    }
+}
+
 if ($showArchived) {
     $stmt = $pdo->query("SELECT c.*, b.barangay_name FROM clients c LEFT JOIN barangays b ON c.barangay_id = b.id WHERE c.archived = 1 ORDER BY c.updated_at DESC");
     $clients = $stmt->fetchAll();
     $archivedCount = count($clients);
 } else {
-    // Build client query
-    // Include installation date and compute the next pending/overdue bill's due date
-    $query = "SELECT c.*, b.barangay_name, b.latitude as barangay_lat, b.longitude as barangay_lng,
-              (SELECT due_date FROM bills WHERE client_id = c.id AND status IN ('pending','overdue') ORDER BY due_date ASC LIMIT 1) as next_due_date,
-              (SELECT status FROM bills WHERE client_id = c.id AND status IN ('pending','overdue') ORDER BY due_date ASC LIMIT 1) as next_due_status
-              FROM clients c 
+    // Build client query.
+    $query = "SELECT c.*, b.barangay_name
+              FROM clients c
               LEFT JOIN barangays b ON c.barangay_id = b.id 
               WHERE 1=1";
     $params = [];

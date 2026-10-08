@@ -1,0 +1,7 @@
+@if ($status === 'active')
+<span class="badge badge-success">Active</span>
+@elseif ($status === 'inactive')
+<span class="badge badge-warning">Inactive</span>
+@else
+<span class="badge badge-danger">Suspended</span>
+@endif

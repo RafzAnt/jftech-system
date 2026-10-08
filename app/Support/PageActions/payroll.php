@@ -24,6 +24,38 @@ foreach ($employees as $employee) {
 }
 $hasEmployees = count($employees) > 0;
 
+$deductionSettings = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('payroll_500_sss', 'payroll_500_philhealth', 'payroll_500_pagibig', 'payroll_580_sss', 'payroll_580_philhealth', 'payroll_580_pagibig', 'payroll_600_sss', 'payroll_600_philhealth', 'payroll_600_pagibig')")
+    ->fetchAll(\PDO::FETCH_KEY_PAIR);
+
+function weeklyStatutoryDeductions(float $dailyRate, array $settings): array {
+    $rateKey = (string) (int) round($dailyRate);
+    if (! in_array($rateKey, ['500', '580', '600'], true)) {
+        return ['sss' => 0, 'philhealth' => 0, 'pagibig' => 0];
+    }
+
+    return [
+        'sss' => (float) ($settings["payroll_{$rateKey}_sss"] ?? 0),
+        'philhealth' => (float) ($settings["payroll_{$rateKey}_philhealth"] ?? 0),
+        'pagibig' => (float) ($settings["payroll_{$rateKey}_pagibig"] ?? 0),
+    ];
+}
+
+function attendancePayrollSummary($pdo, int $employeeId, string $periodStart, string $periodEnd, float $dailyRate): array {
+    $attendance = getAttendanceDays($pdo, $employeeId, $periodStart, $periodEnd);
+    $stmt = $pdo->prepare("SELECT SUM(CASE WHEN status_morning = 'late' THEN 1 ELSE 0 END) + SUM(CASE WHEN status_afternoon = 'late' THEN 1 ELSE 0 END) AS late_count, SUM(CASE WHEN status_morning = 'absent' THEN 1 ELSE 0 END) + SUM(CASE WHEN status_afternoon = 'absent' THEN 1 ELSE 0 END) AS absent_count FROM attendance WHERE employee_id = ? AND attendance_date BETWEEN ? AND ?");
+    $stmt->execute([$employeeId, $periodStart, $periodEnd]);
+    $counts = $stmt->fetch() ?: [];
+
+    return [
+        'days_worked' => (int) ($attendance['days_worked'] ?? 0),
+        'total_hours' => (float) ($attendance['total_hours'] ?? 0),
+        'late_count' => (int) ($counts['late_count'] ?? 0),
+        'absent_count' => (int) ($counts['absent_count'] ?? 0),
+        'late_amount' => (int) ($counts['late_count'] ?? 0) * ($dailyRate / 8),
+        'absent_amount' => (int) ($counts['absent_count'] ?? 0) * ($dailyRate / 2),
+    ];
+}
+
 function getAttendanceDays($pdo, $employeeId, $periodStart, $periodEnd) {
     $stmt = $pdo->prepare("
         SELECT
@@ -50,32 +82,15 @@ if ($request->has('action') && $request->query('action') === 'attendance') {
     $start = $request->query('start') ?? '';
     $end = $request->query('end') ?? '';
     if ($empId && $start && $end) {
-        $att = getAttendanceDays($pdo, $empId, $start, $end);
-        $stmt = $pdo->prepare("
-            SELECT
-                SUM(CASE WHEN status_morning = 'late' THEN 1 ELSE 0 END) +
-                SUM(CASE WHEN status_afternoon = 'late' THEN 1 ELSE 0 END) AS late_count,
-                SUM(CASE WHEN status_morning = 'absent' THEN 1 ELSE 0 END) +
-                SUM(CASE WHEN status_afternoon = 'absent' THEN 1 ELSE 0 END) AS absent_count
-            FROM attendance
-            WHERE employee_id = ? AND attendance_date BETWEEN ? AND ?
-        ");
-        $stmt->execute([$empId, $start, $end]);
-        $ded = $stmt->fetch();
         $empStmt = $pdo->prepare("SELECT daily_rate FROM employees WHERE id = ?");
         $empStmt->execute([$empId]);
         $emp = $empStmt->fetch();
         $dailyRate = (float) ($emp['daily_rate'] ?? 0);
-        $hourlyRate = $dailyRate / 8;
-        $lateCount = (int) ($ded['late_count'] ?? 0);
-        $absentCount = (int) ($ded['absent_count'] ?? 0);
+        $summary = attendancePayrollSummary($pdo, $empId, $start, $end, $dailyRate);
+        $statutory = weeklyStatutoryDeductions($dailyRate, $deductionSettings);
         echo json_encode([
-            'days_worked' => (int) ($att['days_worked'] ?? 0),
-            'total_hours' => (float) ($att['total_hours'] ?? 0),
-            'late_count' => $lateCount,
-            'absent_count' => $absentCount,
-            'late_amount' => $lateCount * $hourlyRate,
-            'absent_amount' => $absentCount * ($dailyRate / 2),
+            ...$summary,
+            ...$statutory,
         ]);
     } else {
         echo json_encode(['days_worked' => 0, 'total_hours' => 0, 'late_count' => 0, 'absent_count' => 0, 'late_amount' => 0, 'absent_amount' => 0]);
@@ -89,12 +104,12 @@ if ($request->isMethod('post')) {
         $employeeId = (int) ($request->input('employee_id') ?? 0);
         $periodStart = $request->input('payroll_period_start') ?? '';
         $periodEnd = $request->input('payroll_period_end') ?? '';
-        $dailyRate = (float) ($request->input('daily_rate') ?? 0);
         $status = $request->input('status') ?? 'draft';
 
         if (!$employeeId || !isset($employeeMap[$employeeId])) {
             throw new Exception('Please select a valid employee.');
         }
+        $dailyRate = (float) $employeeMap[$employeeId]['daily_rate'];
 
         if (!$periodStart || !$periodEnd) {
             throw new Exception('Payroll period start and end dates are required.');
@@ -109,9 +124,6 @@ if ($request->isMethod('post')) {
             $status = 'draft';
         }
 
-        if ($dailyRate <= 0) {
-            $dailyRate = (float) $employeeMap[$employeeId]['daily_rate'];
-        }
         if ($dailyRate <= 0) {
             throw new Exception('Please enter a valid daily rate for the selected employee.');
         }
@@ -130,42 +142,20 @@ if ($request->isMethod('post')) {
             $input[$key] = max(0, (float) ($request->input($key) ?? 0));
         }
 
-        if ($request->has('total_days_worked') && $request->input('total_days_worked') !== '') {
-            $daysWorked = (int) $request->input('total_days_worked');
-        } else {
-            $att = getAttendanceDays($pdo, $employeeId, $periodStart, $periodEnd);
-            $daysWorked = (int) ($att['days_worked'] ?? 0);
-        }
-        $totalHours = (float) ($request->input('total_hours') ?? 0);
+        $attendanceSummary = attendancePayrollSummary($pdo, $employeeId, $periodStart, $periodEnd, $dailyRate);
+        $daysWorked = $attendanceSummary['days_worked'];
+        $totalHours = $attendanceSummary['total_hours'];
 
         $monthlyBasic = $dailyRate * 26;
         $hourlyRate = $dailyRate / 8;
 
-        if ($input['basic_salary'] <= 0 && $daysWorked > 0) {
-            $input['basic_salary'] = $daysWorked * $dailyRate;
-        }
-
-        if ($input['late'] <= 0 || $input['absent'] <= 0) {
-            $stmt = $pdo->prepare("
-                SELECT
-                    SUM(CASE WHEN status_morning = 'late' THEN 1 ELSE 0 END) +
-                    SUM(CASE WHEN status_afternoon = 'late' THEN 1 ELSE 0 END) AS late_count,
-                    SUM(CASE WHEN status_morning = 'absent' THEN 1 ELSE 0 END) +
-                    SUM(CASE WHEN status_afternoon = 'absent' THEN 1 ELSE 0 END) AS absent_count
-                FROM attendance
-                WHERE employee_id = ? AND attendance_date BETWEEN ? AND ?
-            ");
-            $stmt->execute([$employeeId, $periodStart, $periodEnd]);
-            $ded = $stmt->fetch();
-            $lateCount = (int) ($ded['late_count'] ?? 0);
-            $absentCount = (int) ($ded['absent_count'] ?? 0);
-            if ($input['late'] <= 0 && $lateCount > 0) {
-                $input['late'] = $lateCount * $hourlyRate;
-            }
-            if ($input['absent'] <= 0 && $absentCount > 0) {
-                $input['absent'] = $absentCount * ($dailyRate / 2);
-            }
-        }
+        $input['basic_salary'] = $daysWorked * $dailyRate;
+        $input['late'] = $attendanceSummary['late_amount'];
+        $input['absent'] = $attendanceSummary['absent_amount'];
+        $statutory = weeklyStatutoryDeductions($dailyRate, $deductionSettings);
+        $input['sss'] = $statutory['sss'];
+        $input['philhealth'] = $statutory['philhealth'];
+        $input['pagibig'] = $statutory['pagibig'];
 
         $grossPay = 0;
         foreach ($earningsKeys as $key) {

@@ -17,20 +17,30 @@ $revenueEnd = now()->startOfYear()->addYear()->toDateString();
 // Get statistics
 $stats = [];
 
-// Total Clients
-$stmt = $pdo->query("SELECT COUNT(*) as total FROM clients");
+// Match Clients Browse: archived clients are not part of the active client list.
+$stmt = $pdo->query("SELECT COUNT(*) as total FROM clients WHERE (archived IS NULL OR archived = 0)");
 $stats['total_clients'] = $stmt->fetch()['total'];
 
 // Active Clients
-$stmt = $pdo->query("SELECT COUNT(*) as total FROM clients WHERE status = 'active'");
+$stmt = $pdo->query("SELECT COUNT(*) as total FROM clients WHERE status = 'active' AND (archived IS NULL OR archived = 0)");
 $stats['active_clients'] = $stmt->fetch()['total'];
 
 // Total Employees
 $stmt = $pdo->query("SELECT COUNT(*) as total FROM employees WHERE status = 'active'");
 $stats['total_employees'] = $stmt->fetch()['total'];
 
-// Today's Attendance
-$stmt = $pdo->prepare("SELECT COUNT(DISTINCT employee_id) as total FROM attendance WHERE attendance_date = ?");
+// Today's attendance means an employee actually checked in. Some records can
+// be created with a status (for example "late") before a QR/time-in exists;
+// those must not appear as present on the dashboard. Older installations
+// without an afternoon column remain supported as well.
+$timeInConditions = ['morning_time_in IS NOT NULL'];
+if (\Illuminate\Support\Facades\Schema::hasColumn('attendance', 'afternoon_time_in')) {
+    $timeInConditions[] = 'afternoon_time_in IS NOT NULL';
+}
+$stmt = $pdo->prepare("SELECT COUNT(DISTINCT employee_id) AS total
+    FROM attendance
+    WHERE attendance_date = ?
+      AND (" . implode(' OR ', $timeInConditions) . ")");
 $stmt->execute([$today]);
 $stats['today_attendance'] = $stmt->fetch()['total'];
 
@@ -39,16 +49,24 @@ $stats['today_attendance'] = $stmt->fetch()['total'];
 $stmt = $pdo->query("SELECT COALESCE(SUM(amount), 0) as total FROM bills WHERE status = 'paid'");
 $stats['total_revenue'] = $stmt->fetch()['total'];
 
-// Pending Bills
-$stmt = $pdo->query("SELECT COUNT(*) as total FROM bills WHERE status = 'pending'");
-$stats['pending_bills'] = $stmt->fetch()['total'];
+// Count affected active clients once, even when a client has multiple bills.
+// This makes the dashboard number an actionable client count rather than a
+// potentially inflated count of historic billing records.
+$stmt = $pdo->query("SELECT COUNT(DISTINCT b.client_id) AS total
+    FROM bills b
+    JOIN clients c ON c.id = b.client_id
+    WHERE b.status = 'pending'
+      AND c.status = 'active'
+      AND (c.archived IS NULL OR c.archived = 0)");
+$stats['clients_with_pending_bills'] = $stmt->fetch()['total'];
 
-// Overdue Bills
+// Keep overdue as an actual bill count because each bill needs follow-up.
 $stmt = $pdo->query("SELECT COUNT(*) as total FROM bills WHERE status = 'overdue'");
 $stats['overdue_bills'] = $stmt->fetch()['total'];
 
-// Recent Payments
-$stmt = $pdo->query("SELECT p.*, c.full_name as client_name FROM payments p JOIN clients c ON p.client_id = c.id ORDER BY p.created_at DESC LIMIT 5");
+// Keep this in the same order as the Payment History page. A payment may be
+// recorded after its payment date, so created_at is not the transaction date.
+$stmt = $pdo->query("SELECT p.*, c.full_name as client_name FROM payments p JOIN clients c ON p.client_id = c.id ORDER BY p.payment_date DESC, p.id DESC LIMIT 5");
 $recentPayments = $stmt->fetchAll();
 
 // Clients with open balances removed per request. Dashboard will no
@@ -93,29 +111,27 @@ $monthlyRevenueChange = $previousMonthRevenue > 0
     : null;
 $revenueMonthLabel = date('F Y');
 
-// Use the marker color from the latest registered client in each barangay.
-// The dashboard displays one donut slice per barangay, while the map retains
-// each individual client's marker color.
-$stmt = $pdo->query("SELECT b.barangay_name, COUNT(c.id) as client_count,
-    COALESCE(
-        (SELECT NULLIF(c2.marker_color, '')
-         FROM clients c2
-         WHERE c2.barangay_id = b.id
-         ORDER BY c2.created_at DESC, c2.id DESC
-         LIMIT 1),
-        '#00BFFF'
-    ) as marker_color
-    FROM barangays b
-    LEFT JOIN clients c ON b.id = c.barangay_id
-    GROUP BY b.id, b.barangay_name
-    ORDER BY client_count DESC
-    LIMIT 10");
-$barangayStats = $stmt->fetchAll();
+// Keep the dashboard focused on client account health instead of locations.
+$stmt = $pdo->query("SELECT status, COUNT(*) as client_count
+    FROM clients
+    WHERE (archived IS NULL OR archived = 0)
+    GROUP BY status
+    ORDER BY client_count DESC");
+$clientStatusStats = $stmt->fetchAll();
 
-// Get today's attendance details
-$stmt = $pdo->prepare("SELECT a.*, e.full_name as employee_name FROM attendance a JOIN employees e ON a.employee_id = e.id WHERE a.attendance_date = ? ORDER BY a.morning_time_in DESC");
-$stmt->execute([$today]);
-$todayAttendanceDetails = $stmt->fetchAll();
+// Surface the accounts that need action most prominently on the dashboard.
+// The attendance count remains in the employee summary card above, avoiding a
+// duplicate operational table in the main overview.
+$stmt = $pdo->query("
+    SELECT b.bill_number, b.amount, b.due_date, b.status, c.full_name AS client_name
+    FROM bills b
+    JOIN clients c ON c.id = b.client_id
+    WHERE b.status IN ('pending', 'overdue')
+      AND (c.archived IS NULL OR c.archived = 0)
+    ORDER BY CASE WHEN b.status = 'overdue' THEN 0 ELSE 1 END, b.due_date ASC, b.id ASC
+    LIMIT 5
+");
+$billingPriorities = $stmt->fetchAll();
 
 // Total users count
 $stmt = $pdo->query("SELECT COUNT(*) as total FROM users WHERE status = 'active'");

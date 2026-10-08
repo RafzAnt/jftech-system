@@ -43,6 +43,11 @@ $stmt = $pdo->prepare($query);
 $stmt->execute($params);
 $attendanceRecords = $stmt->fetchAll();
 
+// Include today's active attendance QR codes in the printable report so staff
+// can scan them directly from the same printed attendance sheet.
+$stmt = $pdo->query("SELECT qr_code, qr_type, valid_from, valid_until FROM qr_codes WHERE valid_date = CURDATE() AND status = 'active' ORDER BY qr_type");
+$attendanceQrCodes = $stmt->fetchAll();
+
 // Get employees for filter
 $stmt = $pdo->query("SELECT id, employee_code, full_name, department FROM employees ORDER BY full_name");
 $allEmployees = $stmt->fetchAll();

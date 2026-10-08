@@ -300,3 +300,13 @@ html[data-theme="dark"] .dashboard-chart-card .card-body {
     .dashboard-chart-card .card-body { padding: 0.8rem 0.55rem 1rem; }
     .chart-axis { font-size: 9px; }
 }
+
+html[data-theme="light"] .dashboard-chart-card { border-color: #cbd5e1; box-shadow: 0 5px 16px rgba(36,55,77,.08); }
+html[data-theme="light"] .dashboard-chart-header { background: #edf1f5; border-bottom: 1px solid #d5dee8; }
+html[data-theme="light"] .dashboard-chart-header .badge { background: #e3ebf5; color: #285f9e; border-color: #bdcde0; }
+html[data-theme="light"] .main-content .stat-card { background: #f5f7f9; border-color: #cbd5e1; }
+html[data-theme="light"] .main-content .stat-card::before { width: 3px; }
+html[data-theme="light"] .dashboard-date { background: #f5f7f9; border-color: #cbd5e1; }
+html[data-theme="light"] .dashboard-chart-card,
+html[data-theme="light"] .main-content .stat-card { background: #dfe6ed; border-color: #c3ceda; }
+html[data-theme="light"] .dashboard-chart-header { background: #d5dee8; }

@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JFTECH Capstone Defense Guide</title>
+  <style>
+    @page { size: A4; margin: 18mm 16mm; }
+    * { box-sizing: border-box; }
+    body { color: #172033; font: 10.5pt/1.55 Arial, sans-serif; }
+    h1, h2, h3 { color: #102a56; line-height: 1.2; }
+    h1 { font-size: 25pt; margin: 0 0 5px; }
+    h2 { font-size: 16pt; margin: 26px 0 10px; border-bottom: 2px solid #2563a8; padding-bottom: 5px; }
+    h3 { font-size: 12.5pt; margin: 19px 0 8px; }
+    p { margin: 7px 0; }
+    ol, ul { margin: 6px 0 10px; padding-left: 22px; }
+    li { margin: 3px 0; }
+    .subtitle { color: #516073; font-size: 12pt; margin-top: 0; }
+    .intro, .say, .why, .tip { padding: 10px 12px; margin: 10px 0; border-radius: 5px; }
+    .intro { background: #edf5ff; border-left: 4px solid #2563a8; }
+    .say { background: #f0f9f3; border-left: 4px solid #2f855a; }
+    .why { background: #fff8e7; border-left: 4px solid #c58a12; }
+    .tip { background: #f8f4ff; border-left: 4px solid #7654b8; }
+    .page { break-inside: avoid; }
+    table { width: 100%; border-collapse: collapse; margin: 9px 0; }
+    th, td { border: 1px solid #b8c3d2; padding: 7px; text-align: left; }
+    th { background: #e8f0fa; }
+    code { background: #eef1f5; padding: 1px 4px; }
+    .flow { font-weight: bold; text-align: center; padding: 11px; background: #102a56; color: #fff; border-radius: 5px; }
+    .footer-note { color: #516073; font-size: 9pt; }
+  </style>
+</head>
+<body>
+  <h1>JFTECH WiFi Billing &amp; Management System</h1>
+  <p class="subtitle">Capstone Defense Guide — exact demo order and explanation per page</p>
+
+  <div class="intro">
+    <strong>How to use this guide:</strong> Demonstrate the pages in the sequence below. On every page, first state the purpose, then perform the listed actions, and finally explain why that module is important. This shows the panel that the system is integrated, not just a collection of screens.
+  </div>
+
+  <h2>1. System introduction</h2>
+  <p><strong>Opening statement:</strong> “JFTECH is a centralized management system for an internet-service business. It manages clients, plans, billing and payments, employees, attendance, payroll, inventory, and reports. Its goal is to reduce manual encoding errors and provide traceable business records.”</p>
+  <p class="flow">Internet Plan → Client Registration → Bill / Client Record → Payment → Reports<br>Employee → Attendance → Payroll → Reports<br>Inventory Stock → Employee Request → Approval → Movement History</p>
+  <p><strong>Main problem solved:</strong> Using notebooks or disconnected spreadsheets can produce duplicate clients, incorrect bill balances, missing equipment, and wrong payroll. JFTECH keeps related data in one system and reuses it in the correct process.</p>
+
+  <h2>2. Exact defense demonstration sequence</h2>
+  <ol>
+    <li>Login</li><li>Dashboard</li><li>Price Management</li><li>Register Client</li><li>Browse Clients</li><li>Update Client</li><li>Client Records</li><li>Record Payment</li><li>Employees</li><li>Attendance</li><li>Payroll</li><li>Inventory Stock Management</li><li>Inventory Movement History</li><li>Inventory Requests</li><li>Reports</li><li>System Settings</li><li>User Management</li><li>Login History</li><li>Logout</li>
+  </ol>
+
+  <h2>3. Page-by-page demo and explanation</h2>
+
+  <section class="page"><h3>Step 1 — Login</h3>
+    <p><strong>Purpose:</strong> Secure the system before any private business record is opened.</p>
+    <p><strong>Demo:</strong></p><ol><li>Open the system URL.</li><li>Enter the administrator username and password.</li><li>Click <strong>Login</strong> and show the Dashboard.</li></ol>
+    <div class="say"><strong>Say:</strong> “Login is the first security layer. Only an authenticated administrator can open client, payment, payroll, and inventory records. The system also limits repeated login attempts and starts a secured session after successful login.”</div>
+    <div class="why"><strong>Why it matters:</strong> Every sensitive action is connected to an authorized account, which supports accountability.</div>
+  </section>
+
+  <section class="page"><h3>Step 2 — Dashboard</h3>
+    <p><strong>Purpose:</strong> Present an immediate business summary after login.</p>
+    <p><strong>Demo:</strong></p><ol><li>Point to the summary cards.</li><li>Show the client account-status pie graph.</li><li>Explain the Active, Inactive, and Suspended values.</li></ol>
+    <div class="say"><strong>Say:</strong> “The dashboard is the administrator’s overview. The status graph shows how many accounts are Active, Inactive, or Suspended based on actual saved client records. It is not a map; it focuses on operational account status so the administrator can make a quick decision.”</div>
+    <div class="why"><strong>Why it matters:</strong> Management sees the current situation without manually counting records from different pages.</div>
+  </section>
+
+  <section class="page"><h3>Step 3 — Price Management</h3>
+    <p><strong>Purpose:</strong> Control the internet plans offered by JFTECH: plan name, speed, monthly fee, installation fee, availability, and pricing history.</p>
+    <p><strong>Demo:</strong></p><ol><li>Open <strong>Price Management</strong>.</li><li>Show a plan such as Fiber Starter, Fiber Family, or Fiber Pro.</li><li>Explain its Mbps speed, monthly price, installation fee, and active status.</li><li>Show an immediate change or scheduled price change using a demo plan.</li><li>Show the price-history record if displayed.</li></ol>
+    <div class="say"><strong>Say:</strong> “Price Management centralizes service pricing. A price change is controlled and recorded instead of being changed informally. A future rate can be scheduled, and price history makes the change traceable.”</div>
+    <div class="tip"><strong>Important defense point:</strong> “When a client registers, the system preserves that client’s selected plan and rate. Changing a plan later does not rewrite historical billing for existing clients.”</div>
+  </section>
+
+  <section class="page"><h3>Step 4 — Register Client</h3>
+    <p><strong>Purpose:</strong> Create the source record for a new subscriber.</p>
+    <p><strong>Demo:</strong></p><ol><li>Open <strong>Register Client</strong>.</li><li>Enter a sample client’s required name, contact, and address details.</li><li>Select an active internet plan.</li><li>Show the selected plan/rate, then save.</li><li>Explain that the new client now appears in Browse Clients and can have bills and payments.</li></ol>
+    <div class="say"><strong>Say:</strong> “Client registration begins the customer lifecycle. We save one authoritative subscriber profile and connect it to a valid plan. That same profile is later reused for billing, payment, client inquiry, and reporting.”</div>
+    <div class="why"><strong>Why it matters:</strong> It avoids duplicate client records and ensures billing is based on a chosen plan.</div>
+    <p><strong>Map clarification:</strong> The client forms intentionally do not contain a map, coordinates, or marker colors. The relevant business requirement is client and billing management, so removing unused map fields keeps the workflow simple.</p>
+  </section>
+
+  <section class="page"><h3>Step 5 — Browse Clients</h3>
+    <p><strong>Purpose:</strong> Search, review, and manage registered subscriber accounts.</p>
+    <p><strong>Demo:</strong></p><ol><li>Open <strong>Browse Clients</strong>.</li><li>Search a client name or code and, if available, filter by status.</li><li>Show the client’s plan and account status.</li><li>Open the action menu/details for one client.</li></ol>
+    <div class="say"><strong>Say:</strong> “This is the operational client list. Instead of checking paper files, the administrator can search a subscriber and immediately see the plan and account status.”</div>
+    <p><strong>Status meaning:</strong> <strong>Active</strong> means normal current service; <strong>Inactive</strong> means not currently in service; <strong>Suspended</strong> means temporarily restricted, for example while a business condition is unresolved. The record is retained instead of deleted because its history is still important.</p>
+  </section>
+
+  <section class="page"><h3>Step 6 — Update Client</h3>
+    <p><strong>Purpose:</strong> Maintain an existing subscriber profile without creating a duplicate.</p>
+    <p><strong>Demo:</strong></p><ol><li>Open a selected client in <strong>Update Client</strong>.</li><li>Change a safe demo field, such as contact number, address detail, or status.</li><li>Save and return to Browse Clients to confirm the result.</li></ol>
+    <div class="say"><strong>Say:</strong> “This page keeps client information accurate while protecting the original record. We update the existing profile instead of creating another client, so bills and payments remain connected to the same subscriber.”</div>
+    <div class="why"><strong>Why it matters:</strong> It prevents duplicate accounts and unreliable reports.</div>
+  </section>
+
+  <section class="page"><h3>Step 7 — Client Records</h3>
+    <p><strong>Purpose:</strong> Provide a single inquiry page for client account and billing details.</p>
+    <p><strong>Demo:</strong></p><ol><li>Open <strong>Client Records</strong>.</li><li>Search a sample client with a pending or overdue bill.</li><li>Show bill number, billing period, amount, due date, and status.</li><li>Use print if available.</li></ol>
+    <div class="say"><strong>Say:</strong> “Client Records lets staff answer client questions using system data: what is my bill, which period is unpaid, and when is the due date?”</div>
+    <p><strong>Explain:</strong> A <strong>Pending</strong> bill is unpaid but still within the due period. An <strong>Overdue</strong> bill is unpaid and already past its due date.</p>
+  </section>
+
+  <section class="page"><h3>Step 8 — Record Payment</h3>
+    <p><strong>Purpose:</strong> Record money received against the correct client bill.</p>
+    <p><strong>Demo:</strong></p><ol><li>Open <strong>Record Payment</strong>.</li><li>Find a client with a pending or overdue bill.</li><li>Select the correct bill, enter payment details, and save.</li><li>Show the resulting payment history/receipt and updated bill status or balance.</li></ol>
+    <div class="say"><strong>Say:</strong> “A payment is linked to a specific bill, not stored as an unconnected amount. This makes each transaction traceable and keeps the client balance and payment report accurate.”</div>
+    <div class="why"><strong>Why it matters:</strong> It prevents applying a payment to the wrong client and provides an auditable payment history.</div>
+  </section>
+
+  <section class="page"><h3>Step 9 — Employees</h3>
+    <p><strong>Purpose:</strong> Maintain employee master records for attendance, inventory requests, and payroll.</p>
+    <p><strong>Demo:</strong></p><ol><li>Open <strong>Employees</strong>.</li><li>Show sample positions: Technician, Technician II, and Admin.</li><li>Point out the saved daily rate.</li><li>Explain that the employee is reused in Attendance and Payroll.</li></ol>
+    <div class="say"><strong>Say:</strong> “Employees is the workforce master file. The daily rate is stored once in the employee profile, so payroll can retrieve the correct rate automatically.”</div>
+  </section>
+
+  <section class="page"><h3>Step 10 — Attendance</h3>
+    <p><strong>Purpose:</strong> Capture employee presence and time-related information used by payroll.</p>
+    <p><strong>Demo:</strong></p><ol><li>Open the Attendance section.</li><li>Filter by employee or date if needed.</li><li>Show present, late, or absent sample records.</li><li>Explain that the connected mobile/QR process submits attendance records to the same system.</li></ol>
+    <div class="say"><strong>Say:</strong> “Attendance is the evidence for payroll. Rather than manually counting workdays, the system keeps attendance records for the selected pay period and identifies late or absent information.”</div>
+    <div class="why"><strong>Why it matters:</strong> Payroll uses a verifiable source and avoids repetitive manual encoding.</div>
+  </section>
+
+  <section class="page"><h3>Step 11 — Payroll</h3>
+    <p><strong>Purpose:</strong> Automatically generate weekly payroll using the saved employee rate, attendance, and configured deductions.</p>
+    <p><strong>Demo:</strong></p><ol><li>Open <strong>Payroll</strong> after the Sunday scheduler has run.</li><li>Open a processed payroll for the completed Monday–Sunday period.</li><li>Show the automatically filled daily rate.</li><li>Show attendance-based days/hours, late/absent values, and basic salary.</li><li>Show the automatic deductions and computed net pay.</li><li>Explain that the administrator only reviews it and marks it paid when salary is released.</li></ol>
+    <div class="say"><strong>Say:</strong> “Payroll removes weekly manual computation. Every Sunday at 11:55 PM, after the attendance week ends, the scheduler creates one processed payroll for each active employee. It retrieves the daily rate and attendance summary, then applies the configured deductions. The administrator only reviews it and marks it paid.”</div>
+    <table><thead><tr><th>Daily-rate category</th><th>HDMF / Pag-IBIG weekly</th><th>SSS weekly</th><th>PhilHealth weekly</th></tr></thead><tbody><tr><td>Technician — PHP 500/day</td><td>PHP 50.00</td><td>PHP 125.00</td><td>PHP 75.00</td></tr><tr><td>Technician II — PHP 580/day</td><td>PHP 50.00</td><td>PHP 175.00</td><td>PHP 87.00</td></tr><tr><td>Admin — PHP 600/day</td><td>PHP 50.00</td><td>PHP 181.25</td><td>PHP 90.00</td></tr></tbody></table>
+    <div class="tip"><strong>Defense clarification:</strong> These are current configured demonstration business rules. In real deployment, an authorized administrator must update the settings whenever official statutory rules or company policy change. The deployment server must run Laravel’s scheduler every minute so the Sunday automatic payroll task can execute.</div>
+  </section>
+
+  <section class="page"><h3>Step 12 — Inventory: Stock Management</h3>
+    <p><strong>Purpose:</strong> Manage actual stock of equipment and materials, such as routers, cables, connectors, and tools.</p>
+    <p><strong>Demo:</strong></p><ol><li>Open <strong>Inventory → Stock Management</strong>.</li><li>Show an item’s On Hand, Reserved, and Available values.</li><li>Add an item with opening quantity/reorder level, or open an existing item.</li><li>Use <strong>Record Movement</strong> to receive or issue a test quantity and add remarks.</li></ol>
+    <p><strong>Explain the columns:</strong> <strong>On Hand</strong> is the stored quantity. <strong>Reserved</strong> is the quantity in pending employee requests. <strong>Available</strong> is what can safely be issued now: <code>On Hand − Reserved</code>.</p>
+    <div class="say"><strong>Say:</strong> “This is real stock control, not only an item list. A quantity change is recorded as a movement with its type, quantity, and reason. Regular item editing does not casually overwrite stock balances.”</div>
+  </section>
+
+  <section class="page"><h3>Step 13 — Inventory: Movement History</h3>
+    <p><strong>Purpose:</strong> Provide an audit trail for each stock change.</p>
+    <p><strong>Demo:</strong></p><ol><li>Open <strong>Inventory → Movement History</strong>.</li><li>Show receiving, issuing, return, damage, or stock-count entries.</li><li>Point out the item, date, movement type, quantity, new balance, remarks, and administrator when shown.</li></ol>
+    <div class="say"><strong>Say:</strong> “Movement History answers the question ‘Why did the stock quantity change?’ It records the action and its reason, which supports accountability and stock investigation.”</div>
+  </section>
+
+  <section class="page"><h3>Step 14 — Inventory: Employee Requests</h3>
+    <p><strong>Purpose:</strong> Let employees request equipment while the administrator keeps approval and stock-release control.</p>
+    <p><strong>Demo:</strong></p><ol><li>Explain that the employee/mobile flow submits a request.</li><li>Open <strong>Inventory → Requests</strong> as the administrator.</li><li>Show a pending request and its item, quantity, employee, and reason.</li><li>Approve a test request, then return to Stock Management/Movement History to show the effect.</li><li>Alternatively deny a request and explain that stock remains unchanged.</li></ol>
+    <div class="say"><strong>Say:</strong> “A request is not automatically a stock release. Pending quantities are reserved first. During approval, the system checks available stock again, prevents duplicate approval, deducts only once, and creates a stock-movement record.”</div>
+    <div class="why"><strong>Why it matters:</strong> This prevents negative stock, double issuance, and unapproved use of materials.</div>
+  </section>
+
+  <section class="page"><h3>Step 15 — Reports</h3>
+    <p><strong>Purpose:</strong> Transform daily records into filtered information that can be reviewed, printed, or exported.</p>
+    <p><strong>Demo:</strong></p><ol><li>Open <strong>Reports</strong>.</li><li>Choose a report type and date/status filters.</li><li>Generate a client, billing, payment, employee, attendance, payroll, or inventory report.</li><li>Show the result, then print or export it to CSV/Excel-compatible format.</li><li>Show report history if available.</li></ol>
+    <div class="say"><strong>Say:</strong> “Reports summarize records already created by the operational modules. For example, the payment report uses recorded payments, while the inventory report uses stock and movement data. This produces a consistent management view.”</div>
+  </section>
+
+  <section class="page"><h3>Step 16 — System Settings</h3>
+    <p><strong>Purpose:</strong> Maintain system-wide business values without editing source code.</p>
+    <p><strong>Demo:</strong></p><ol><li>Open <strong>System Settings</strong>.</li><li>Show the Weekly Payroll Deductions section.</li><li>Explain that the three daily-rate categories have central configured values.</li></ol>
+    <div class="say"><strong>Say:</strong> “Settings separate business rules from program code. If an approved deduction policy changes, an authorized administrator updates the configured value here, and the Sunday payroll automation uses the same value consistently.”</div>
+  </section>
+
+  <section class="page"><h3>Step 17 — User Management</h3>
+    <p><strong>Purpose:</strong> Control the administrator accounts that can access the system.</p>
+    <p><strong>Demo:</strong></p><ol><li>Open <strong>User Management</strong>.</li><li>Show the administrator list, role, and status fields available.</li><li>Explain the available add/update/disable actions without changing a production account.</li></ol>
+    <div class="say"><strong>Say:</strong> “User Management assigns system access to authorized accounts. It supports accountability because access is assigned to a specific person or role instead of being shared informally.”</div>
+  </section>
+
+  <section class="page"><h3>Step 18 — Login History</h3>
+    <p><strong>Purpose:</strong> Keep an audit trail of administrator access.</p>
+    <p><strong>Demo:</strong></p><ol><li>Open <strong>Login History</strong>.</li><li>Show a log entry, timestamp, and user details displayed by the system.</li></ol>
+    <div class="say"><strong>Say:</strong> “Login History records when accounts accessed the system. Together with module histories, it helps the organization investigate an unusual action or access event.”</div>
+  </section>
+
+  <section class="page"><h3>Step 19 — Logout</h3>
+    <p><strong>Purpose:</strong> Securely end the current user session.</p>
+    <p><strong>Demo:</strong></p><ol><li>Click <strong>Logout</strong> in the sidebar.</li><li>Confirm the dialog.</li><li>Show the return to the login page.</li></ol>
+    <div class="say"><strong>Say:</strong> “Logout ends the authenticated session. This is important on a shared office computer because a later user must authenticate again.”</div>
+  </section>
+
+  <h2>4. Strong closing statement</h2>
+  <p>“JFTECH is an integrated management system. Data is entered once in the proper module and then reused for daily operations, control, and reporting. Client registration connects to billing and payments; employee attendance connects to payroll; and inventory requests connect to stock movements. This reduces repeated work, improves accuracy, prevents common errors, and provides a traceable history for the business.”</p>
+
+  <h2>5. Likely panel questions</h2>
+  <p><strong>Why not just use spreadsheets?</strong><br>“Spreadsheets store data, but they do not naturally enforce linked records, role checks, stock reservations, payment-to-bill relationships, controlled approval, or audit history. JFTECH centralizes those controls.”</p>
+  <p><strong>What prevents a negative inventory balance?</strong><br>“Before a stock movement or request approval is completed, the system checks available quantity. Pending requests reserve stock, and approval checks again before subtracting it.”</p>
+  <p><strong>What prevents wrong payroll values?</strong><br>“Every Sunday, the scheduler retrieves the saved daily rate, the completed week’s attendance, and centrally configured deductions. The administrator does not type every value manually.”</p>
+  <p><strong>Why keep inactive or suspended clients instead of deleting them?</strong><br>“Their historical bills and payments must remain traceable. Status management preserves history while clearly showing their current operational state.”</p>
+  <p class="footer-note">Prepared for JFTECH capstone defense. Demonstration names and figures are realistic sample data; production data must be verified and handled with proper privacy controls.</p>
+</body>
+</html>

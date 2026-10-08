@@ -3,5 +3,81 @@
  * Page: pages/settings.blade.php
  */
 
-/* Settings relies on shared theme components (cards, forms, form-grid, tabs).
-   Add page-specific overrides below as needed. */
+/* Settings relies on shared theme components (cards, forms, form-grid, tabs). */
+.settings-form-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 1rem;
+}
+
+.time-input-control {
+    position: relative;
+}
+
+.time-input-control .form-input {
+    padding-right: 3rem;
+}
+
+.time-picker-button {
+    position: absolute;
+    top: 50%;
+    right: 0.45rem;
+    display: grid;
+    width: 2.2rem;
+    height: 2.2rem;
+    padding: 0;
+    color: var(--accent);
+    background: transparent;
+    border: 0;
+    border-radius: 8px;
+    cursor: pointer;
+    place-items: center;
+    transform: translateY(-50%);
+}
+
+.time-picker-button:hover,
+.time-picker-button:focus-visible {
+    background: rgba(96, 165, 250, 0.14);
+    outline: none;
+}
+
+.time-picker-button svg {
+    width: 1.15rem;
+    height: 1.15rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.8;
+}
+
+.time-picker-selectors {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) minmax(0, 1fr);
+    gap: 0.75rem;
+    align-items: end;
+}
+
+.time-picker-selectors .form-group {
+    margin: 0;
+}
+
+.time-picker-separator {
+    padding-bottom: 0.55rem;
+    color: var(--text-primary);
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.time-picker-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+}
+
+@media (max-width: 640px) {
+    .settings-form-actions .btn {
+        width: 100%;
+    }
+}

@@ -160,15 +160,17 @@ $afternoonQR = null;
                     <span>ATTENDANCE QR CODES</span>
                 </header>
                 <div class="attendance-print-qr attendance-print-time-in">
-                    <h2>TIME IN</h2>
+                    <h2>Morning Session</h2>
                     <div class="attendance-print-qr-code" id="printMorningQr"></div>
                     <p>{{ formatScheduleTime($qrMorningStart) }} - {{ formatScheduleTime($qrMorningEnd) }}</p>
+                    <p class="attendance-print-qr-value">Code: {{ $morningQR['qr_code'] ?? 'No active QR code' }}</p>
                 </div>
                 <div class="attendance-print-cut-line"></div>
                 <div class="attendance-print-qr attendance-print-time-out">
-                    <h2>TIME OUT</h2>
+                    <h2>Afternoon Session</h2>
                     <div class="attendance-print-qr-code" id="printAfternoonQr"></div>
                     <p>{{ formatScheduleTime($qrAfternoonStart) }} - {{ formatScheduleTime($qrAfternoonEnd) }}</p>
+                    <p class="attendance-print-qr-value">Code: {{ $afternoonQR['qr_code'] ?? 'No active QR code' }}</p>
                 </div>
             </section>
         </div>
@@ -286,8 +288,8 @@ $afternoonQR = null;
                     </div>
                     <div class="form-group">
                         <label class="form-label">Position *</label>
-                        <select name="position" class="form-select" id="empPosition" required>
-                            @foreach ($employeePositions ?? ['Technician', 'Technician I', 'Technician II', 'Master Technician', 'Intern'] as $position)
+                        <select name="position" class="form-select" id="empPosition" required onchange="syncPositionRate()">
+                            @foreach ($employeePositions as $position)
                             <option value="{{ $position }}">{{ $position }}</option>
                             @endforeach
                         </select>
@@ -302,7 +304,8 @@ $afternoonQR = null;
                     </div>
                     <div class="form-group">
                         <label class="form-label">Daily Rate (PHP)</label>
-                        <input type="number" name="daily_rate" class="form-input" id="empDailyRate" placeholder="500.00" step="0.01">
+                        <input type="number" name="daily_rate" class="form-input" id="empDailyRate" step="0.01" readonly aria-describedby="dailyRateHelp">
+                        <small id="dailyRateHelp" style="color: var(--text-muted);">Set automatically from the selected position.</small>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Date Hired</label>
@@ -351,10 +354,10 @@ $afternoonQR = null;
         document.getElementById('empFirstName').value = '';
         document.getElementById('empMiddleName').value = '';
         document.getElementById('empLastName').value = '';
-        document.getElementById('empPosition').value = 'Technician';
+        document.getElementById('empPosition').value = 'Technician I';
         document.getElementById('empContact').value = '';
         document.getElementById('empEmail').value = '';
-        document.getElementById('empDailyRate').value = '';
+        syncPositionRate();
         document.getElementById('empDateHired').value = '';
         document.getElementById('empAddress').value = '';
         openModal('employeeModal');
@@ -378,13 +381,21 @@ $afternoonQR = null;
         document.getElementById('empFirstName').value = nameParts.shift() || '';
         document.getElementById('empLastName').value = nameParts.length ? nameParts.pop() : '';
         document.getElementById('empMiddleName').value = nameParts.join(' ');
-        document.getElementById('empPosition').value = emp.position || 'Technician';
+        document.getElementById('empPosition').value = payrollPositionRates[emp.position] ? emp.position : 'Technician I';
         document.getElementById('empContact').value = emp.contact_number;
         document.getElementById('empEmail').value = emp.email;
-        document.getElementById('empDailyRate').value = emp.daily_rate;
+        syncPositionRate();
         document.getElementById('empDateHired').value = emp.date_hired;
         document.getElementById('empAddress').value = emp.address;
         openModal('employeeModal');
+    }
+
+    const payrollPositionRates = @json($employeePositionRates);
+
+    function syncPositionRate() {
+        const position = document.getElementById('empPosition').value;
+        const rate = Number(payrollPositionRates[position] || 0);
+        document.getElementById('empDailyRate').value = rate.toFixed(2);
     }
 
     function printAttendanceQrSheet() {

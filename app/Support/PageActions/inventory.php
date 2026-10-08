@@ -36,15 +36,8 @@ function ensureInventoryTable(PDO $pdo): void
     if (!$columnExists) {
         $pdo->exec("ALTER TABLE inventory ADD COLUMN archived TINYINT(1) NOT NULL DEFAULT 0 AFTER status");
     }
-    $pdo->exec("
-        INSERT IGNORE INTO inventory (item_name, category, quantity, unit_price, description, supplier, reorder_level, status) VALUES
-        ('Router', 'Networking Equipment', 50, 500.00, 'Wireless router', 'Supplier A', 10, 'active'),
-        ('UPS', 'Power Equipment', 30, 750.00, 'Uninterruptible Power Supply', 'Supplier B', 5, 'active'),
-        ('Patch Cord', 'Cabling', 200, 50.00, 'Fiber optic patch cord', 'Supplier C', 20, 'active'),
-        ('Cable Tie', 'Accessories', 1000, 2.00, 'Plastic cable tie', 'Supplier C', 100, 'active'),
-        ('Pigtail', 'Cabling', 100, 25.00, 'Fiber pigtail connector', 'Supplier C', 20, 'active'),
-        ('Cable Clamp', 'Accessories', 200, 10.00, 'Cable clamp holder', 'Supplier C', 30, 'active')
-    ");
+    // Do not seed default items while rendering a page. Doing that caused the
+    // same sample items to be inserted repeatedly on older installations.
 }
 
 function loadInventoryData(PDO $pdo, bool $showArchived): array

@@ -48,9 +48,9 @@
                     <span>All time</span>
                 </div>
             </a>
-            <a href="bill_inquiry.php" class="stat-card stat-card-link" style="--stat-color: var(--warning)" aria-label="View pending bills">
-                <div class="stat-value">{{ number_format($stats['pending_bills']) }}</div>
-                <div class="stat-label">Pending Bills</div>
+            <a href="bill_inquiry.php" class="stat-card stat-card-link" style="--stat-color: var(--warning)" aria-label="View clients with pending bills">
+                <div class="stat-value">{{ number_format($stats['clients_with_pending_bills']) }}</div>
+                <div class="stat-label">Clients With Pending Bills</div>
                 <div class="stat-change negative">
                     <span>{{ $stats['overdue_bills'] }} Overdue</span>
                 </div>
@@ -69,7 +69,7 @@
                     <span>Active accounts</span>
                 </div>
             </a> 
-            <a href="bill_inquiry.php" class="stat-card stat-card-link" style="--stat-color: var(--danger)" aria-label="View overdue bills">
+            <a href="bill_inquiry.php?overdue=1" class="stat-card stat-card-link" style="--stat-color: var(--danger)" aria-label="View clients with overdue bills">
                 <div class="stat-value">{{ number_format($stats['overdue_bills']) }}</div>
                 <div class="stat-label">Overdue Bills</div>
                 <div class="stat-change negative">
@@ -91,11 +91,11 @@
             </div>
             <div class="card dashboard-chart-card">
                 <div class="card-header dashboard-chart-header">
-                    <span class="card-title">Clients by Barangay</span>
-                    <span class="badge badge-success">Top 10</span>
+                    <span class="card-title">Client Account Status</span>
+                    <span class="badge badge-success">Live</span>
                 </div>
                 <div class="card-body">
-                    <div id="barangayChart" class="dashboard-chart" aria-live="polite"></div>
+                    <div id="clientStatusChart" class="dashboard-chart" aria-live="polite"></div>
                 </div>
             </div>
         </div>
@@ -127,7 +127,7 @@
                                     <td>{{ htmlspecialchars($payment['client_name']) }}</td>
                                     <td style="color: var(--success); font-weight: 600;">PHP {{ number_format($payment['amount'], 2) }}</td>
                                     <td>{{ date('M d, Y', strtotime($payment['payment_date'])) }}</td>
-                                    <td><span class="badge badge-info">{{ ucfirst($payment['payment_method']) }}</span></td>
+                                    <td><span class="badge badge-info">{{ str_replace('_', ' ', strtoupper($payment['payment_method'])) }}</span></td>
                                 </tr>
                                 @endforeach
                                 @if (empty($recentPayments))
@@ -139,40 +139,40 @@
                 </div>
             </div>
 
-            <!-- Today's Attendance -->
+            <!-- Billing Priorities -->
             <div class="card">
                 <div class="card-header">
-                    <span class="card-title">Today's Attendance</span>
-                    <a href="employees.php?tab=attendance" class="btn btn-sm btn-primary">View All</a>
+                    <span class="card-title">Billing Priorities</span>
+                    <a href="bill_inquiry.php" class="btn btn-sm btn-primary">View All</a>
                 </div>
                 <div class="card-body" style="padding: 0;">
                     <div class="data-table-container">
                         <table class="data-table">
                             <thead>
                                 <tr>
-                                    <th>Employee</th>
-                                    <th>Time In</th>
+                                    <th>Client</th>
+                                    <th>Due Date</th>
+                                    <th>Amount</th>
                                     <th>Status</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach ($todayAttendanceDetails as $att)
+                                @foreach ($billingPriorities as $bill)
                                 <tr>
-                                    <td>{{ htmlspecialchars($att['employee_name']) }}</td>
-                                    <td>{{ $att['morning_time_in'] ? date('h:i A', strtotime($att['morning_time_in'])) : '-' }}</td>
+                                    <td>{{ htmlspecialchars($bill['client_name']) }}</td>
+                                    <td>{{ date('M d, Y', strtotime($bill['due_date'])) }}</td>
+                                    <td style="font-weight: 600;">PHP {{ number_format($bill['amount'], 2) }}</td>
                                     <td>
-                                        @if ($att['status_morning'] === 'present')
-                                            <span class="badge badge-success">Present</span>
-                                        @elseif ($att['status_morning'] === 'late')
-                                            <span class="badge badge-warning">Late</span>
+                                        @if ($bill['status'] === 'overdue')
+                                            <span class="badge badge-danger">Overdue</span>
                                         @else
-                                            <span class="badge badge-danger">Absent</span>
+                                            <span class="badge badge-warning">Pending</span>
                                         @endif
                                     </td>
                                 </tr>
                                 @endforeach
-                                @if (empty($todayAttendanceDetails))
-                                <tr><td colspan="3" style="text-align:center;color:var(--text-muted);">No attendance records today</td></tr>
+                                @if (empty($billingPriorities))
+                                <tr><td colspan="4" style="text-align:center;color:var(--text-muted);">No billing priorities right now</td></tr>
                                 @endif
                             </tbody>
                         </table>
@@ -233,22 +233,13 @@
 
     <script>
     const monthlyRevenue = @json($monthlyRevenue);
-    const barangayStats = @json($barangayStats);
-    const chartColors = ['#00d4ff', '#00e676', '#ff1744', '#ffab00', '#e040fb', '#2979ff', '#76ff03', '#ff4081', '#18ffff', '#ff6d00'];
-
-    function getBarangayColor(index, name, markerColor) {
-        if (/^#[0-9a-f]{6}$/i.test(markerColor || '')) {
-            return markerColor;
-        }
-
-        if (name) {
-            const hash = [...name].reduce((sum, char) => sum + char.charCodeAt(0), 0);
-            const hue = (hash * 67 + index * 137) % 360;
-            return `hsl(${hue} 72% 58%)`;
-        }
-
-        return chartColors[index % chartColors.length];
-    }
+    const clientStatusStats = @json($clientStatusStats);
+    const clientStatusColors = {
+        active: '#22c55e',
+        inactive: '#94a3b8',
+        suspended: '#ef4444',
+        disconnected: '#ef4444',
+    };
 
     function showEmptyChart(element, title, detail) {
         element.innerHTML = `<div class="chart-empty"><strong>${title}</strong><span>${detail}</span></div>`;
@@ -327,11 +318,11 @@
         `;
     }
 
-    function renderBarangayChart() {
-        const target = document.getElementById('barangayChart');
-        const entries = barangayStats.filter(item => Number(item.client_count) > 0);
+    function renderClientStatusChart() {
+        const target = document.getElementById('clientStatusChart');
+        const entries = clientStatusStats.filter(item => Number(item.client_count) > 0);
         if (!entries.length) {
-            showEmptyChart(target, 'No client data yet', 'Register a client and assign a barangay to show this chart.');
+            showEmptyChart(target, 'No client data yet', 'Register a client to show account status here.');
             return;
         }
         
@@ -339,18 +330,27 @@
         const circumference = 2 * Math.PI * 62;
         let offset = 0;
         const slices = entries.map((item, index) => {
-            const color = getBarangayColor(index, item.barangay_name, item.marker_color);
+            const status = String(item.status || '').trim().toLowerCase();
+            const color = clientStatusColors[status] || ['#60a5fa', '#a78bfa', '#f472b6'][index % 3];
             const length = Number(item.client_count) / total * circumference;
-            const slice = `<circle cx="94" cy="94" r="62" fill="none" stroke="${color}" stroke-width="28" stroke-dasharray="${length} ${circumference - length}" stroke-dashoffset="${-offset}" transform="rotate(-90 94 94)"><title>${item.barangay_name}: ${item.client_count}</title></circle>`;
+            const visibleLength = Math.max(length - 4, 0);
+            const label = status.charAt(0).toUpperCase() + status.slice(1);
+            const slice = `<circle class="donut-slice" cx="94" cy="94" r="62" fill="none" stroke="${color}" stroke-width="28" stroke-dasharray="${visibleLength} ${circumference - visibleLength}" stroke-dashoffset="${-offset}" transform="rotate(-90 94 94)"><title>${label}: ${item.client_count}</title></circle>`;
             offset += length;
             return slice;
         }).join('');
-        const legend = entries.map((item, index) => `<li><span style="background:${getBarangayColor(index, item.barangay_name, item.marker_color)}"></span>${item.barangay_name} (${item.client_count})</li>`).join('');
-        target.innerHTML = `<div class="barangay-chart"><svg class="donut-svg" viewBox="0 0 188 188" role="img" aria-label="Clients by barangay">${slices}<text x="94" y="90" text-anchor="middle" class="donut-total">${total}</text><text x="94" y="110" text-anchor="middle" class="donut-label">clients</text></svg><ul class="chart-legend">${legend}</ul></div>`;
+        const legend = entries.map((item, index) => {
+            const status = String(item.status || '').trim().toLowerCase();
+            const color = clientStatusColors[status] || ['#60a5fa', '#a78bfa', '#f472b6'][index % 3];
+            const label = status.charAt(0).toUpperCase() + status.slice(1);
+            const percentage = Math.round(Number(item.client_count) / total * 100);
+            return `<li style="--status-color:${color}"><span></span><span class="status-name">${label}</span><strong>${item.client_count}<small>${percentage}%</small></strong></li>`;
+        }).join('');
+        target.innerHTML = `<div class="client-status-chart"><div class="donut-wrap"><svg class="donut-svg" viewBox="0 0 188 188" role="img" aria-label="Clients by account status"><circle class="donut-track" cx="94" cy="94" r="62" fill="none" stroke-width="28"/>${slices}<text x="94" y="88" text-anchor="middle" class="donut-total">${total}</text><text x="94" y="110" text-anchor="middle" class="donut-label">TOTAL CLIENTS</text></svg></div><ul class="chart-legend">${legend}</ul></div>`;
     }
 
     renderRevenueChart();
-    renderBarangayChart();
+    renderClientStatusChart();
     </script>
     <script src="{{ asset('js/jftech-main.js') }}?{{ $mainJsVersion }}"></script>
 </body>

@@ -54,18 +54,12 @@ if ($request->isMethod('post') && $request->has('update_client')) {
         $email = trim($request->input('email'));
         $barangayId = $request->input('barangay_id');
         $exactAddress = trim($request->input('exact_address'));
-        $latitude = (float) $request->input('latitude');
-        $longitude = (float) $request->input('longitude');
         if ($firstName === '' || $lastName === '') {
             throw new \RuntimeException('First name and last name are required. Middle name is optional.');
         }
         if (! preg_match('/^\d{11}$/', $contactNumber)) {
             throw new \RuntimeException('Contact number must contain exactly 11 digits.');
         }
-        if ($latitude < 9.60 || $latitude > 9.90 || $longitude < 123.85 || $longitude > 124.10) {
-            throw new \RuntimeException('Please place the client pin within the Balilihan, Bohol service area.');
-        }
-        $markerColor = $request->input('marker_color');
         // Load the saved client first. A normal profile update must preserve the
         // original plan-price snapshot even if the plan's current price changed.
         $currentClientStmt = $pdo->prepare("SELECT internet_plan_id, wifi_plan, monthly_rate, installation_fee FROM clients WHERE id = ?");
@@ -88,10 +82,20 @@ if ($request->isMethod('post') && $request->has('update_client')) {
         $wifiPlan = $isPlanChange ? $plan['plan_name'] : $currentClient['wifi_plan'];
         $monthlyRate = $isPlanChange ? $plan['monthly_price'] : $currentClient['monthly_rate'];
         $installationFee = $isPlanChange ? $plan['installation_fee'] : $currentClient['installation_fee'];
-        $status = $request->input('status');
+        // Client status is managed from Client Records, not from profile editing.
+        $stmt = $pdo->prepare("UPDATE clients SET full_name = ?, contact_number = ?, email = ?, barangay_id = ?, exact_address = ?, wifi_plan = ?, internet_plan_id = ?, monthly_rate = ?, installation_fee = ? WHERE id = ?");
+        $stmt->execute([$fullName, $contactNumber, $email, $barangayId, $exactAddress, $wifiPlan, $planId, $monthlyRate, $installationFee, $clientId]);
 
-        $stmt = $pdo->prepare("UPDATE clients SET full_name = ?, contact_number = ?, email = ?, barangay_id = ?, exact_address = ?, latitude = ?, longitude = ?, marker_color = ?, wifi_plan = ?, internet_plan_id = ?, monthly_rate = ?, installation_fee = ?, status = ? WHERE id = ?");
-        $stmt->execute([$fullName, $contactNumber, $email, $barangayId, $exactAddress, $latitude, $longitude, $markerColor, $wifiPlan, $planId, $monthlyRate, $installationFee, $status, $clientId]);
+        if ($isPlanChange) {
+            $historyStmt = $pdo->prepare("INSERT INTO client_plan_change_histories (client_id, previous_internet_plan_id, previous_plan_name, previous_monthly_rate, new_internet_plan_id, new_plan_name, new_monthly_rate, reason, changed_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $historyStmt->execute([$clientId, $currentClient['internet_plan_id'], $currentClient['wifi_plan'], $currentClient['monthly_rate'], $planId, $wifiPlan, $monthlyRate, 'Administrator selected a different internet plan.', auth()->id()]);
+
+            // A plan migration changes the client’s active service price, so
+            // align unpaid bills as well. Paid bills are historical receipts
+            // and must never be rewritten.
+            $billStmt = $pdo->prepare("UPDATE bills SET amount = ? WHERE client_id = ? AND status IN ('pending', 'overdue')");
+            $billStmt->execute([$monthlyRate, $clientId]);
+        }
 
         $success = 'Client updated successfully!';
 

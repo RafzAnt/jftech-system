@@ -19,7 +19,10 @@
                 <p style="color: var(--text-muted); font-size: 0.85rem;">{{ $tab === 'movements' ? 'Auditable record of every stock change' : 'Manage equipment and supplies' }}</p>
             </div>
             @if (!$showArchived && $tab === 'stock')
-            <button class="btn btn-success" onclick="openModal('inventoryModal')">+ Add Item</button>
+            <div style="display:flex;gap:.65rem;flex-wrap:wrap;">
+                <a class="btn btn-secondary" href="inventory.php?tab=movements">View Stock Movements</a>
+                <button class="btn btn-success" onclick="openNewItemModal()">+ Add Item</button>
+            </div>
             @endif
         </div>
 
@@ -43,7 +46,7 @@
             </div>
             <div class="stat-card">
                 <div class="stat-value" style="color: var(--warning);">{{ $lowStock }}</div>
-                <div class="stat-label">Low Stock Items</div>
+                <div class="stat-label">Low Available Stock</div>
             </div>
         </div>
 
@@ -74,6 +77,7 @@
                     <div class="payslip-view-tabs">
                         <a href="inventory.php" class="payslip-view-tab {{ !$showArchived ? 'active' : '' }}">Active</a>
                         <a href="inventory.php?view=archived" class="payslip-view-tab {{ $showArchived ? 'active' : '' }}">Archived ({{ $archivedCount }})</a>
+                        @if (!$showArchived)<a href="inventory.php?tab=movements" class="payslip-view-tab">Movements</a>@endif
                     </div>
                     <a class="btn btn-sm btn-secondary" target="_blank" rel="noopener" href="{{ url('/pages/print_inventory.php?category=' . urlencode($filterCategory) . ($showArchived ? '&archived=1' : '')) }}">Print</a>
                 </div>
@@ -85,10 +89,11 @@
                             <tr>
                                 <th>Item Name</th>
                                 <th>Category</th>
-                                <th>Quantity</th>
+                                <th>On Hand</th>
+                                <th>Reserved</th>
+                                <th>Available</th>
                                 <th>Unit Price</th>
                                 <th>Total Value</th>
-                                <th>Supplier</th>
                                 <th>Status</th>
                                 <th aria-label="Item menu"></th>
                             </tr>
@@ -96,7 +101,7 @@
                         <tbody>
                             @foreach ($filteredItems as $item)
                             @php
-$isLowStock = $item['quantity'] <= $item['reorder_level']; 
+                            $isLowStock = $item['available_quantity'] <= $item['reorder_level'];
 @endphp
                             <tr class="{{ $isLowStock ? 'row-warning' : '' }}">
                                 <td><strong>{{ htmlspecialchars($item['item_name']) }}</strong></td>
@@ -109,9 +114,10 @@ $isLowStock = $item['quantity'] <= $item['reorder_level'];
                                     <span class="badge badge-warning" style="margin-left: 0.5rem;">Low Stock</span>
                                     @endif
                                 </td>
+                                <td>{{ $item['reserved_quantity'] ?: '—' }}</td>
+                                <td><strong style="color: {{ $isLowStock ? 'var(--warning)' : 'var(--success)' }};">{{ $item['available_quantity'] }}</strong></td>
                                 <td>PHP {{ number_format($item['unit_price'], 2) }}</td>
                                 <td style="font-weight: 600;">PHP {{ number_format($item['quantity'] * $item['unit_price'], 2) }}</td>
-                                <td>{{ htmlspecialchars($item['supplier'] ?: 'N/A') }}</td>
                                 <td>
                                     <span class="badge badge-{{ $item['status'] === 'active' ? 'success' : 'secondary' }}">
                                         {{ ucfirst($item['status']) }}
@@ -132,7 +138,8 @@ $isLowStock = $item['quantity'] <= $item['reorder_level'];
                                             <button type="submit" class="inventory-menu-item inventory-menu-item-danger">Delete Permanently</button>
                                         </form>
                                         @else
-                                        <button class="inventory-menu-item" type="button" onclick="editItem({{ htmlspecialchars(json_encode($item)) }}); closeInventoryActionMenus()">Edit</button>
+                                        <button class="inventory-menu-item" type="button" data-inventory-item='@json($item)' onclick="openStockMovementFromButton(this); closeInventoryActionMenus()">Record Movement</button>
+                                        <button class="inventory-menu-item" type="button" data-inventory-item='@json($item)' onclick="editItemFromButton(this); closeInventoryActionMenus()">Edit Details</button>
                                         <form method="POST" action="{{ route('inventory.archive', $item['id']) }}" onsubmit="return confirm('Archive this item?')">
             @csrf
                                             <button type="submit" class="inventory-menu-item inventory-menu-item-danger">Archive</button>
@@ -144,7 +151,7 @@ $isLowStock = $item['quantity'] <= $item['reorder_level'];
                             </tr>
                             @endforeach
                             @if (empty($filteredItems))
-                            <tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2rem;">{{ $showArchived ? 'No archived inventory items.' : 'No inventory items found.' }}</td></tr>
+                            <tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 2rem;">{{ $showArchived ? 'No archived inventory items.' : 'No inventory items found.' }}</td></tr>
                             @endif
                         </tbody>
                     </table>
@@ -197,10 +204,19 @@ $isLowStock = $item['quantity'] <= $item['reorder_level'];
             @csrf
                 <input type="hidden" name="item_id" id="itemId">
                 <input type="hidden" name="submission_token" value="{{ $submissionToken }}">
+                <input type="hidden" name="add_quantity" id="itemAddQuantity" value="0">
+                <input type="hidden" name="reorder_level" id="itemReorder" value="5">
+                <input type="hidden" name="supplier" id="itemSupplier" value="">
                 <div class="form-grid">
                     <div class="form-group">
                         <label class="form-label">Item Name *</label>
-                        <input type="text" name="item_name" class="form-input" id="itemName" required>
+                        <input type="text" name="item_name" class="form-input" id="itemName" list="inventoryItemSuggestions" autocomplete="off" required oninput="validateInventoryItemName()">
+                        <datalist id="inventoryItemSuggestions">
+                            @foreach ($inventoryNameSuggestions as $itemName)
+                            <option value="{{ $itemName }}"></option>
+                            @endforeach
+                        </datalist>
+                        <small id="itemNameHelp" style="color: var(--text-muted);">Start typing to see common and existing item names.</small>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Category *</label>
@@ -214,20 +230,13 @@ $isLowStock = $item['quantity'] <= $item['reorder_level'];
                         <input type="text" name="category" class="form-input" id="customCategory" placeholder="Enter new category name" style="display: none; margin-top: 0.5rem;">
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Quantity *</label>
+                        <label class="form-label" id="itemQuantityLabel">Opening Quantity *</label>
                         <input type="number" name="quantity" class="form-input" id="itemQuantity" required min="0">
+                        <small id="itemQuantityHelp" style="display:none;color:var(--text-muted);">This amount will be added to the current stock and saved in movement history.</small>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Unit Price (PHP)</label>
                         <input type="number" name="unit_price" class="form-input" id="itemPrice" step="0.01" min="0">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Reorder Level</label>
-                        <input type="number" name="reorder_level" class="form-input" id="itemReorder" value="5" min="0">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Supplier</label>
-                        <input type="text" name="supplier" class="form-input" id="itemSupplier">
                     </div>
                 </div>
                 <div class="form-group">
@@ -238,6 +247,29 @@ $isLowStock = $item['quantity'] <= $item['reorder_level'];
                     <button type="button" class="btn btn-secondary" onclick="closeModal('inventoryModal')">Cancel</button>
                     <button type="submit" class="btn btn-success" id="saveInventoryButton">Save Item</button>
                 </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="stockMovementModal">
+        <div class="modal-content modal-medium">
+            <div class="modal-header">
+                <div style="display:flex;align-items:center;gap:.5rem">
+                    @include('partials.modal_logo')
+                    <h3 class="modal-title">Record Stock Movement</h3>
+                </div>
+                <button class="modal-close" onclick="closeModal('stockMovementModal')">&times;</button>
+            </div>
+            <form method="POST" id="stockMovementForm">
+                @csrf
+                <div class="form-grid">
+                    <div class="form-group" style="grid-column:1/-1;"><label class="form-label">Item</label><input id="movementItemName" class="form-input calc-readonly" readonly></div>
+                    <div class="form-group"><label class="form-label">Movement Type *</label><select name="movement_type" id="movementType" class="form-input" onchange="syncMovementQuantityLabel()"><option value="stock_received">Receive Stock</option><option value="stock_issued">Issue Stock</option><option value="stock_returned">Return to Stock</option><option value="damaged">Damaged / Lost</option><option value="stock_count">Physical Stock Count</option></select></div>
+                    <div class="form-group"><label class="form-label" id="movementQuantityLabel">Quantity Received *</label><input type="number" name="quantity" id="movementQuantity" class="form-input" min="0" required></div>
+                    <div class="form-group" style="grid-column:1/-1;"><label class="form-label">Reference / Remarks *</label><textarea name="remarks" class="form-input" rows="3" required placeholder="Supplier delivery receipt, job order, reason for adjustment, etc."></textarea></div>
+                </div>
+                <p style="margin:0;color:var(--text-muted);font-size:.8rem;">Every movement changes on-hand stock and creates a permanent audit record.</p>
+                <div style="display:flex;justify-content:flex-end;gap:1rem;margin-top:1rem;"><button type="button" class="btn btn-secondary" onclick="closeModal('stockMovementModal')">Cancel</button><button type="submit" class="btn btn-success">Save Movement</button></div>
             </form>
         </div>
     </div>
@@ -261,6 +293,7 @@ $isLowStock = $item['quantity'] <= $item['reorder_level'];
         document.getElementById('modalTitle').textContent = 'Edit Item';
         document.getElementById('itemId').value = item.id;
         document.getElementById('itemName').value = item.item_name;
+        validateInventoryItemName();
         const categorySelect = document.getElementById('categorySelect');
         const customCategory = document.getElementById('customCategory');
         if (categorySelect && customCategory) {
@@ -277,22 +310,96 @@ $isLowStock = $item['quantity'] <= $item['reorder_level'];
                 customCategory.required = true;
             }
         }
-        document.getElementById('itemQuantity').value = item.quantity;
+        document.getElementById('itemAddQuantity').value = '1';
+        document.getElementById('itemQuantity').value = '0';
+        document.getElementById('itemQuantity').readOnly = false;
+        document.getElementById('itemQuantity').classList.remove('calc-readonly');
+        document.getElementById('itemQuantityLabel').textContent = 'Quantity to Add';
+        document.getElementById('itemQuantityHelp').style.display = 'block';
         document.getElementById('itemPrice').value = item.unit_price;
         document.getElementById('itemReorder').value = item.reorder_level;
         document.getElementById('itemSupplier').value = item.supplier;
         document.getElementById('itemDescription').value = item.description || '';
         openModal('inventoryModal');
     }
+
+    function inventoryItemFromButton(button) {
+        try {
+            return JSON.parse(button.dataset.inventoryItem || '{}');
+        } catch (error) {
+            console.error('Unable to load inventory item details.', error);
+            return null;
+        }
+    }
+
+    function editItemFromButton(button) {
+        const item = inventoryItemFromButton(button);
+        if (item?.id) editItem(item);
+    }
+
+    function openStockMovementFromButton(button) {
+        const item = inventoryItemFromButton(button);
+        if (item?.id) openStockMovement(item);
+    }
+    function openNewItemModal() {
+        document.getElementById('inventoryForm').reset();
+        document.getElementById('modalTitle').textContent = 'Add Item';
+        document.getElementById('itemId').value = '';
+        document.getElementById('itemAddQuantity').value = '0';
+        document.getElementById('itemNameHelp').textContent = 'Start typing to see common and existing item names.';
+        document.getElementById('itemNameHelp').style.color = 'var(--text-muted)';
+        document.getElementById('itemQuantity').readOnly = false;
+        document.getElementById('itemQuantity').classList.remove('calc-readonly');
+        document.getElementById('itemQuantityLabel').textContent = 'Opening Quantity *';
+        document.getElementById('itemQuantityHelp').style.display = 'none';
+        toggleCustomCategory();
+        openModal('inventoryModal');
+    }
+
+    function openStockMovement(item) {
+        document.getElementById('movementItemName').value = item.item_name + ' (On hand: ' + item.quantity + ', reserved: ' + item.reserved_quantity + ')';
+        document.getElementById('movementQuantity').value = '';
+        document.getElementById('movementType').value = 'stock_received';
+        document.getElementById('stockMovementForm').action = '{{ url('/inventory') }}/' + item.id + '/movement';
+        syncMovementQuantityLabel();
+        openModal('stockMovementModal');
+    }
+    function syncMovementQuantityLabel() {
+        const labels = {stock_received: 'Quantity Received *', stock_issued: 'Quantity Issued *', stock_returned: 'Quantity Returned *', damaged: 'Quantity Damaged / Lost *', stock_count: 'Actual Quantity Counted *'};
+        document.getElementById('movementQuantityLabel').textContent = labels[document.getElementById('movementType').value];
+    }
     function submitInventoryForm(form) {
         const categorySelect = document.getElementById('categorySelect');
         const category = document.getElementById('customCategory');
         const submitButton = document.getElementById('saveInventoryButton');
         category.value = categorySelect.value === '__other__' ? category.value.trim() : categorySelect.value;
-        if (submitButton.disabled) return false;
+        if (!validateInventoryItemName() || submitButton.disabled) return false;
         submitButton.disabled = true;
         submitButton.textContent = 'Saving...';
         return true;
+    }
+
+    const existingInventoryNames = @json($existingInventoryNames);
+
+    function normalizeInventoryItemName(value) {
+        return String(value || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase();
+    }
+
+    function validateInventoryItemName() {
+        const input = document.getElementById('itemName');
+        const help = document.getElementById('itemNameHelp');
+        const saveButton = document.getElementById('saveInventoryButton');
+        const currentId = document.getElementById('itemId').value;
+        const name = normalizeInventoryItemName(input.value);
+        const duplicate = name !== '' && !currentId && existingInventoryNames.some(item => normalizeInventoryItemName(item) === name);
+
+        input.setCustomValidity(duplicate ? 'This inventory item already exists.' : '');
+        help.textContent = duplicate
+            ? 'This item already exists. Choose it from the suggestions or use Record Movement to add stock.'
+            : 'Start typing to see common and existing item names.';
+        help.style.color = duplicate ? 'var(--danger)' : 'var(--text-muted)';
+        saveButton.disabled = duplicate;
+        return !duplicate;
     }
     function closeInventoryActionMenus() {
         document.querySelectorAll('.inventory-action-menu-dropdown.show').forEach(menu => {

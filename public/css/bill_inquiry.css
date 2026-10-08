@@ -14,3 +14,16 @@
     align-items: center;
     gap: 0.5rem;
 }
+
+.client-record-actions { position: relative; display: inline-block; }
+.client-record-actions summary { list-style: none; width: 32px; height: 32px; display: grid; place-items: center; cursor: pointer; border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-secondary); font-size: 1.2rem; }
+.client-record-actions summary::-webkit-details-marker { display: none; }
+.client-record-actions[open] summary, .client-record-actions summary:hover { color: var(--accent); border-color: var(--accent); }
+.client-record-actions-menu { position: absolute; right: 0; z-index: 10; min-width: 140px; padding: .25rem; background: var(--card-bg-solid, #111); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: var(--shadow-lg); }
+.client-record-actions-menu a, .client-record-actions-menu button { display: block; width: 100%; padding: .6rem .75rem; border: 0; border-radius: 6px; color: var(--text-primary); background: transparent; text-align: left; text-decoration: none; cursor: pointer; font: inherit; font-size: .85rem; }
+.client-record-actions-menu a:hover, .client-record-actions-menu button:hover { background: rgba(96, 165, 250, .12); color: var(--accent); }
+.client-record-actions-menu .danger { color: var(--danger); }
+
+/* Client Accounts action menu trigger: high-contrast vertical ellipsis. */
+html[data-theme="light"] .client-record-actions summary { color:#000 !important; -webkit-text-fill-color:#000 !important; font-size:1.5rem; font-weight:900; line-height:1; background:#d5dee8; border-color:#8796a6; text-shadow:none; }
+html[data-theme="light"] .client-record-actions[open] summary, html[data-theme="light"] .client-record-actions summary:hover { color:#000 !important; border-color:#285f9e; background:#c7d3df; }

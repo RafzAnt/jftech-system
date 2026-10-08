@@ -28,8 +28,9 @@ function applyTheme(theme) {
 }
 
 function initializeTheme() {
-    // Default to dark mode unless the user previously chose a theme
-    const savedTheme = localStorage.getItem('jftech-theme') || 'dark';
+    // The operations workspace defaults to a bright business layout. The
+    // sidebar remains dark for clear navigation and visual anchoring.
+    const savedTheme = localStorage.getItem('jftech-theme') || 'light';
     applyTheme(savedTheme);
 }
 

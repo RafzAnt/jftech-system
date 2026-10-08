@@ -78,6 +78,7 @@
     .attendance-print-qr-code img,
     .attendance-print-qr-code canvas { display: block; width: 52mm !important; height: 52mm !important; }
     .attendance-print-qr p { margin: 5mm 0 0; color: #334155; font-size: 10pt; font-weight: 700; }
+    .attendance-print-qr .attendance-print-qr-value { max-width: 78mm; margin-top: 2mm; overflow-wrap: anywhere; font-size: 8pt; font-weight: 400; }
     .attendance-print-cut-line { display: none; }
     .qr-section, .tabs, .btn { display: none !important; }
 }

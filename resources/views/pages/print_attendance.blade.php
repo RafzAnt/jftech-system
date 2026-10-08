@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Attendance Report</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         @media print { *, *::before, *::after { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } }
         @media print { .doc-header { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; flex-wrap: nowrap; } .doc-header .print-company-brand { min-width: 0; } .doc-title { text-align: right; } }
@@ -50,6 +51,24 @@
             color: #475569;
             margin-bottom: 14px;
         }
+        .attendance-qr-codes {
+            display: flex;
+            justify-content: center;
+            gap: 28px;
+            margin: 0 0 18px;
+        }
+        .attendance-qr-code {
+            min-width: 148px;
+            text-align: center;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            padding: 10px;
+        }
+        .attendance-qr-code strong { display: block; color: #1e3a8a; font-size: 13px; margin-bottom: 6px; }
+        .attendance-qr-code div { display: inline-block; padding: 4px; background: #fff; }
+        .attendance-qr-code img,
+        .attendance-qr-code canvas { display: block; width: 104px !important; height: 104px !important; }
+        .attendance-qr-code small { display: block; margin-top: 6px; color: #475569; font-size: 10px; }
         table {
             width: 100%;
             border-collapse: collapse;
@@ -114,6 +133,19 @@
         Absent: <strong>{{ number_format($totalAbsent) }}</strong>
     </div>
 
+    @if (!empty($attendanceQrCodes))
+    <section class="attendance-qr-codes" aria-label="Attendance QR codes">
+        @foreach ($attendanceQrCodes as $qr)
+        <div class="attendance-qr-code">
+            <strong>{{ $qr['qr_type'] === 'morning' ? 'MORNING QR CODE' : 'AFTERNOON QR CODE' }}</strong>
+            <div id="attendanceQr{{ ucfirst($qr['qr_type']) }}"></div>
+            <small>{{ $qr['qr_code'] }}</small>
+            <small>Valid: {{ date('h:i A', strtotime($qr['valid_from'])) }} - {{ date('h:i A', strtotime($qr['valid_until'])) }}</small>
+        </div>
+        @endforeach
+    </section>
+    @endif
+
     <table>
         <thead>
             <tr>
@@ -161,7 +193,18 @@ if (empty($attendanceRecords)) { echo '<tr><td colspan="9" style="text-align: ce
     </div>
 
     <script>
-        window.onload = function () { window.print(); };
+        @foreach ($attendanceQrCodes as $qr)
+        new QRCode(document.getElementById('attendanceQr{{ ucfirst($qr['qr_type']) }}'), {
+            text: @json($qr['qr_code']),
+            width: 104,
+            height: 104,
+            colorDark: '#0a1628',
+            colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.H
+        });
+        @endforeach
+
+        window.onload = function () { window.setTimeout(function () { window.print(); }, 100); };
     </script>
 </body>
 </html>

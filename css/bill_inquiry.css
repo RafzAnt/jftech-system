@@ -14,3 +14,21 @@
     align-items: center;
     gap: 0.5rem;
 }
+
+/* Client Accounts action menu trigger: high-contrast vertical ellipsis. */
+html[data-theme="light"] .client-record-actions summary {
+    color: #000000 !important;
+    -webkit-text-fill-color: #000000 !important;
+    font-size: 1.5rem;
+    font-weight: 900;
+    line-height: 1;
+    background: #d5dee8;
+    border-color: #8796a6;
+    text-shadow: none;
+}
+html[data-theme="light"] .client-record-actions[open] summary,
+html[data-theme="light"] .client-record-actions summary:hover {
+    color: #000000 !important;
+    border-color: #285f9e;
+    background: #c7d3df;
+}

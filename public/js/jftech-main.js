@@ -28,9 +28,9 @@ function applyTheme(theme) {
 }
 
 function initializeTheme() {
-    // Dark is the system default. Light mode is only used after the user
-    // explicitly selects it from the theme switch.
-    const savedTheme = localStorage.getItem('jftech-theme') || 'dark';
+    // The operations workspace defaults to a bright business layout. The
+    // sidebar remains dark for clear navigation and visual anchoring.
+    const savedTheme = localStorage.getItem('jftech-theme') || 'light';
     applyTheme(savedTheme);
 }
 

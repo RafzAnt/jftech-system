@@ -73,7 +73,14 @@ function formatScheduleTime(string $time): string {
     return $parsed !== false ? date('g:i A', $parsed) : $time;
 }
 
-$employeePositions = ['Technician', 'Technician I', 'Technician II', 'Master Technician', 'Intern'];
+// Employee roles and rates are standardized for the technician workforce.
+// The server assigns the rate instead of trusting a browser-submitted value.
+$employeePositionRates = [
+    'Technician I' => 500.00,
+    'Technician II' => 580.00,
+    'Admin' => 600.00,
+];
+$employeePositions = array_keys($employeePositionRates);
 
 // Get all employees
 $stmt = $pdo->query("SELECT e.*, u.username, u.status as user_status FROM employees e LEFT JOIN users u ON e.user_id = u.id ORDER BY e.full_name");
@@ -266,13 +273,16 @@ if ($request->isMethod('post') && $request->has('save_employee')) {
         $email = trim($request->input('email'));
         $address = trim($request->input('address'));
         $dateHired = $request->input('date_hired');
-        $dailyRate = $request->input('daily_rate');
+        $dailyRate = $employeePositionRates[$position] ?? null;
 
         if ($firstName === '' || $lastName === '') {
             throw new Exception('First name and last name are required. Middle name is optional.');
         }
         if (! in_array($position, $employeePositions, true)) {
             throw new Exception('Select a valid employee position.');
+        }
+        if ($dailyRate === null) {
+            throw new Exception('The selected position does not have a configured daily rate.');
         }
         if ($contactNumber !== '' && ! preg_match('/^\d{11}$/', $contactNumber)) {
             throw new Exception('Contact number must contain exactly 11 digits.');

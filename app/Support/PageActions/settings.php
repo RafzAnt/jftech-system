@@ -29,6 +29,11 @@ if ($request->isMethod('post')) {
                 throw new Exception('Company contact number must contain exactly 11 digits.');
             }
             foreach ($submittedSettings as $key => $value) {
+                if (str_starts_with((string) $key, 'payroll_') && (! is_numeric($value) || (float) $value < 0)) {
+                    throw new Exception('Payroll deductions must be valid positive amounts.');
+                }
+            }
+            foreach ($submittedSettings as $key => $value) {
                 $stmt = $pdo->prepare("UPDATE system_settings SET setting_value = ? WHERE setting_key = ?");
                 $stmt->execute([$value, $key]);
             }

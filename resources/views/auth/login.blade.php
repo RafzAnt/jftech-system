@@ -21,6 +21,11 @@
 
     <main class="corporate-login-card">
         <section class="login-section" aria-label="Login form">
+            <div class="login-welcome">
+                <span class="login-welcome__eyebrow">Secure workspace</span>
+                <h2>Welcome back</h2>
+                <p>Sign in to manage your daily business operations.</p>
+            </div>
             @if ($errors->any())
                 <div class="alert alert-danger" role="alert">{{ $errors->first() }}</div>
             @endif
@@ -56,7 +61,8 @@
                     <img src="{{ url('/assets/jftech-logo.png') }}" alt="JFTECH logo" width="135" height="135">
                 </div>
             <h1>JFTECH</h1>
-            <p>Management System</p>
+            <p>Business Management System</p>
+            <span class="brand-section__note">Connected teams. Clear operations.</span>
         </section>
     </main>
 
