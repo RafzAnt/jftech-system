@@ -35,7 +35,7 @@ class ApiController extends Controller
             ->selectRaw("GREATEST(inventory.quantity - COALESCE((SELECT SUM(requests.quantity) FROM inventory_requests AS requests WHERE requests.inventory_id = inventory.id AND requests.status = 'pending'), 0), 0) AS available_quantity")
             ->where('inventory.status', 'active')
             ->where('inventory.archived', 0)
-            ->having('available_quantity', '>', 0)
+            ->whereRaw("GREATEST(inventory.quantity - COALESCE((SELECT SUM(requests.quantity) FROM inventory_requests AS requests WHERE requests.inventory_id = inventory.id AND requests.status = 'pending'), 0), 0) > 0")
             ->orderBy('inventory.item_name')
             ->get();
 
