@@ -15,7 +15,7 @@ $selectedEnd = $request->query('end') ?? '';
 $query = "SELECT a.*, e.full_name, e.employee_code, e.position, e.department
           FROM attendance a
           JOIN employees e ON a.employee_id = e.id
-          WHERE 1=1";
+          WHERE TRUE";
 $params = [];
 
 if ($selectedEmployee) {
@@ -45,7 +45,7 @@ $attendanceRecords = $stmt->fetchAll();
 
 // Include today's active attendance QR codes in the printable report so staff
 // can scan them directly from the same printed attendance sheet.
-$stmt = $pdo->query("SELECT qr_code, qr_type, valid_from, valid_until FROM qr_codes WHERE valid_date = CURDATE() AND status = 'active' ORDER BY qr_type");
+$stmt = $pdo->query("SELECT qr_code, qr_type, valid_from, valid_until FROM qr_codes WHERE valid_date = CURRENT_DATE AND status = 'active' ORDER BY qr_type");
 $attendanceQrCodes = $stmt->fetchAll();
 
 // Get employees for filter

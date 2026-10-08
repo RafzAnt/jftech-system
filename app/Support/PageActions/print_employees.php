@@ -13,7 +13,7 @@ $searchTerm = $request->query('search') ?? '';
 $query = "SELECT e.*, u.username, u.status as user_status 
           FROM employees e 
           LEFT JOIN users u ON e.user_id = u.id 
-          WHERE 1=1";
+          WHERE TRUE";
 $params = [];
 
 if ($selectedDepartment) {

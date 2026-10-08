@@ -15,7 +15,7 @@ $selectedEnd = $request->query('end') ?? '';
 $query = "SELECT b.*, c.full_name, c.client_code, c.wifi_plan 
           FROM bills b 
           JOIN clients c ON b.client_id = c.id 
-          WHERE 1=1";
+          WHERE TRUE";
 $params = [];
 
 if ($selectedStatus) {

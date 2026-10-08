@@ -11,7 +11,7 @@ $selectedCategory = $request->query('category') ?? '';
 $searchTerm = $request->query('search') ?? '';
 $showArchived = $request->has('archived') && $request->query('archived') == 1;
 
-$query = "SELECT * FROM inventory WHERE 1=1";
+$query = "SELECT * FROM inventory WHERE TRUE";
 $params = [];
 
 if (!$showArchived) {

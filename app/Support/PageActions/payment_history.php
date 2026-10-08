@@ -33,7 +33,7 @@ $paymentQuery = "SELECT p.*, c.full_name as client_name, br.barangay_name, u.ful
                  LEFT JOIN barangays br ON c.barangay_id = br.id
                  LEFT JOIN users u ON p.received_by = u.id
                  LEFT JOIN bills b ON p.bill_id = b.id
-                 WHERE 1 = 1";
+                 WHERE TRUE";
 $paymentParams = [];
 
 if ($selectedBarangay !== '') {

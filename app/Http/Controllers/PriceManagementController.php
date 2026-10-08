@@ -86,8 +86,8 @@ class PriceManagementController extends Controller
     private function availability(Request $request, string $action)
     {
         $plan = InternetPlan::findOrFail($request->integer('plan_id'));
-        if ($action === 'archive') { $plan->update(['archived' => true, 'status' => 'inactive']); return back()->with('success', 'Plan archived. Existing clients keep their recorded plan and rate.'); }
-        if ($action === 'restore') { $plan->update(['archived' => false]); return back()->with('success', 'Plan restored. Activate it when it should be offered to new clients.'); }
+        if ($action === 'archive') { $plan->update(['archived' => 1, 'status' => 'inactive']); return back()->with('success', 'Plan archived. Existing clients keep their recorded plan and rate.'); }
+        if ($action === 'restore') { $plan->update(['archived' => 0]); return back()->with('success', 'Plan restored. Activate it when it should be offered to new clients.'); }
         abort_if($plan->archived, 404);
         $plan->update(['status' => $plan->status === 'active' ? 'inactive' : 'active']);
         return back()->with('success', "Plan {$plan->fresh()->status}.");

@@ -177,7 +177,7 @@ $stmt->execute($attendanceParams);
 $attendanceRecords = $stmt->fetchAll();
 
 // Get today's attendance count
-$stmt = $pdo->prepare("SELECT COUNT(*) as total FROM attendance WHERE attendance_date = CURDATE()");
+$stmt = $pdo->prepare("SELECT COUNT(*) as total FROM attendance WHERE attendance_date = CURRENT_DATE");
 $stmt->execute();
 $todayAttendanceCount = $stmt->fetch()['total'];
 
@@ -225,7 +225,7 @@ $qrAfternoonStart = $attendanceSettings['qr_afternoon_start'] ?? '13:00:00';
 $qrAfternoonEnd = $attendanceSettings['qr_afternoon_end'] ?? '17:00:00';
 
 // Get QR codes
-$stmt = $pdo->query("SELECT * FROM qr_codes WHERE valid_date = CURDATE() ORDER BY created_at DESC LIMIT 2");
+$stmt = $pdo->query("SELECT * FROM qr_codes WHERE valid_date = CURRENT_DATE ORDER BY created_at DESC LIMIT 2");
 $qrCodes = $stmt->fetchAll();
 
 // Generate QR Code if requested
@@ -253,7 +253,7 @@ if ($request->isMethod('post') && $request->has('generate_qr')) {
         $success = ucfirst($qrType) . ' QR Code generated successfully!';
         
         // Refresh QR codes
-        $stmt = $pdo->query("SELECT * FROM qr_codes WHERE valid_date = CURDATE() ORDER BY created_at DESC LIMIT 2");
+        $stmt = $pdo->query("SELECT * FROM qr_codes WHERE valid_date = CURRENT_DATE ORDER BY created_at DESC LIMIT 2");
         $qrCodes = $stmt->fetchAll();
     } catch (Exception $e) {
         $error = 'Error: ' . $e->getMessage();

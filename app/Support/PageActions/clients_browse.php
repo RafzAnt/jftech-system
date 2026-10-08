@@ -118,7 +118,7 @@ if ($showArchived) {
     $query = "SELECT c.*, b.barangay_name
               FROM clients c
               LEFT JOIN barangays b ON c.barangay_id = b.id 
-              WHERE 1=1";
+              WHERE TRUE";
     $params = [];
 
     if ($selectedBarangay) {

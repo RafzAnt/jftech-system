@@ -12,7 +12,7 @@ $loginHistoryCssVersion = filemtime(public_path('css/login_history.css'));
 
 $searchUser = $request->query('search_user') ?? '';
 
-$query = "SELECT * FROM login_history WHERE 1=1";
+$query = "SELECT * FROM login_history WHERE TRUE";
 $params = [];
 
 if ($searchUser) {
@@ -36,7 +36,7 @@ $successfulLogins = $stmt->fetch()['total'];
 $stmt = $pdo->query("SELECT COUNT(*) as total FROM login_history WHERE status = 'failed'");
 $failedLogins = $stmt->fetch()['total'];
 
-$stmt = $pdo->query("SELECT COUNT(DISTINCT user_id) as total FROM login_history WHERE login_time >= DATE_SUB(NOW(), INTERVAL 24 HOUR)");
+$stmt = $pdo->query("SELECT COUNT(DISTINCT user_id) as total FROM login_history WHERE login_time >= CURRENT_TIMESTAMP - INTERVAL '24 hours'");
 $activeToday = $stmt->fetch()['total'];
     return get_defined_vars();
 };

@@ -173,7 +173,7 @@ if ($verified) {
         $stmt = $pdo->prepare("SELECT users.*, employees.position AS employee_position FROM users LEFT JOIN employees ON employees.user_id = users.id WHERE (users.username LIKE ? OR users.full_name LIKE ? OR users.email LIKE ? OR employees.position LIKE ?) $archivedFilter ORDER BY users.created_at DESC");
         $stmt->execute([$searchTerm, $searchTerm, $searchTerm, $searchTerm]);
     } else {
-        $stmt = $pdo->query("SELECT users.*, employees.position AS employee_position FROM users LEFT JOIN employees ON employees.user_id = users.id WHERE 1 $archivedFilter ORDER BY users.created_at DESC");
+        $stmt = $pdo->query("SELECT users.*, employees.position AS employee_position FROM users LEFT JOIN employees ON employees.user_id = users.id WHERE TRUE $archivedFilter ORDER BY users.created_at DESC");
     }
     $users = $stmt->fetchAll();
     $archivedCount = (int) $pdo->query("SELECT COUNT(*) FROM users WHERE archived = 1")->fetchColumn();
