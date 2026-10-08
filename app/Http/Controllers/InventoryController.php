@@ -18,7 +18,7 @@ class InventoryController extends Controller
             ->select('inventory.*')
             ->selectRaw("COALESCE((SELECT SUM(requests.quantity) FROM inventory_requests AS requests WHERE requests.inventory_id = inventory.id AND requests.status = 'pending'), 0) AS reserved_quantity")
             ->selectRaw("GREATEST(inventory.quantity - COALESCE((SELECT SUM(requests.quantity) FROM inventory_requests AS requests WHERE requests.inventory_id = inventory.id AND requests.status = 'pending'), 0), 0) AS available_quantity")
-            ->where('archived', $showArchived)
+            ->where('archived', (int) $showArchived)
             ->orderBy('category')
             ->orderBy('item_name')
             ->get()
@@ -47,7 +47,7 @@ class InventoryController extends Controller
         $existingInventoryNames = Inventory::query()->orderBy('item_name')->pluck('item_name')->all();
         $inventoryNameSuggestions = array_values(array_unique(array_merge($commonItemNames, $existingInventoryNames)));
 
-        return view('pages.inventory', ['themeCssVersion' => @filemtime(public_path('css/jftech-theme.css')) ?: 1, 'inventoryCssVersion' => @filemtime(public_path('css/inventory.css')) ?: 1, 'showArchived' => $showArchived, 'success' => session('success', ''), 'error' => session('error', ''), 'inventoryItems' => $items, 'categories' => $categories, 'archivedCount' => Inventory::where('archived', true)->count(), 'filterCategory' => $filterCategory, 'filteredItems' => $filteredItems, 'totalItems' => count($filteredItems), 'totalValue' => array_sum(array_map(fn ($item) => $item['quantity'] * $item['unit_price'], $filteredItems)), 'lowStock' => count(array_filter($filteredItems, fn ($item) => $item['available_quantity'] <= $item['reorder_level'])), 'tab' => $tab, 'movements' => $movements, 'submissionToken' => $submissionToken, 'inventoryNameSuggestions' => $inventoryNameSuggestions, 'existingInventoryNames' => $existingInventoryNames]);
+        return view('pages.inventory', ['themeCssVersion' => @filemtime(public_path('css/jftech-theme.css')) ?: 1, 'inventoryCssVersion' => @filemtime(public_path('css/inventory.css')) ?: 1, 'showArchived' => $showArchived, 'success' => session('success', ''), 'error' => session('error', ''), 'inventoryItems' => $items, 'categories' => $categories, 'archivedCount' => Inventory::where('archived', 1)->count(), 'filterCategory' => $filterCategory, 'filteredItems' => $filteredItems, 'totalItems' => count($filteredItems), 'totalValue' => array_sum(array_map(fn ($item) => $item['quantity'] * $item['unit_price'], $filteredItems)), 'lowStock' => count(array_filter($filteredItems, fn ($item) => $item['available_quantity'] <= $item['reorder_level'])), 'tab' => $tab, 'movements' => $movements, 'submissionToken' => $submissionToken, 'inventoryNameSuggestions' => $inventoryNameSuggestions, 'existingInventoryNames' => $existingInventoryNames]);
     }
     public function store(Request $request): RedirectResponse
     {

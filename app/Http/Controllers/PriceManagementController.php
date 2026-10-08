@@ -14,7 +14,7 @@ class PriceManagementController extends Controller
         $this->applyDueScheduledPrices();
         $search = trim((string) $request->query('search', ''));
         $showArchived = $request->boolean('archived');
-        $plans = InternetPlan::query()->where('archived', $showArchived)
+        $plans = InternetPlan::query()->where('archived', (int) $showArchived)
             ->when($search, fn ($query) => $query->where('plan_name', 'like', "%{$search}%"))
             ->withCount(['clients as active_clients_count' => fn ($query) => $query->where('status', 'active')])
             ->orderBy('monthly_price')->get();
@@ -28,7 +28,7 @@ class PriceManagementController extends Controller
             'plans' => $plans, 'history' => $history, 'search' => $search, 'showArchived' => $showArchived,
             'stats' => [
                 'active' => InternetPlan::active()->count(),
-                'scheduled' => InternetPlan::whereNotNull('price_effective_on')->where('archived', false)->count(),
+                'scheduled' => InternetPlan::whereNotNull('price_effective_on')->where('archived', 0)->count(),
                 'clients' => DB::table('clients')->where('status', 'active')->count(),
             ],
             'themeCssVersion' => @filemtime(public_path('css/jftech-theme.css')) ?: 1,
@@ -58,7 +58,7 @@ class PriceManagementController extends Controller
             return back()->with('success', 'Internet plan added. It is available for new client registrations when active.');
         }
         DB::transaction(function () use ($request, $data) {
-            $plan = InternetPlan::where('archived', false)->lockForUpdate()->findOrFail($data['plan_id']);
+            $plan = InternetPlan::where('archived', 0)->lockForUpdate()->findOrFail($data['plan_id']);
             $oldMonthly = $plan->monthly_price; $oldFee = $plan->installation_fee;
             $plan->update(collect($data)->except('reason')->all());
             if ((float) $oldMonthly !== (float) $plan->monthly_price) {
@@ -76,7 +76,7 @@ class PriceManagementController extends Controller
             'price_effective_on' => ['required', 'date', 'after:today'], 'reason' => ['required', 'string', 'max:1000'],
         ]);
         DB::transaction(function () use ($data) {
-            $plan = InternetPlan::where('archived', false)->lockForUpdate()->findOrFail($data['plan_id']);
+            $plan = InternetPlan::where('archived', 0)->lockForUpdate()->findOrFail($data['plan_id']);
             $plan->update(['scheduled_monthly_price' => $data['scheduled_monthly_price'], 'scheduled_installation_fee' => $plan->installation_fee, 'price_effective_on' => $data['price_effective_on']]);
             $this->history($plan, $plan->monthly_price, $plan->installation_fee, 'scheduled', $data['price_effective_on'], $data['reason']);
         });

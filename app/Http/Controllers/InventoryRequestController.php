@@ -35,7 +35,7 @@ class InventoryRequestController extends Controller
                 $inventory = DB::table('inventory')
                     ->where('id', $requestRecord->inventory_id)
                     ->where('status', 'active')
-                    ->where('archived', false)
+                    ->where('archived', 0)
                     ->lockForUpdate()
                     ->first();
 
