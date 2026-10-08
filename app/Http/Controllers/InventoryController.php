@@ -47,7 +47,7 @@ class InventoryController extends Controller
         $existingInventoryNames = Inventory::query()->orderBy('item_name')->pluck('item_name')->all();
         $inventoryNameSuggestions = array_values(array_unique(array_merge($commonItemNames, $existingInventoryNames)));
 
-        return view('pages.inventory', ['themeCssVersion' => @filemtime(public_path('css/jftech-theme.css')) ?: 1, 'inventoryCssVersion' => @filemtime(public_path('css/inventory.css')) ?: 1, 'showArchived' => $showArchived, 'success' => session('success', ''), 'error' => session('error', ''), 'inventoryItems' => $items, 'categories' => $categories, 'archivedCount' => Inventory::where('archived', 1)->count(), 'filterCategory' => $filterCategory, 'filteredItems' => $filteredItems, 'totalItems' => count($filteredItems), 'totalValue' => array_sum(array_map(fn ($item) => $item['quantity'] * $item['unit_price'], $filteredItems)), 'lowStock' => count(array_filter($filteredItems, fn ($item) => $item['available_quantity'] <= $item['reorder_level'])), 'tab' => $tab, 'movements' => $movements, 'submissionToken' => $submissionToken, 'inventoryNameSuggestions' => $inventoryNameSuggestions, 'existingInventoryNames' => $existingInventoryNames]);
+        return view('pages.inventory', ['currentPage' => 'inventory', 'themeCssVersion' => @filemtime(public_path('css/jftech-theme.css')) ?: 1, 'inventoryCssVersion' => @filemtime(public_path('css/inventory.css')) ?: 1, 'showArchived' => $showArchived, 'success' => session('success', ''), 'error' => session('error', ''), 'inventoryItems' => $items, 'categories' => $categories, 'archivedCount' => Inventory::where('archived', 1)->count(), 'filterCategory' => $filterCategory, 'filteredItems' => $filteredItems, 'totalItems' => count($filteredItems), 'totalValue' => array_sum(array_map(fn ($item) => $item['quantity'] * $item['unit_price'], $filteredItems)), 'lowStock' => count(array_filter($filteredItems, fn ($item) => $item['available_quantity'] <= $item['reorder_level'])), 'tab' => $tab, 'movements' => $movements, 'submissionToken' => $submissionToken, 'inventoryNameSuggestions' => $inventoryNameSuggestions, 'existingInventoryNames' => $existingInventoryNames]);
     }
     public function store(Request $request): RedirectResponse
     {
@@ -73,7 +73,7 @@ class InventoryController extends Controller
             }
 
             if (! $id) {
-                $item = Inventory::create($data + ['status' => 'active', 'archived' => false]);
+                $item = Inventory::create($data + ['status' => 'active', 'archived' => 0]);
                 $this->recordMovement($item, $item->quantity, 'opening_balance', 'Opening stock when item was added.');
                 return;
             }
@@ -88,8 +88,8 @@ class InventoryController extends Controller
         });
         return back()->with('success', $id ? 'Item updated successfully!' : 'Item added successfully!');
     }
-    public function archive(Request $request, Inventory $inventory): RedirectResponse { $inventory->update(['archived' => true]); return back()->with('success', 'Item archived successfully!'); }
-    public function restore(Request $request, Inventory $inventory): RedirectResponse { $inventory->update(['archived' => false]); return back()->with('success', 'Item restored successfully!'); }
+    public function archive(Request $request, Inventory $inventory): RedirectResponse { $inventory->update(['archived' => 1]); return back()->with('success', 'Item archived successfully!'); }
+    public function restore(Request $request, Inventory $inventory): RedirectResponse { $inventory->update(['archived' => 0]); return back()->with('success', 'Item restored successfully!'); }
     public function destroy(Request $request, Inventory $inventory): RedirectResponse { abort_unless($inventory->archived, 422); $inventory->delete(); return back()->with('success', 'Item deleted permanently!'); }
 
     public function recordStockMovement(Request $request, Inventory $inventory): RedirectResponse

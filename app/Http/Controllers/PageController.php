@@ -14,6 +14,7 @@ class PageController extends Controller
         abort_unless(is_file($action), 404);
         $data = require $action;
         $data = $data($request);
+        $data['currentPage'] ??= $page;
         $data['mainJsVersion'] ??= @filemtime(public_path('js/jftech-main.js')) ?: 1;
 
         return view("pages.$page", $data);

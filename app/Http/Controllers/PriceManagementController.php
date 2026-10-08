@@ -25,7 +25,7 @@ class PriceManagementController extends Controller
             ->latest('internet_plan_price_histories.created_at')->limit(15)->get();
 
         return view('pages.price_management', [
-            'plans' => $plans, 'history' => $history, 'search' => $search, 'showArchived' => $showArchived,
+            'currentPage' => 'price_management', 'plans' => $plans, 'history' => $history, 'search' => $search, 'showArchived' => $showArchived,
             'stats' => [
                 'active' => InternetPlan::active()->count(),
                 'scheduled' => InternetPlan::whereNotNull('price_effective_on')->where('archived', 0)->count(),

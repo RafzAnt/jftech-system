@@ -41,22 +41,22 @@
             'login_history' => '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
         ];
         $navItems = $navItems ?? [
-            ['id' => 'dashboard', 'label' => 'Dashboard', 'url' => 'dashboard.php'],
-            ['id' => 'clients_browse', 'label' => 'Clients', 'url' => 'clients_browse.php'],
-            ['id' => 'bill_inquiry', 'label' => 'Client Accounts', 'url' => 'bill_inquiry.php'],
-            ['id' => 'payment_history', 'label' => 'Payment History', 'url' => 'payment_history.php'],
-            ['id' => 'employees', 'label' => 'Employees', 'url' => 'employees.php'],
-            ['id' => 'payroll', 'label' => 'Payroll', 'url' => 'payroll.php'],
-            ['id' => 'inventory', 'label' => 'Inventory', 'url' => 'inventory.php', 'submenu' => [
-                ['label' => 'Stock Management', 'url' => 'inventory.php'],
-                ['label' => 'Movement History', 'url' => 'inventory.php?tab=movements'],
-                ['label' => 'Requests', 'url' => 'inventory_requests.php'],
+            ['id' => 'dashboard', 'label' => 'Dashboard', 'url' => url('/dashboard')],
+            ['id' => 'clients_browse', 'label' => 'Clients', 'url' => url('/clients')],
+            ['id' => 'bill_inquiry', 'label' => 'Client Accounts', 'url' => url('/client-accounts')],
+            ['id' => 'payment_history', 'label' => 'Payment History', 'url' => url('/payments')],
+            ['id' => 'employees', 'label' => 'Employees', 'url' => url('/employees')],
+            ['id' => 'payroll', 'label' => 'Payroll', 'url' => url('/payroll')],
+            ['id' => 'inventory', 'label' => 'Inventory', 'url' => url('/inventory'), 'submenu' => [
+                ['label' => 'Stock Management', 'url' => url('/inventory')],
+                ['label' => 'Movement History', 'url' => url('/inventory?tab=movements')],
+                ['label' => 'Requests', 'url' => url('/inventory-requests')],
             ]],
-            ['id' => 'price_management', 'label' => 'Price Management', 'url' => 'price_management.php?view=dashboard'],
-            ['id' => 'reports', 'label' => 'Reports', 'url' => 'reports.php'],
-            ['id' => 'settings', 'label' => 'System Settings', 'url' => 'settings.php'],
-            ['id' => 'user_management', 'label' => 'User Management', 'url' => 'user_management.php'],
-            ['id' => 'login_history', 'label' => 'Login History', 'url' => 'login_history.php'],
+            ['id' => 'price_management', 'label' => 'Price Management', 'url' => url('/price-management?view=dashboard')],
+            ['id' => 'reports', 'label' => 'Reports', 'url' => url('/reports')],
+            ['id' => 'settings', 'label' => 'System Settings', 'url' => url('/settings')],
+            ['id' => 'user_management', 'label' => 'User Management', 'url' => url('/users')],
+            ['id' => 'login_history', 'label' => 'Login History', 'url' => url('/login-history')],
         ];
     @endphp
 
@@ -112,7 +112,7 @@
     </nav>
 
     <div class="sidebar-footer">
-        <form id="logout-form" method="POST" action="{{ url('/pages/logout.php') }}">
+        <form id="logout-form" method="POST" action="{{ route('logout') }}">
             @csrf
             <button type="button" class="btn-logout" data-logout-confirm>
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>

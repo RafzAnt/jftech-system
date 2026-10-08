@@ -2,7 +2,7 @@
 
 This repository deploys Laravel as a Vercel container through
 `Dockerfile.vercel`. Vercel detects that file automatically; do not set a
-Vercel build command, output directory, or a `vercel.json` file for this app.
+Vercel build command or output directory for this app.
 
 ## Before importing the repository
 
@@ -64,6 +64,22 @@ Vercel build command, output directory, or a `vercel.json` file for this app.
 5. Click **Deploy**. Keep `RUN_MIGRATIONS=false` because the existing Laravel
    migration files contain MySQL-specific SQL. Apply future PostgreSQL schema
    changes through Supabase SQL Editor or Supabase CLI first, then deploy.
+
+## Reduce page loading time
+
+The database connection shown in Supabase as `ap-southeast-2` is in Sydney.
+Vercel uses Washington (`iad1`) by default, which adds unnecessary round-trip
+time to every database query. After the first deployment, change the function
+region:
+
+1. In Vercel, open the **jftech-system** project, then **Settings → Functions**.
+2. Open **Function Regions** and select **Sydney (`syd1`)** only.
+3. Save, then redeploy the latest production deployment.
+
+Vercel routes static CSS and JavaScript through its CDN automatically. The
+first request after an idle period can still take longer while the container
+starts, but placing the function beside Supabase removes the large
+Washington-to-Sydney database delay for active requests.
 
 ## After deployment
 
