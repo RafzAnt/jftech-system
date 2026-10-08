@@ -20,7 +20,7 @@ class AuthController extends Controller
             'password' => ['required', 'string', 'max:255'],
         ]);
         $user = User::where('username', $data['username'])->where('status', 'active')->first();
-        $ok = $user && Hash::check($data['password'], $user->password);
+        $ok = $user && str_starts_with($user->password, '$2y$') && Hash::check($data['password'], $user->password);
         $history = ['user_id' => $ok ? $user->id : null, 'username' => $data['username'], 'full_name' => $ok ? $user->full_name : '', 'role' => $ok ? $user->role : '', 'ip_address' => $request->ip(), 'user_agent' => (string) $request->userAgent(), 'status' => $ok ? 'success' : 'failed'];
         if (\Illuminate\Support\Facades\Schema::hasColumn('login_history', 'error_message')) $history['error_message'] = $ok ? null : 'Invalid username or password.';
         $historyRecord = LoginHistory::create($history);
