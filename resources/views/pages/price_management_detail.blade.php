@@ -5,6 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>JFTECH - Price Details</title>
+    <script>
+        try {
+            var savedTheme = localStorage.getItem('jftech-theme');
+            document.documentElement.setAttribute('data-theme', savedTheme === 'dark' ? 'dark' : 'light');
+        } catch (error) {
+            document.documentElement.setAttribute('data-theme', 'light');
+        }
+    </script>
     <link rel="stylesheet" href="{{ asset('css/jftech-theme.css') }}?{{ $themeCssVersion }}">
     <link rel="stylesheet" href="{{ asset('css/price_management.css') }}?{{ $priceCssVersion }}">
 </head>

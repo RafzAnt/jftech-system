@@ -3,6 +3,14 @@
 <head>
     <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
     <title>JFTECH - Price Management</title>
+    <script>
+        try {
+            var savedTheme = localStorage.getItem('jftech-theme');
+            document.documentElement.setAttribute('data-theme', savedTheme === 'dark' ? 'dark' : 'light');
+        } catch (error) {
+            document.documentElement.setAttribute('data-theme', 'light');
+        }
+    </script>
     <link rel="stylesheet" href="{{ asset('css/jftech-theme.css') }}?{{ $themeCssVersion }}">
     <link rel="stylesheet" href="{{ asset('css/price_management.css') }}?{{ $priceCssVersion }}">
 </head>

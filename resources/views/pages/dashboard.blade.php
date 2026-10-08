@@ -4,6 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JFTECH - Dashboard</title>
+    <script>
+        try {
+            var savedTheme = localStorage.getItem('jftech-theme');
+            document.documentElement.setAttribute('data-theme', savedTheme === 'dark' ? 'dark' : 'light');
+        } catch (error) {
+            document.documentElement.setAttribute('data-theme', 'light');
+        }
+    </script>
     <link rel="stylesheet" href="{{ asset('css/jftech-theme.css') }}?{{ $themeCssVersion }}">
     <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?{{ $dashboardCssVersion }}">
 </head>

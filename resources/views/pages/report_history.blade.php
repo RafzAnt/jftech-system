@@ -4,6 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JFTECH - Reports History</title>
+    <script>
+        try {
+            var savedTheme = localStorage.getItem('jftech-theme');
+            document.documentElement.setAttribute('data-theme', savedTheme === 'dark' ? 'dark' : 'light');
+        } catch (error) {
+            document.documentElement.setAttribute('data-theme', 'light');
+        }
+    </script>
     <link rel="stylesheet" href="{{ asset('css/jftech-theme.css') }}?{{ @filemtime(public_path('css/jftech-theme.css')) ?: 1 }}">
     <link rel="stylesheet" href="{{ asset('css/reports.css') }}?{{ @filemtime(public_path('css/reports.css')) ?: 1 }}">
 </head>
