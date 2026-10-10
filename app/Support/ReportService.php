@@ -31,7 +31,7 @@ class ReportService
             SELECT c.id AS record_id, 'client' AS report_type, 'Client Registration' AS activity_type, c.created_at AS activity_datetime,
                 c.full_name AS person, c.client_code AS record_code, c.status AS status,
                 NULL AS amount, NULL AS quantity,
-                CONCAT('Plan: ', IFNULL(NULLIF(c.wifi_plan,''), 'N/A'), ' | Rate: ₱', c.monthly_rate) AS remarks,
+                CONCAT('Plan: ', COALESCE(NULLIF(c.wifi_plan,''), 'N/A'), ' | Rate: ₱', c.monthly_rate) AS remarks,
                 'Clients' AS category,
                 CASE WHEN c.status='active' THEN 'completed' ELSE 'pending' END AS outcome
             FROM clients c
@@ -41,8 +41,8 @@ class ReportService
             SELECT e.id, 'employee', 'Employee Record', e.created_at,
                 e.full_name, e.employee_code, e.status,
                 NULL, NULL,
-                CONCAT('Dept: ', IFNULL(e.department,'N/A'), ' | Position: ', IFNULL(e.position,'N/A')),
-                IFNULL(e.department,'N/A'),
+                CONCAT('Dept: ', COALESCE(e.department,'N/A'), ' | Position: ', COALESCE(e.position,'N/A')),
+                COALESCE(e.department,'N/A'),
                 CASE WHEN e.status='active' THEN 'completed' WHEN e.status='terminated' THEN 'cancelled' ELSE 'pending' END
             FROM employees e
 
@@ -60,9 +60,9 @@ class ReportService
             UNION ALL
 
             SELECT p.id, 'payment', 'Payment Received', p.created_at,
-                IFNULL(u.full_name, c.full_name), p.reference_number, 'completed' AS status,
+                COALESCE(u.full_name, c.full_name), p.reference_number, 'completed' AS status,
                 p.amount, NULL,
-                CONCAT('Payment Method: ', p.payment_method, ' | Reference: ', IFNULL(p.reference_number,'N/A')),
+                CONCAT('Payment Method: ', p.payment_method, ' | Reference: ', COALESCE(p.reference_number,'N/A')),
                 'Payments',
                 'completed' AS outcome
             FROM payments p
@@ -75,7 +75,7 @@ class ReportService
                 e.full_name, e.employee_code, CONCAT(a.status_morning,'/',a.status_afternoon),
                 NULL, a.total_hours,
                 CONCAT('Date: ', a.attendance_date, ' | Hours: ', a.total_hours),
-                IFNULL(e.department,'N/A'),
+                COALESCE(e.department,'N/A'),
                 'completed' AS outcome
             FROM attendance a
             JOIN employees e ON a.employee_id = e.id
@@ -85,8 +85,8 @@ class ReportService
             SELECT i.id, 'inventory', 'Stock Item', i.created_at,
                 'System', i.category, i.status,
                 i.unit_price, i.quantity,
-                CONCAT('Category: ', IFNULL(i.category,'N/A'), ' | Supplier: ', IFNULL(i.supplier,'N/A')),
-                IFNULL(i.category,'N/A'),
+                CONCAT('Category: ', COALESCE(i.category,'N/A'), ' | Supplier: ', COALESCE(i.supplier,'N/A')),
+                COALESCE(i.category,'N/A'),
                 CASE WHEN i.status='active' THEN 'completed' ELSE 'cancelled' END
             FROM inventory i
 
@@ -95,7 +95,7 @@ class ReportService
             SELECT ir.id, 'inventory_request', 'Stock Request', ir.created_at,
                 ir.employee_name, ir.item_name, ir.status,
                 NULL, ir.quantity,
-                CONCAT('Quantity: ', ir.quantity, ' | Notes: ', IFNULL(ir.comments,'N/A')),
+                CONCAT('Quantity: ', ir.quantity, ' | Notes: ', COALESCE(ir.comments,'N/A')),
                 'Stock Requests',
                 CASE WHEN ir.status='approved' THEN 'completed' WHEN ir.status='denied' THEN 'cancelled' ELSE 'pending' END
             FROM inventory_requests ir
@@ -106,7 +106,7 @@ class ReportService
                 e.full_name, e.employee_code, py.status,
                 py.net_pay, py.total_days_worked,
                 CONCAT('Period: ', py.payroll_period_start, ' to ', py.payroll_period_end, ' | Gross: ₱', py.gross_pay),
-                IFNULL(e.department,'N/A'),
+                COALESCE(e.department,'N/A'),
                 CASE WHEN py.status='paid' THEN 'completed' WHEN py.status IN ('draft','processed') THEN 'pending' ELSE 'pending' END
             FROM payroll py
             JOIN employees e ON py.employee_id = e.id
@@ -114,10 +114,10 @@ class ReportService
             UNION ALL
 
             SELECT lh.id, 'login', 'User Login', lh.login_time,
-                IFNULL(lh.full_name, lh.username), lh.username, lh.status,
+                COALESCE(lh.full_name, lh.username), lh.username, lh.status,
                 NULL, NULL,
-                CONCAT('IP: ', IFNULL(lh.ip_address,'N/A'), ' | Role: ', IFNULL(lh.role,'N/A')),
-                IFNULL(lh.role,'N/A'),
+                CONCAT('IP: ', COALESCE(lh.ip_address,'N/A'), ' | Role: ', COALESCE(lh.role,'N/A')),
+                COALESCE(lh.role,'N/A'),
                 CASE WHEN lh.status='success' THEN 'completed' ELSE 'cancelled' END
             FROM login_history lh
         ";
@@ -221,14 +221,18 @@ class ReportService
      */
     public function businessMetrics(): array
     {
-        $row = $this->pdo->query("SELECT
+        $monthStart = date('Y-m-01');
+        $nextMonth = date('Y-m-01', strtotime('first day of next month'));
+        $stmt = $this->pdo->prepare("SELECT
             (SELECT COUNT(*) FROM clients WHERE status = 'active') AS active_clients,
             (SELECT COUNT(*) FROM bills WHERE status IN ('pending', 'overdue')) AS open_bills,
             (SELECT COALESCE(SUM(amount), 0) FROM bills WHERE status IN ('pending', 'overdue')) AS outstanding_balance,
             (SELECT COALESCE(SUM(amount), 0) FROM payments) AS payments_received,
-            (SELECT COALESCE(SUM(amount), 0) FROM payments WHERE DATE_FORMAT(payment_date, '%Y-%m') = DATE_FORMAT(CURDATE(), '%Y-%m')) AS payments_this_month,
+            (SELECT COALESCE(SUM(amount), 0) FROM payments WHERE payment_date >= ? AND payment_date < ?) AS payments_this_month,
             (SELECT COALESCE(SUM(quantity * unit_price), 0) FROM inventory WHERE archived = 0 AND status = 'active') AS inventory_value,
-            (SELECT COUNT(*) FROM inventory WHERE archived = 0 AND status = 'active' AND quantity <= reorder_level) AS low_stock_items")->fetch(\PDO::FETCH_ASSOC);
+            (SELECT COUNT(*) FROM inventory WHERE archived = 0 AND status = 'active' AND quantity <= reorder_level) AS low_stock_items");
+        $stmt->execute([$monthStart, $nextMonth]);
+        $row = $stmt->fetch(\PDO::FETCH_ASSOC);
 
         return [
             'active_clients' => (int) $row['active_clients'],
@@ -245,7 +249,7 @@ class ReportService
     public function todaySummary(): array
     {
         $sql = "SELECT outcome, COUNT(*) AS cnt FROM (" . $this->activityUnion() . ") a
-                WHERE DATE(activity_datetime) = CURDATE() AND outcome IS NOT NULL
+                WHERE DATE(activity_datetime) = CURRENT_DATE AND outcome IS NOT NULL
                 GROUP BY outcome";
         $rows = $this->pdo->query($sql)->fetchAll(\PDO::FETCH_ASSOC);
         $map = ['completed' => 0, 'pending' => 0, 'cancelled' => 0, 'overdue' => 0];
@@ -257,12 +261,15 @@ class ReportService
     /** Daily activity totals for the last N days (real data). */
     public function dailyRollup(int $days = 14): array
     {
+        $startDate = date('Y-m-d', strtotime('-' . max(0, $days - 1) . ' days'));
         $sql = "SELECT DATE(activity_datetime) AS day, outcome, COUNT(*) AS cnt
                 FROM (" . $this->activityUnion() . ") a
-                WHERE activity_datetime >= DATE_SUB(CURDATE(), INTERVAL " . ($days - 1) . " DAY)
+                WHERE activity_datetime >= ?
                 GROUP BY day, outcome
                 ORDER BY day DESC";
-        $rows = $this->pdo->query($sql)->fetchAll(\PDO::FETCH_ASSOC);
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([$startDate]);
+        $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
         $out = [];
         foreach ($rows as $r) {
             $day = $r['day'];
@@ -283,19 +290,25 @@ class ReportService
     /** Monthly activity totals for the given year (real data). */
     public function monthlyRollup(int $year): array
     {
-        $sql = "SELECT DATE_FORMAT(activity_datetime,'%m') AS month, outcome, COUNT(*) AS cnt
+        $driver = $this->pdo->getAttribute(\PDO::ATTR_DRIVER_NAME);
+        $monthExpr = $driver === 'sqlite'
+            ? "CAST(strftime('%m', activity_datetime) AS INTEGER)"
+            : "EXTRACT(MONTH FROM activity_datetime)";
+        $sql = "SELECT $monthExpr AS month, outcome, COUNT(*) AS cnt
                 FROM (" . $this->activityUnion() . ") a
-                WHERE YEAR(activity_datetime) = " . (int) $year . "
+                WHERE activity_datetime >= ? AND activity_datetime < ?
                 GROUP BY month, outcome
                 ORDER BY month ASC";
-        $rows = $this->pdo->query($sql)->fetchAll(\PDO::FETCH_ASSOC);
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([$year . '-01-01', ($year + 1) . '-01-01']);
+        $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
         $out = [];
         for ($m = 1; $m <= 12; $m++) {
             $key = str_pad((string) $m, 2, '0', STR_PAD_LEFT);
             $out[$key] = ['total' => 0, 'completed' => 0, 'pending' => 0, 'cancelled' => 0, 'label' => date('M', mktime(0, 0, 0, $m, 1))];
         }
         foreach ($rows as $r) {
-            $m = $r['month'];
+            $m = str_pad((string) (int) $r['month'], 2, '0', STR_PAD_LEFT);
             if (! isset($out[$m])) continue;
             $out[$m]['total'] += (int) $r['cnt'];
             $out[$m][$r['outcome']] = ($out[$m][$r['outcome']] ?? 0) + (int) $r['cnt'];
@@ -398,8 +411,8 @@ class ReportService
 
         $driver = $this->pdo->getAttribute(\PDO::ATTR_DRIVER_NAME);
         $monthExpr = $driver === 'sqlite'
-            ? "strftime('%m', activity_datetime)"
-            : "DATE_FORMAT(activity_datetime, '%m')";
+            ? "CAST(strftime('%m', activity_datetime) AS INTEGER)"
+            : "EXTRACT(MONTH FROM activity_datetime)";
 
         $sql = "SELECT
                     $monthExpr AS month_num,
@@ -432,7 +445,7 @@ class ReportService
             ];
         }
         foreach ($rows as $r) {
-            $m = $r['month_num'];
+            $m = str_pad((string) (int) $r['month_num'], 2, '0', STR_PAD_LEFT);
             if (! isset($out[$m])) continue;
             $out[$m]['total']     += (int) $r['cnt'];
             $out[$m][$r['outcome']] = ($out[$m][$r['outcome']] ?? 0) + (int) $r['cnt'];
