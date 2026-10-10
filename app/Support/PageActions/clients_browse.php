@@ -66,16 +66,22 @@ $selectedBarangays = array_values(array_unique(array_filter(array_map('trim', $s
 $filterSql = '';
 $filterParams = [];
 if ($selectedBranch) {
-    $filterSql .= ' AND c.branch_name = ?';
+    $filterSql .= ' AND LOWER(COALESCE(c.branch_name, \'\')) = LOWER(?)';
     $filterParams[] = $selectedBranch;
 }
 if ($selectedBarangays) {
     $placeholders = implode(', ', array_fill(0, count($selectedBarangays), '?'));
-    $filterSql .= " AND COALESCE(c.registered_barangay_name, b.barangay_name) IN ($placeholders)";
-    array_push($filterParams, ...$selectedBarangays);
+    $filterSql .= " AND LOWER(COALESCE(c.registered_barangay_name, b.barangay_name, '')) IN ($placeholders)";
+    array_push($filterParams, ...array_map('strtolower', $selectedBarangays));
 }
 if ($searchTerm !== '') {
-    $filterSql .= ' AND (c.full_name LIKE ? OR c.client_code LIKE ? OR c.contact_number LIKE ? OR c.branch_name LIKE ? OR c.registered_barangay_name LIKE ?)';
+    $filterSql .= " AND (
+        LOWER(COALESCE(c.full_name, '')) LIKE LOWER(?)
+        OR LOWER(COALESCE(c.client_code, '')) LIKE LOWER(?)
+        OR LOWER(COALESCE(c.contact_number, '')) LIKE LOWER(?)
+        OR LOWER(COALESCE(c.branch_name, '')) LIKE LOWER(?)
+        OR LOWER(COALESCE(c.registered_barangay_name, '')) LIKE LOWER(?)
+    )";
     for ($i = 0; $i < 5; $i++) {
         $filterParams[] = '%' . $searchTerm . '%';
     }

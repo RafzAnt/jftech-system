@@ -70,7 +70,7 @@
             <label class="form-label" for="clientLocationInput">Branch, Barangay</label>
             <input type="hidden" id="clientBranchFilter" name="branch" value="{{ $selectedBranch }}">
             <div class="client-barangay-picker">
-                <input type="text" class="search-input client-barangay-input" id="clientLocationInput" placeholder="Type a branch name" autocomplete="off" aria-autocomplete="list" aria-controls="clientBarangaySuggestions" aria-expanded="false" value="{{ $selectedBranch ? $selectedBranch . ', ' . implode(', ', $selectedBarangays) : '' }}">
+                <input type="text" class="search-input client-barangay-input" id="clientLocationInput" placeholder="Type a branch name" autocomplete="off" aria-autocomplete="list" aria-controls="clientBarangaySuggestions" aria-expanded="false" value="{{ $selectedBranch ? implode(', ', array_merge([$selectedBranch], $selectedBarangays)) : '' }}">
                 <div id="clientBarangaySuggestions" class="location-suggestions client-filter-suggestions" role="listbox" hidden></div>
                 <div id="clientBarangayHiddenInputs"></div>
             </div>
@@ -489,7 +489,13 @@
 
     function updateClientLocationValue(query = '') {
         const parts = currentClientBranch ? [currentClientBranch, ...selectedClientBarangays] : [];
-        clientLocationInput.value = parts.length ? `${parts.join(', ')}, ${query}` : query;
+        clientLocationInput.value = [...parts, query].filter(Boolean).join(', ');
+    }
+
+    function prepareClientLocationInput() {
+        if (currentClientBranch && !clientLocationInput.value.trimEnd().endsWith(',')) {
+            clientLocationInput.value = `${clientLocationInput.value.replace(/\s+$/, '')}, `;
+        }
     }
 
     function showClientLocationSuggestions() {
@@ -539,6 +545,7 @@
                     renderClientBarangayInputs();
                 }
                 updateClientLocationValue();
+                prepareClientLocationInput();
                 clientLocationInput.focus();
                 closeClientBarangaySuggestions();
                 showClientLocationSuggestions();
@@ -551,8 +558,14 @@
     }
 
     clientLocationInput.addEventListener('input', showClientLocationSuggestions);
-    clientLocationInput.addEventListener('focus', showClientLocationSuggestions);
-    clientLocationInput.addEventListener('blur', () => setTimeout(closeClientBarangaySuggestions, 120));
+    clientLocationInput.addEventListener('focus', () => {
+        prepareClientLocationInput();
+        showClientLocationSuggestions();
+    });
+    clientLocationInput.addEventListener('blur', () => setTimeout(() => {
+        closeClientBarangaySuggestions();
+        updateClientLocationValue();
+    }, 120));
     clientLocationInput.addEventListener('keydown', event => {
         if (event.key === ',' || event.key === 'Enter') {
             const currentPart = clientLocationInput.value.split(',').pop().trim();
@@ -563,6 +576,7 @@
                     currentClientBranch = branchMatch;
                     clientBranchFilter.value = branchMatch;
                     updateClientLocationValue();
+                    prepareClientLocationInput();
                     showClientLocationSuggestions();
                     return;
                 }
@@ -574,6 +588,7 @@
                     selectedClientBarangays.push(barangayMatch);
                     renderClientBarangayInputs();
                     updateClientLocationValue();
+                    prepareClientLocationInput();
                     showClientLocationSuggestions();
                     return;
                 }
@@ -596,7 +611,6 @@
         }
     });
     renderClientBarangayInputs();
-    if (currentClientBranch) updateClientLocationValue();
 
     // View client details
     function formatDate(dateString) {
