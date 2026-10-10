@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en-PH">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JFTECH - User Accounts</title>
+    <title>JFTECH - User Management</title>
     <script>
         try {
             var savedTheme = localStorage.getItem('jftech-theme');
@@ -23,7 +23,7 @@
     <div class="main-content">
         <div class="top-bar">
             <div>
-                <h1 class="page-title">User Accounts</h1>
+                <h1 class="page-title">User Management</h1>
                 <p style="color: var(--text-muted); font-size: 0.85rem;">Manage system user accounts</p>
             </div>
             @if ($verified)
@@ -35,7 +35,7 @@
         <!-- Admin Verification -->
         <div class="card" style="max-width: 450px; margin: 2rem auto;">
             <div class="card-body" style="text-align: center;">
-                <h3 style="margin-bottom: 0.5rem;">Admin Check Required</h3>
+                <h3 style="margin-bottom: 0.5rem;">Admin Verification Required</h3>
                 <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Please verify your admin credentials to access user management.</p>
                 
                 @if ($verifyError)
@@ -76,7 +76,7 @@
         <!-- Users Table -->
         <div class="card">
             <div class="card-header">
-                <span class="card-title">User Accounts</span>
+                <span class="card-title">System Users</span>
                 <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
                     <div class="payslip-view-tabs">
                         <a href="user_management.php" class="payslip-view-tab {{ !$showArchived ? 'active' : '' }}">Active</a>
@@ -90,7 +90,7 @@
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th>User No.</th>
+                                <th>ID</th>
                                 <th>Username</th>
                                 <th>Full Name</th>
                                 <th>Position</th>
@@ -215,11 +215,11 @@
                     </div>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Email Address</label>
+                    <label class="form-label">Email</label>
                     <input type="email" name="email" class="form-input">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Mobile Number</label>
+                    <label class="form-label">Phone</label>
                     <input type="text" name="phone" class="form-input" placeholder="09123456789" inputmode="numeric" pattern="[0-9]{11}" minlength="11" maxlength="11">
                 </div>
                 <div class="form-group">
@@ -276,11 +276,11 @@
                     </div>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Email Address</label>
+                    <label class="form-label">Email</label>
                     <input type="email" name="email" id="editEmail" class="form-input">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Mobile Number</label>
+                    <label class="form-label">Phone</label>
                     <input type="text" name="phone" id="editPhone" class="form-input" inputmode="numeric" pattern="[0-9]{11}" minlength="11" maxlength="11">
                 </div>
                 <div class="form-group">

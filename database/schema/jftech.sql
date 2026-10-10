@@ -76,8 +76,6 @@ CREATE TABLE IF NOT EXISTS clients (
     full_name VARCHAR(100) NOT NULL,
     contact_number VARCHAR(20),
     email VARCHAR(100),
-    branch_name VARCHAR(100) NOT NULL DEFAULT 'Balilihan',
-    registered_barangay_name VARCHAR(100),
     barangay_id INT,
     exact_address TEXT,
     latitude DECIMAL(10,8) DEFAULT 0,

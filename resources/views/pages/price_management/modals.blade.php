@@ -1,9 +1,4 @@
 @php
-    $currencyCode = strtoupper(trim((string) ($currency ?? 'PHP')));
-    $currencySymbol = $currencyCode === 'PHP' ? '₱' : $currencyCode;
-    $currencyPrefix = $currencyCode === 'PHP' ? '₱' : $currencyCode . ' ';
-@endphp
-@php
     $productsJson = $products ?? [];
     $discountTypes = [
         ['value' => 'none', 'label' => 'None'],
@@ -46,11 +41,11 @@
                     <input type="hidden" name="product_id" id="addProductId" required>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Product Code</label>
+                    <label class="form-label">SKU</label>
                     <input type="text" name="sku_display" id="addProductSku" class="form-input" readonly style="background: var(--input-bg); color: var(--text-muted);">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Base Price ({{ $currencySymbol }}) *</label>
+                    <label class="form-label">Base Price ({{ $currency }}) *</label>
                     <input type="number" name="base_price" id="basePriceInput" class="form-input" step="0.01" min="0" required>
                 </div>
                 <div class="form-group">
@@ -73,15 +68,15 @@
                 </div>
                 <div class="form-group" style="background: rgba(0, 212, 255, 0.05); border-radius: 8px; padding: 0.75rem;">
                     <label class="form-label" style="color: var(--accent); margin-bottom: 0.25rem;">Final Price</label>
-                    <div id="finalPriceDisplay" style="font-size: 1.25rem; font-weight: 700; color: var(--success);">{{ $currencyPrefix }}0.00</div>
+                    <div id="finalPriceDisplay" style="font-size: 1.25rem; font-weight: 700; color: var(--success);">{{ $currency }} 0.00</div>
                     <input type="hidden" name="final_price" id="finalPriceInput" value="0">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Start Date *</label>
+                    <label class="form-label">Effective From *</label>
                     <input type="date" name="effective_from" id="effectiveFromInput" class="form-input" required>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">End Date</label>
+                    <label class="form-label">Effective Until</label>
                     <input type="date" name="effective_until" id="effectiveUntilInput" class="form-input" onchange="validateDateRange()">
                 </div>
                 <div class="form-group">
@@ -126,12 +121,12 @@
                     <input type="text" id="changeProductName" class="form-input" readonly style="background: var(--input-bg); color: var(--text-muted);">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Current Price ({{ $currencySymbol }})</label>
+                    <label class="form-label">Current Price ({{ $currency }})</label>
                     <input type="text" id="changeCurrentPrice" class="form-input" readonly style="background: var(--input-bg); color: var(--text-muted);">
                     <input type="hidden" name="previous_final_price" id="changePreviousFinalPrice">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">New Base Price ({{ $currencySymbol }}) *</label>
+                    <label class="form-label">New Base Price ({{ $currency }}) *</label>
                     <input type="number" name="base_price" id="changeNewPrice" class="form-input" step="0.01" min="0" required>
                 </div>
                 <div class="form-group" style="background: rgba(0, 212, 255, 0.05); border-radius: 8px; padding: 0.75rem;">
@@ -198,7 +193,7 @@
                     <input type="text" id="discountProductName" class="form-input" readonly style="background: var(--input-bg); color: var(--text-muted);">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Base Price ({{ $currencySymbol }})</label>
+                    <label class="form-label">Base Price ({{ $currency }})</label>
                     <input type="text" id="discountBasePrice" class="form-input" readonly style="background: var(--input-bg); color: var(--text-muted);">
                     <input type="hidden" name="base_price" id="discountBasePriceInput">
                 </div>
@@ -246,7 +241,7 @@
         <div class="modal-header">
             <div style="display:flex;align-items:center;gap:.5rem">
                 @include('partials.modal_logo')
-                <h3 class="modal-title">Schedule Price Change</h3>
+                <h3 class="modal-title">Schedule Price</h3>
             </div>
             <button class="modal-close" onclick="closeModal('schedulePriceModal')">&times;</button>
         </div>
@@ -261,11 +256,11 @@
                     <input type="hidden" name="product_id" id="scheduleProductId" required>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Product Code</label>
+                    <label class="form-label">SKU</label>
                     <input type="text" name="sku_display" id="scheduleProductSku" class="form-input" readonly style="background: var(--input-bg); color: var(--text-muted);">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Base Price ({{ $currencySymbol }}) *</label>
+                    <label class="form-label">Base Price ({{ $currency }}) *</label>
                     <input type="number" name="base_price" id="scheduleBasePrice" class="form-input" step="0.01" min="0" required>
                 </div>
                 <div class="form-group">
@@ -290,11 +285,11 @@
                     <input type="hidden" name="final_price" id="scheduleFinalPriceInput" value="0">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Start Date *</label>
+                    <label class="form-label">Effective From *</label>
                     <input type="date" name="effective_from" id="scheduleEffectiveFrom" class="form-input" required min="{{ date('Y-m-d') }}">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">End Date</label>
+                    <label class="form-label">Effective Until</label>
                     <input type="date" name="effective_until" id="scheduleEffectiveUntil" class="form-input">
                 </div>
                 <div class="form-group" style="margin-bottom: 0;">
@@ -316,7 +311,7 @@
         <div class="modal-header">
             <div style="display:flex;align-items:center;gap:.5rem">
                 @include('partials.modal_logo')
-                <h3 class="modal-title" id="deactivateModalTitle">Set Price Inactive</h3>
+                <h3 class="modal-title" id="deactivateModalTitle">Confirm Deactivate</h3>
             </div>
             <button class="modal-close" onclick="closeModal('deactivateModal')">&times;</button>
         </div>
@@ -324,10 +319,10 @@
             @csrf
             <input type="hidden" name="action" value="deactivate_price">
             <input type="hidden" name="price_id" id="deactivatePriceId">
-            <input type="hidden" name="reason" id="deactivateReasonInput" value="Set inactive manually">
+            <input type="hidden" name="reason" id="deactivateReasonInput" value="Manually deactivated">
             <div style="margin-bottom: 1.5rem;">
-                <p style="color: var(--text-secondary);">Set this price as inactive for <strong id="deactivateProductName"></strong>?</p>
-                <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.5rem;">This will mark the price as inactive. The change will be saved in the price history.</p>
+                <p style="color: var(--text-secondary);">Are you sure you want to deactivate the price for <strong id="deactivateProductName"></strong>?</p>
+                <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.5rem;">This will make the price inactive. A record will be saved in the audit log.</p>
             </div>
             <div class="form-group">
                 <label class="form-label">Reason</label>
@@ -335,7 +330,7 @@
             </div>
             <div style="display: flex; gap: 1rem; justify-content: flex-end; flex-wrap: wrap;">
                 <button type="button" class="btn btn-secondary" onclick="closeModal('deactivateModal')">Cancel</button>
-                <button type="submit" class="btn btn-danger">Set Inactive</button>
+                <button type="submit" class="btn btn-danger">Deactivate</button>
             </div>
         </form>
     </div>
@@ -347,7 +342,7 @@
         <div class="modal-header">
             <div style="display:flex;align-items:center;gap:.5rem">
                 @include('partials.modal_logo')
-                <h3 class="modal-title">Update Multiple Prices</h3>
+                <h3 class="modal-title">Bulk Update Prices</h3>
             </div>
             <button class="modal-close" onclick="closeModal('bulkUpdateModal')">&times;</button>
         </div>
@@ -420,7 +415,7 @@
         </div>
         <div class="search-box" style="margin-bottom: 1rem;">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.5rem;"><circle cx="11" cy="11" r="8"/><line x1="21"  y1="21" x2="15.657" y2="15.657"/></svg>
-            <input type="text" class="search-input" placeholder="Search by product name, product code, or number..." id="productSearchInput"
+            <input type="text" class="search-input" placeholder="Search products, SKU, or ID..." id="productSearchInput"
                    onkeyup="searchProductsList(this.value)">
         </div>
         <div style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px;">
@@ -428,7 +423,7 @@
                 <thead>
                     <tr>
                         <th>Name</th>
-                        <th>Product Code</th>
+                        <th>SKU</th>
                         <th>Category</th>
                         <th>Action</th>
                     </tr>

@@ -42,7 +42,6 @@ return function (\Illuminate\Http\Request $request): array {
 
     $records  = $service->activityFeed($filters, 5000);
     $summary  = $service->activitySummary($filters);
-    $reportTypes = $service->reportTypes();
 
     // Build a human readable period label.
     if ($filters['date']) {

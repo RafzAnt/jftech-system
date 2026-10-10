@@ -6,8 +6,7 @@ return function (\Illuminate\Http\Request $request): array {
 
     $client = \Illuminate\Support\Facades\DB::table('clients as c')
         ->leftJoin('barangays as b', 'c.barangay_id', '=', 'b.id')
-        ->select('c.*')
-        ->selectRaw('COALESCE(c.registered_barangay_name, b.barangay_name) AS barangay_name')
+        ->select('c.*', 'b.barangay_name')
         ->where('c.id', $clientId)
         ->first();
 

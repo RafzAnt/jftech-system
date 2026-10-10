@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en-PH">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -40,7 +40,7 @@
 <body>
     <div class="toolbar"><button type="button" onclick="window.print()">Print / Save as PDF</button></div>
     @php
-        $money = fn ($value) => '₱' . number_format((float) $value, 2);
+        $money = fn ($value) => 'PHP ' . number_format((float) $value, 2);
         $earnings = [
             'Basic Salary' => $record->basic_salary, 'Overtime Pay' => $record->overtime_pay,
             'Regular Holiday' => $record->regular_holiday, 'Special Holiday' => $record->special_holiday,
@@ -63,7 +63,7 @@
         </header>
         <div class="body">
             <table class="meta">
-                <tr><td><span class="label">Employee Name</span><strong>{{ $record->employee_name }}</strong></td><td><span class="label">Employee Code</span><strong>{{ $record->employee_code }}</strong></td><td><span class="label">Position</span><strong>{{ $record->position ?: 'General Admin' }}</strong></td><td><span class="label">Status</span><strong>{{ ucfirst($record->employment_status) }}</strong></td></tr>
+                <tr><td><span class="label">Employee Name</span><strong>{{ $record->employee_name }}</strong></td><td><span class="label">Employee ID</span><strong>{{ $record->employee_code }}</strong></td><td><span class="label">Position</span><strong>{{ $record->position ?: 'General Admin' }}</strong></td><td><span class="label">Status</span><strong>{{ ucfirst($record->employment_status) }}</strong></td></tr>
                 <tr><td><span class="label">Department</span>{{ $record->department ?: 'N/A' }}</td><td><span class="label">Daily Rate</span>{{ $money($record->daily_rate) }}</td><td><span class="label">Hourly Rate</span>{{ $money($record->hourly_rate) }}</td><td><span class="label">Days Worked</span>{{ $record->total_days_worked }}</td></tr>
             </table>
             <div class="section-title">Earnings and Deductions</div>

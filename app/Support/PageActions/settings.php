@@ -26,7 +26,7 @@ if ($request->isMethod('post')) {
         if ($request->has('update_settings')) {
             $submittedSettings = $request->input('settings', []);
             if (isset($submittedSettings['company_contact']) && ! preg_match('/^\d{11}$/', trim((string) $submittedSettings['company_contact']))) {
-                throw new Exception('Business mobile number must contain exactly 11 digits.');
+                throw new Exception('Company contact number must contain exactly 11 digits.');
             }
             foreach ($submittedSettings as $key => $value) {
                 if (str_starts_with((string) $key, 'payroll_') && (! is_numeric($value) || (float) $value < 0)) {

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en-PH">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -24,7 +24,7 @@
         <div class="top-bar">
             <div>
                 <h1 class="page-title">Login History</h1>
-                <p style="color: var(--text-muted); font-size: 0.85rem;">List of logins to user accounts</p>
+                <p style="color: var(--text-muted); font-size: 0.85rem;">Audit log of all user login activity</p>
             </div>
             <a href="dashboard.php" class="btn btn-secondary">Back to Dashboard</a>
         </div>
@@ -37,15 +37,15 @@
             </div>
             <div class="stat-card" style="padding: 1rem; --stat-color: var(--success);">
                 <div class="stat-value" style="font-size: 1.25rem; color: var(--success);">{{ number_format($successfulLogins) }}</div>
-                <div class="stat-label">Successful Logins</div>
+                <div class="stat-label">Successful</div>
             </div>
             <div class="stat-card" style="padding: 1rem; --stat-color: var(--danger);">
                 <div class="stat-value" style="font-size: 1.25rem; color: var(--danger);">{{ number_format($failedLogins) }}</div>
-                <div class="stat-label">Failed Logins</div>
+                <div class="stat-label">Failed</div>
             </div>
             <div class="stat-card" style="padding: 1rem; --stat-color: var(--info);">
                 <div class="stat-value" style="font-size: 1.25rem; color: var(--accent);">{{ number_format($activeToday) }}</div>
-                <div class="stat-label">Active in the Last 24 Hours</div>
+                <div class="stat-label">Active (24h)</div>
             </div>
         </div>
         
@@ -65,7 +65,7 @@
         <!-- Login History Table -->
         <div class="card">
             <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
-                <span class="card-title">Login History</span>
+                <span class="card-title">Login Activity Log</span>
                 <span class="badge badge-info">{{ count($loginHistory) }} Records</span>
             </div>
             <div class="card-body" style="padding: 0;">
@@ -77,7 +77,7 @@
                                  <th>Username</th>
                                  <th>Role</th>
                                  <th>Login Time</th>
-                                 <th>Logout Time</th>
+                                 <th>Logged Out At</th>
                                  <th>Status</th>
                              </tr>
                          </thead>
@@ -105,7 +105,7 @@
                              </tr>
                             @endforeach
                             @if (empty($loginHistory))
-                            <tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">No login records found</td></tr>
+                            <tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">No login history found</td></tr>
                             @endif
                         </tbody>
                     </table>

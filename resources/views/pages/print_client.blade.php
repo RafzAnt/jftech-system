@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en-PH">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -93,7 +93,7 @@
             <table class="items">
                 <tr>
                     <td class="small bold">TOTAL:</td>
-                    <td class="small right total">₱{{ number_format((float) $client->monthly_rate, 2) }}</td>
+                    <td class="small right total">PHP {{ number_format((float) $client->monthly_rate, 2) }}</td>
                 </tr>
             </table>
 
@@ -110,16 +110,15 @@
             <table>
                 <tr><td>Client Code</td><td>{{ $client->client_code }}</td></tr>
                 <tr><td>Full Name</td><td>{{ $client->full_name }}</td></tr>
-                <tr><td>Mobile Number</td><td>{{ $client->contact_number ?: '-' }}</td></tr>
+                <tr><td>Contact Number</td><td>{{ $client->contact_number ?: '-' }}</td></tr>
                 <tr><td>Email</td><td>{{ $client->email ?: '-' }}</td></tr>
-                <tr><td>Branch</td><td>{{ $client->branch_name ?: '-' }}</td></tr>
                 <tr><td>Barangay</td><td>{{ $client->barangay_name ?: '-' }}</td></tr>
                 <tr><td>Address</td><td>{{ $client->exact_address ?: '-' }}</td></tr>
                 <tr><td>WiFi Plan</td><td>{{ $client->wifi_plan ?: '-' }}</td></tr>
                 <tr><td>Account Status</td><td>{{ ucfirst($client->status) }}</td></tr>
             </table>
 
-            <div class="amount">Monthly Rate<br><strong>₱{{ number_format((float) $client->monthly_rate, 2) }}</strong></div>
+            <div class="amount">Monthly Rate<br><strong>PHP {{ number_format((float) $client->monthly_rate, 2) }}</strong></div>
         @endif
     </main>
     <script>window.addEventListener('load', () => window.print());</script>

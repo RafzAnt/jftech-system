@@ -1,9 +1,4 @@
 @php
-    $currencyCode = strtoupper(trim((string) ($currency ?? 'PHP')));
-    $currencySymbol = $currencyCode === 'PHP' ? '₱' : $currencyCode;
-    $currencyPrefix = $currencyCode === 'PHP' ? '₱' : $currencyCode . ' ';
-@endphp
-@php
     $statCards = [
         ['label' => 'Total Products', 'value' => number_format($stats['total_products'] ?? 0), 'color' => 'var(--accent)'],
         ['label' => 'Products With Prices', 'value' => number_format($stats['products_with_prices'] ?? 0), 'color' => 'var(--success)'],
@@ -25,7 +20,7 @@
     @endforeach
 </div>
 
-<!-- Pricing Actions -->
+<!-- Quick Actions -->
 <div class="quick-actions">
     <button class="btn btn-success" onclick="openModal('addPriceModal')">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -37,11 +32,11 @@
     </button>
     <button class="btn btn-info" onclick="openModal('schedulePriceModal')">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-        Schedule Price Change
+        Schedule Price
     </button>
     <button class="btn btn-warning" onclick="openModal('bulkUpdateModal')" style="color: var(--primary);">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l.89 1.78L3 12v8h2l1.5-3h8.41l2.58-5.17L8 5.5V3H3z"/></svg>
-        Update Multiple Prices
+        Bulk Update
     </button>
 </div>
 
@@ -61,9 +56,9 @@
                             <th>Product</th>
                             <th>Previous</th>
                             <th>New</th>
-                            <th>Difference</th>
+                            <th>Diff.</th>
                             <th>Changed By</th>
-                            <th>Date & Time</th>
+                            <th>Date/Time</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -75,9 +70,9 @@
                         @endphp
                         <tr>
                             <td><strong>{{ htmlspecialchars($change['product_name'] ?? 'N/A') }}</strong></td>
-                            <td>{{ $change['previous_price'] ? $currencyPrefix . number_format($change['previous_price'], 2) : '-' }}</td>
-                            <td>{{ $change['new_price'] ? $currencyPrefix . number_format($change['new_price'], 2) : '-' }}</td>
-                            <td class="{{ $diffClass }}">{{ $diffSign }}{{ $currencyPrefix }}{{ number_format($diff, 2) }}</td>
+                            <td>{{ $change['previous_price'] ? $currency . ' ' . number_format($change['previous_price'], 2) : '-' }}</td>
+                            <td>{{ $change['new_price'] ? $currency . ' ' . number_format($change['new_price'], 2) : '-' }}</td>
+                            <td class="{{ $diffClass }}">{{ $diffSign }}{{ $currency }} {{ number_format($diff, 2) }}</td>
                             <td>{{ htmlspecialchars($change['admin_name'] ?? 'N/A') }}</td>
                             <td style="color: var(--text-muted); font-size: 0.85rem;">{{ date('M d, Y h:i A', strtotime($change['changed_at'])) }}</td>
                         </tr>
@@ -104,7 +99,7 @@
                             <th>Product</th>
                             <th>Current Price</th>
                             <th>Scheduled Price</th>
-                            <th>Start Date</th>
+                            <th>Effective Date</th>
                             <th>Status</th>
                         </tr>
                     </thead>
@@ -116,8 +111,8 @@
                         @endphp
                         <tr>
                             <td><strong>{{ htmlspecialchars($upcoming['product_name'] ?? 'N/A') }}</strong></td>
-                            <td>{{ $currencyPrefix }}{{ number_format((float)($upcoming['base_price'] ?? 0), 2) }}</td>
-                            <td>{{ $currencyPrefix }}{{ number_format((float)($upcoming['base_price'] ?? 0), 2) }}</td>
+                            <td>{{ $currency }} {{ number_format((float)($upcoming['base_price'] ?? 0), 2) }}</td>
+                            <td>{{ $currency }} {{ number_format((float)($upcoming['base_price'] ?? 0), 2) }}</td>
                             <td>{{ date('M d, Y', strtotime($upcoming['effective_from'] ?? '')) }}</td>
                             <td>
                                 <span class="badge badge-info">Scheduled</span>

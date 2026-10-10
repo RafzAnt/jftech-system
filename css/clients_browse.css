@@ -6,28 +6,6 @@
     animation: fadeIn 0.3s ease-out;
 }
 
-.client-register-link {
-    padding: 0;
-    border: 0;
-    background: none;
-    color: var(--accent);
-    font: inherit;
-    text-decoration: underline;
-    cursor: pointer;
-}
-
-.client-register-link:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 3px;
-}
-
-.location-input-help {
-    display: block;
-    margin-top: 0.35rem;
-    color: var(--text-muted);
-    font-size: 0.75rem;
-}
-
 .data-table tbody tr {
     cursor: pointer;
     transition: var(--transition);

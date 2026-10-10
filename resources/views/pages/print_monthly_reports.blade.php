@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en-PH">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -14,14 +14,18 @@
     <main class="report">
         <header class="header">
             @include('partials.print_company')
-            <div style="text-align:right"><strong>MONTHLY BUSINESS REPORT</strong><br><span class="muted">{{ date('M d, Y', strtotime($from)) }} to {{ date('M d, Y', strtotime($to)) }}</span></div>
+            <div style="text-align:right"><strong>SYSTEM MANAGEMENT REPORT</strong><br><span class="muted">{{ date('M d, Y', strtotime($from)) }} to {{ date('M d, Y', strtotime($to)) }}</span></div>
         </header>
         <div class="body">
-            <table class="meta"><tr><td><span class="label">Report Period</span><strong>{{ date('F d, Y', strtotime($from)) }} – {{ date('F d, Y', strtotime($to)) }}</strong></td><td><span class="label">Date Prepared</span><strong>{{ now()->format('M d, Y h:i A') }}</strong></td></tr></table>
+            <table class="meta"><tr><td><span class="label">Report Period</span><strong>{{ date('F d, Y', strtotime($from)) }} – {{ date('F d, Y', strtotime($to)) }}</strong></td><td><span class="label">Date Generated</span><strong>{{ now()->format('M d, Y h:i A') }}</strong></td></tr></table>
             <div class="section-title">Report Summary</div>
-            <table class="summary"><tr><td><span class="label">Total Payments Received</span><strong>₱{{ number_format($collections, 2) }}</strong><br>{{ number_format($paymentCount) }} payment(s)</td><td><span class="label">Total Bills</span><strong>₱{{ number_format($totalBillsAmount, 2) }}</strong><br>{{ number_format($totalBills) }} bill(s)</td><td><span class="label">Outstanding Balance</span><strong>₱{{ number_format($outstanding, 2) }}</strong></td><td><span class="label">Open Bills</span><strong>{{ number_format($openBills) }}</strong></td></tr></table>
-            <div class="section-title">Business Summary</div>
-            <table class="summary"><tr><td><span class="label">Active Clients</span><strong>{{ number_format($systemSnapshot['activeClients']) }}</strong></td><td><span class="label">Active Employees</span><strong>{{ number_format($systemSnapshot['activeEmployees']) }}</strong></td><td><span class="label">Attendance Entries</span><strong>{{ number_format($attendanceSummary->records ?? 0) }}</strong></td><td><span class="label">Low Stock Items</span><strong>{{ number_format($systemSnapshot['lowStock']) }}</strong></td></tr></table>
+            <table class="summary"><tr><td><span class="label">Collections Received</span><strong>PHP {{ number_format($collections, 2) }}</strong></td><td><span class="label">Payments Recorded</span><strong>{{ number_format($payments->count()) }}</strong></td><td><span class="label">Open Balance</span><strong>PHP {{ number_format($outstanding, 2) }}</strong></td><td><span class="label">Open Bills</span><strong>{{ number_format($openBills) }}</strong></td></tr></table>
+            <div class="section-title">Operations Snapshot</div>
+            <table class="summary"><tr><td><span class="label">Active Clients</span><strong>{{ number_format($systemSnapshot['activeClients']) }}</strong></td><td><span class="label">Active Employees</span><strong>{{ number_format($systemSnapshot['activeEmployees']) }}</strong></td><td><span class="label">Attendance Records</span><strong>{{ number_format($attendanceSummary->records ?? 0) }}</strong></td><td><span class="label">Low Stock Items</span><strong>{{ number_format($systemSnapshot['lowStock']) }}</strong></td></tr></table>
+            <div class="section-title">Payments Received</div>
+            <table class="items"><thead><tr><th>Date</th><th>Client</th><th>Method</th><th>Reference</th><th>Amount</th></tr></thead><tbody>@forelse($payments as $payment)<tr><td>{{ date('M d, Y', strtotime($payment->payment_date)) }}</td><td>{{ $payment->full_name }}</td><td>{{ ucwords(str_replace('_', ' ', $payment->payment_method)) }}</td><td>{{ $payment->reference_number ?: '—' }}</td><td>PHP {{ number_format($payment->amount, 2) }}</td></tr>@empty<tr><td colspan="5" style="text-align:center;color:#64748b">No payments recorded for this period.</td></tr>@endforelse</tbody><tfoot><tr class="total"><td colspan="4">Total Collections</td><td>PHP {{ number_format($collections, 2) }}</td></tr></tfoot></table>
+            <div class="section-title">Bills for Selected Period</div>
+            <table class="items"><thead><tr><th>Bill No.</th><th>Client</th><th>Billing Period</th><th>Due Date</th><th>Status</th><th>Amount</th></tr></thead><tbody>@forelse($bills as $bill)<tr><td>{{ $bill->bill_number }}</td><td>{{ $bill->full_name }}</td><td>{{ date('M d', strtotime($bill->billing_period_start)) }} – {{ date('M d, Y', strtotime($bill->billing_period_end)) }}</td><td>{{ date('M d, Y', strtotime($bill->due_date)) }}</td><td>{{ ucfirst($bill->status) }}</td><td>PHP {{ number_format($bill->amount, 2) }}</td></tr>@empty<tr><td colspan="6" style="text-align:center;color:#64748b">No bills found for this period.</td></tr>@endforelse</tbody></table>
             <div class="signatures"><div class="signature">Prepared By:<br><br>____________________________</div><div class="signature">Checked / Approved By:<br><br>____________________________</div></div>
         </div>
     </main>

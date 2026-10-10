@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en-PH">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>Attendance Report</title>
@@ -121,13 +121,13 @@
         @include('partials.print_company')
         <div class="doc-title">
             <strong>ATTENDANCE REPORT</strong><br>
-            Prepared: {{ date('M d, Y h:i A') }}
+            Generated: {{ date('M d, Y h:i A') }}
         </div>
     </div>
 
     <div class="meta">
         Period: <strong>{{ htmlspecialchars($periodLabel) }}</strong> &nbsp;|&nbsp;
-        Total Entries: <strong>{{ number_format(count($attendanceRecords)) }}</strong> &nbsp;|&nbsp;
+        Total Records: <strong>{{ number_format(count($attendanceRecords)) }}</strong> &nbsp;|&nbsp;
         Present: <strong>{{ number_format($totalPresent) }}</strong> &nbsp;|&nbsp;
         Late: <strong>{{ number_format($totalLate) }}</strong> &nbsp;|&nbsp;
         Absent: <strong>{{ number_format($totalAbsent) }}</strong>

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en-PH">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>Employee Masterlist Report</title>
@@ -102,7 +102,7 @@
         @include('partials.print_company')
         <div class="doc-title">
             <strong>EMPLOYEE MASTERLIST REPORT</strong><br>
-            Prepared: {{ date('M d, Y h:i A') }}
+            Generated: {{ date('M d, Y h:i A') }}
         </div>
     </div>
 
@@ -113,17 +113,17 @@
         Total Employees: <strong>{{ number_format($totalEmployees) }}</strong> &nbsp;|&nbsp;
         Active: <strong>{{ number_format($activeEmployees) }}</strong> &nbsp;|&nbsp;
         Inactive: <strong>{{ number_format($inactiveEmployees) }}</strong> &nbsp;|&nbsp;
-        Former Employees: <strong>{{ number_format($terminatedEmployees) }}</strong>
+        Terminated: <strong>{{ number_format($terminatedEmployees) }}</strong>
     </div>
 
     <table>
         <thead>
             <tr>
-                <th style="width: 12%;">Employee Code</th>
+                <th style="width: 12%;">Code</th>
                 <th>Full Name</th>
                 <th>Position</th>
                 <th>Department</th>
-                <th>Mobile Number</th>
+                <th>Contact</th>
                 <th class="amount" style="width: 14%;">Daily Rate</th>
                 <th style="width: 12%;">Status</th>
             </tr>
@@ -136,7 +136,7 @@
                 <td>{{ htmlspecialchars($emp['position'] ?: 'N/A') }}</td>
                 <td>{{ htmlspecialchars($emp['department'] ?: 'N/A') }}</td>
                 <td>{{ htmlspecialchars($emp['contact_number'] ?: '-') }}</td>
-                <td class="amount">₱{{ number_format((float) $emp['daily_rate'], 2) }}</td>
+                <td class="amount">PHP {{ number_format((float) $emp['daily_rate'], 2) }}</td>
                 <td>{{ ucfirst($emp['status']) }}</td>
             </tr>
             @endforeach
@@ -147,7 +147,7 @@ if (empty($employees)) { echo '<tr><td colspan="7" style="text-align: center; co
         <tfoot>
             <tr>
                 <td colspan="5">TOTAL EMPLOYEES</td>
-                <td class="amount">₱{{ number_format(array_sum(array_map(function($e) { return (float) $e['daily_rate']; }, $employees)), 2) }}</td>
+                <td class="amount">PHP {{ number_format(array_sum(array_map(function($e) { return (float) $e['daily_rate']; }, $employees)), 2) }}</td>
                 <td>{{ number_format($totalEmployees) }}</td>
             </tr>
         </tfoot>

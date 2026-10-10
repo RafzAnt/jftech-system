@@ -1,7 +1,4 @@
 @php
-    $currencyCode = strtoupper(trim((string) ($currency ?? 'PHP')));
-    $currencySymbol = $currencyCode === 'PHP' ? '₱' : $currencyCode;
-    $currencyPrefix = $currencyCode === 'PHP' ? '₱' : $currencyCode . ' ';
     $search = $filters['search'] ?? '';
     $filterCategory = $filters['category'] ?? '';
     $filterStatus = $filters['status'] ?? '';
@@ -22,7 +19,7 @@
 <!-- Toolbar: Search + Filter + Export -->
 <div class="price-toolbar">
     <div class="search-box" style="max-width: 300px;">
-        <input type="text" class="search-input" placeholder="Search by product name, product code, or number..." data-target="#pricesTable" value="{{ htmlspecialchars($search) }}"
+        <input type="text" class="search-input" placeholder="Search products, SKU, or ID..." data-target="#pricesTable" value="{{ htmlspecialchars($search) }}"
                onkeyup="filterTable()">
     </div>
 
@@ -83,18 +80,18 @@
                 <input type="number" name="max_price" class="form-input" placeholder="0.00" value="{{ $maxPrice }}" step="0.01" onchange="applyFilter()">
             </div>
             <div class="form-group" style="margin-bottom: 0;">
-                <label class="form-label">Start Date</label>
+                <label class="form-label">Effective From</label>
                 <input type="date" name="effective_from" class="form-input" value="{{ $effectiveFrom }}" onchange="applyFilter()">
             </div>
             <div class="form-group" style="margin-bottom: 0;">
-                <label class="form-label">End Date</label>
+                <label class="form-label">Effective Until</label>
                 <input type="date" name="effective_until" class="form-input" value="{{ $effectiveUntil }}" onchange="applyFilter()">
             </div>
         </div>
     </form>
 </div>
 
-<!-- Update Multiple Prices Bar -->
+<!-- Bulk Update Bar -->
 <div class="bulk-update-bar" id="bulkUpdateBar">
     <label style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
         <input type="checkbox" class="select-all-checkbox" id="selectAllPrices" onchange="toggleBulkBar()">
@@ -103,7 +100,7 @@
     <span id="selectedCount" style="color: var(--text-muted);">0 selected</span>
     <button class="btn btn-sm btn-warning" onclick="openModal('bulkUpdateModal')" style="color: var(--primary); margin-left: auto;">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l.89 1.78L3 12v8h2l1.5-3h8.41l2.58-5.17L8 5.5V3H3z"/></svg>
-        Update Selected Prices
+        Bulk Update Selected
     </button>
 </div>
 
@@ -115,7 +112,7 @@
     </button>
     <button class="btn btn-warning" onclick="openModal('bulkUpdateModal')" style="color: var(--primary);">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l.89 1.78L3 12v8h2l1.5-3h8.41l2.58-5.17L8 5.5V3H3z"/></svg>
-        Update Multiple Prices
+        Bulk Update
     </button>
 </div>
 
@@ -137,13 +134,13 @@
                             Product Name
                             @if($sort === 'product_name') <span>{{ $sortDir === 'asc' ? '↑' : '↓' }}</span> @endif
                         </th>
-                        <th>Product Code</th>
+                        <th>SKU</th>
                         <th>Category</th>
                         <th onclick="sortTable('base_price')" style="cursor: pointer;">Base Price @if($sort === 'base_price') <span>{{ $sortDir === 'asc' ? '↑' : '↓' }}</span> @endif</th>
                         <th>Discount</th>
                         <th onclick="sortTable('final_price')" style="cursor: pointer;">Final Price @if($sort === 'final_price') <span>{{ $sortDir === 'asc' ? '↓' : '↑' }}</span> @endif</th>
-                        <th>Start Date</th>
-                        <th>End Date</th>
+                        <th>Effective From</th>
+                        <th>Effective Until</th>
                         <th onclick="sortTable('status')" style="cursor: pointer;">Status @if($sort === 'status') <span>{{ $sortDir === 'asc' ? '↑' : '↓' }}</span> @endif</th>
                         <th>Last Updated</th>
                         <th>Actions</th>
@@ -160,19 +157,19 @@
                         <td><strong>{{ htmlspecialchars($price['product_name'] ?? 'N/A') }}</strong></td>
                         <td>{{ htmlspecialchars($price['sku'] ?? 'N/A') }}</td>
                         <td>{{ htmlspecialchars($price['category'] ?? 'N/A') }}</td>
-                        <td>{{ $currencyPrefix }}{{ number_format((float)($price['base_price'] ?? 0), 2) }}</td>
+                        <td>{{ $currency }} {{ number_format((float)($price['base_price'] ?? 0), 2) }}</td>
                         <td>
                             @if ($hasDiscount)
                                 @if ($price['discount_type'] === 'percentage')
                                     {{ $price['discount_value'] }}% OFF
                                 @else
-                                    {{ $currencyPrefix }}{{ number_format((float)$price['discount_value'], 2) }} OFF
+                                    {{ $currency }} {{ number_format((float)$price['discount_value'], 2) }} OFF
                                 @endif
                             @else
                                 <span style="color: var(--text-muted);">No Discount</span>
                             @endif
                         </td>
-                        <td style="font-weight: 600; color: var(--accent);">{{ $currencyPrefix }}{{ number_format((float)($price['final_price'] ?? 0), 2) }}</td>
+                        <td style="font-weight: 600; color: var(--accent);">{{ $currency }} {{ number_format((float)($price['final_price'] ?? 0), 2) }}</td>
                         <td>{{ $price['effective_from'] ? date('M d, Y', strtotime($price['effective_from'])) : '-' }}</td>
                         <td>{{ $price['effective_until'] ? date('M d, Y', strtotime($price['effective_until'])) : '-' }}</td>
                         <td>
@@ -190,9 +187,9 @@
                                     <button class="dropdown-item" onclick="openEditPriceModal({{ htmlspecialchars(json_encode($price)) }})">Edit</button>
                                     <button class="dropdown-item" onclick="openChangePriceModal({{ htmlspecialchars(json_encode($price)) }})">Change Price</button>
                                     <button class="dropdown-item" onclick="openDiscountModal({{ htmlspecialchars(json_encode($price)) }})">Add/Edit Discount</button>
-                                    <button class="dropdown-item" onclick="openScheduleModal({{ htmlspecialchars(json_encode($price)) }})">Schedule Price Change</button>
+                                    <button class="dropdown-item" onclick="openScheduleModal({{ htmlspecialchars(json_encode($price)) }})">Schedule Price</button>
                                     <a href="price_management.php?view=history&product_id={{ $price['product_id'] }}" class="dropdown-item">View History</a>
-                                    <button class="dropdown-item" onclick="openDeactivateModal({{ $price['id'] }}, '{{ htmlspecialchars($price['product_name'] ?? 'N/A') }}')">Set Inactive</button>
+                                    <button class="dropdown-item" onclick="openDeactivateModal({{ $price['id'] }}, '{{ htmlspecialchars($price['product_name'] ?? 'N/A') }}')">Deactivate</button>
                                 </div>
                             </div>
                         </td>

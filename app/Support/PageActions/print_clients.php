@@ -10,7 +10,7 @@ return function (\Illuminate\Http\Request $request): array {
 $selectedBarangay = $request->query('barangay') ?? '';
 $searchTerm = $request->query('search') ?? '';
 
-$query = "SELECT c.*, COALESCE(c.registered_barangay_name, b.barangay_name) AS barangay_name
+$query = "SELECT c.*, b.barangay_name 
           FROM clients c 
           LEFT JOIN barangays b ON c.barangay_id = b.id 
           WHERE TRUE";

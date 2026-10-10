@@ -30,7 +30,7 @@ return function (\Illuminate\Http\Request $request): array {
         }
     }
 
-    $stmt = $pdo->query("SELECT c.*, COALESCE(c.registered_barangay_name, b.barangay_name) AS barangay_name FROM clients c LEFT JOIN barangays b ON c.barangay_id = b.id WHERE c.archived = 1 ORDER BY c.updated_at DESC");
+    $stmt = $pdo->query("SELECT c.*, b.barangay_name FROM clients c LEFT JOIN barangays b ON c.barangay_id = b.id WHERE c.archived = 1 ORDER BY c.updated_at DESC");
     $archivedClients = $stmt->fetchAll();
 
     return get_defined_vars();

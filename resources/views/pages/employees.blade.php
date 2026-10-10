@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en-PH">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -58,10 +58,10 @@
                             <table class="data-table" id="employeesTable">
                                 <thead>
                                     <tr>
-                                        <th>Employee Code</th>
+                                        <th>Code</th>
                                         <th>Name</th>
                                         <th>Position</th>
-                                        <th>Mobile Number</th>
+                                        <th>Contact</th>
                                         <th>Daily Rate</th>
                                         <th>Status</th>
                                         <th>Actions</th>
@@ -74,7 +74,7 @@
                                         <td>{{ htmlspecialchars($emp['full_name']) }}</td>
                                         <td>{{ $emp['position'] ?: '—' }}</td>
                                         <td>{{ $emp['contact_number'] }}</td>
-                                        <td style="color: var(--success); font-weight: 600;">₱{{ number_format($emp['daily_rate'], 2) }}</td>
+                                        <td style="color: var(--success); font-weight: 600;">PHP {{ number_format($emp['daily_rate'], 2) }}</td>
                                         <td>
                                             <span class="badge badge-{{ $emp['status'] === 'active' ? 'success' : ($emp['status'] === 'inactive' ? 'warning' : 'danger') }}">
                                                 {{ ucfirst($emp['status']) }}
@@ -303,15 +303,15 @@ $afternoonQR = null;
                         </select>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Mobile Number</label>
+                        <label class="form-label">Contact Number</label>
                         <input type="text" name="contact_number" class="form-input" id="empContact" placeholder="09123456789" inputmode="numeric" pattern="[0-9]{11}" minlength="11" maxlength="11">
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Email Address</label>
+                        <label class="form-label">Email</label>
                         <input type="email" name="email" class="form-input" id="empEmail" placeholder="employee@email.com">
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Daily Rate (₱)</label>
+                        <label class="form-label">Daily Rate (PHP)</label>
                         <input type="number" name="daily_rate" class="form-input" id="empDailyRate" step="0.01" readonly aria-describedby="dailyRateHelp">
                         <small id="dailyRateHelp" style="color: var(--text-muted);">Set automatically from the selected position.</small>
                     </div>

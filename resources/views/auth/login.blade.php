@@ -2,7 +2,7 @@
 @php($loginCssVersion = @filemtime(public_path('css/login.css')) ?: 1)
 @php($mainJsVersion = @filemtime(public_path('js/jftech-main.js')) ?: 1)
 <!DOCTYPE html>
-<html lang="en-PH">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -30,9 +30,9 @@
     <main class="corporate-login-card">
         <section class="login-section" aria-label="Login form">
             <div class="login-welcome">
-                <span class="login-welcome__eyebrow">JFTECH Account</span>
+                <span class="login-welcome__eyebrow">Secure workspace</span>
                 <h2>Welcome back</h2>
-                <p>Log in to manage your business.</p>
+                <p>Sign in to manage your daily business operations.</p>
             </div>
             @if ($errors->any())
                 <div class="alert alert-danger" role="alert">{{ $errors->first() }}</div>
@@ -59,7 +59,7 @@
                 </div>
                 <button type="submit" class="login-button">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7.5a4 4 0 0 1 8 0V10"/></svg>
-                    Log In
+                    Login
                 </button>
             </form>
         </section>

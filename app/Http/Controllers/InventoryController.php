@@ -52,7 +52,7 @@ class InventoryController extends Controller
     public function store(Request $request): RedirectResponse
     {
         if (! hash_equals((string) $request->session()->pull('inventory_submission_token', ''), (string) $request->input('submission_token', ''))) {
-            return back()->with('error', 'This stock form was already submitted or has expired. Please try again.');
+            return back()->with('error', 'This inventory form was already submitted or has expired. Please try again.');
         }
 
         $data = $request->validate(['item_id' => ['nullable', 'integer', 'exists:inventory,id'], 'item_name' => ['required', 'string', 'max:100'], 'category' => ['required', 'string', 'max:50'], 'quantity' => ['required', 'integer', 'min:0'], 'add_quantity' => ['nullable', 'boolean'], 'unit_price' => ['required', 'numeric', 'min:0'], 'description' => ['nullable', 'string'], 'supplier' => ['nullable', 'string', 'max:100'], 'reorder_level' => ['required', 'integer', 'min:0']]);
@@ -69,7 +69,7 @@ class InventoryController extends Controller
                 ->lockForUpdate()
                 ->exists();
             if ($duplicate) {
-                throw \Illuminate\Validation\ValidationException::withMessages(['item_name' => 'This item is already listed. Choose it and update the stock instead.']);
+                throw \Illuminate\Validation\ValidationException::withMessages(['item_name' => 'This item already exists. Use the existing item and record a stock movement instead.']);
             }
 
             if (! $id) {
@@ -104,7 +104,7 @@ class InventoryController extends Controller
             DB::transaction(function () use ($inventory, $data): void {
                 $item = Inventory::lockForUpdate()->findOrFail($inventory->id);
                 if ($item->archived || $item->status !== 'active') {
-                    throw new \DomainException('Only active items can be changed.');
+                    throw new \DomainException('Only active inventory items can have stock movements.');
                 }
 
                 $quantity = (int) $data['quantity'];
@@ -115,14 +115,14 @@ class InventoryController extends Controller
                 };
                 $newBalance = (int) $item->quantity + $change;
                 if ($newBalance < 0) {
-                    throw new \DomainException("Not enough available stock for {$item->item_name}.");
+                    throw new \DomainException("Insufficient on-hand stock for {$item->item_name}.");
                 }
                 $reserved = (int) DB::table('inventory_requests')
                     ->where('inventory_id', $item->id)
                     ->where('status', 'pending')
                     ->sum('quantity');
                 if ($newBalance < $reserved) {
-                    throw new \DomainException("This stock change would leave {$item->item_name} below its {$reserved} unit(s) set aside for pending employee requests.");
+                    throw new \DomainException("This movement would leave {$item->item_name} below its {$reserved} unit(s) reserved for pending employee requests.");
                 }
 
                 $item->update(['quantity' => $newBalance]);
@@ -132,7 +132,7 @@ class InventoryController extends Controller
             return back()->with('error', $exception->getMessage());
         }
 
-        return back()->with('success', 'Stock updated successfully.');
+        return back()->with('success', 'Stock movement recorded successfully.');
     }
 
     private function recordMovement(Inventory $item, int $quantityChange, string $type, string $remarks): void

@@ -1,8 +1,3 @@
-@php
-    $currencyCode = strtoupper(trim((string) ($currency ?? 'PHP')));
-    $currencySymbol = $currencyCode === 'PHP' ? '₱' : $currencyCode;
-    $currencyPrefix = $currencyCode === 'PHP' ? '₱' : $currencyCode . ' ';
-@endphp
 <div class="card">
     <div class="card-header">
         <span class="card-title">Scheduled Prices</span>
@@ -13,12 +8,12 @@
                 <thead>
                     <tr>
                         <th>Product</th>
-                        <th>Product Code</th>
+                        <th>SKU</th>
                         <th>Category</th>
                         <th>Current Price</th>
                         <th>Scheduled Price</th>
-                        <th>Start Date</th>
-                        <th>End Date</th>
+                        <th>Effective From</th>
+                        <th>Effective Until</th>
                         <th>Status</th>
                         <th>Actions</th>
                     </tr>
@@ -32,8 +27,8 @@
                         <td><strong>{{ htmlspecialchars($item['product_name'] ?? 'N/A') }}</strong></td>
                         <td>{{ htmlspecialchars($item['sku'] ?? 'N/A') }}</td>
                         <td>{{ htmlspecialchars($item['category'] ?? 'N/A') }}</td>
-                        <td>{{ $currencyPrefix }}{{ number_format((float)($item['base_price'] ?? 0), 2) }}</td>
-                        <td style="font-weight: 600; color: var(--accent);">{{ $currencyPrefix }}{{ number_format((float)($item['final_price'] ?? 0), 2) }}</td>
+                        <td>{{ $currency }} {{ number_format((float)($item['base_price'] ?? 0), 2) }}</td>
+                        <td style="font-weight: 600; color: var(--accent);">{{ $currency }} {{ number_format((float)($item['final_price'] ?? 0), 2) }}</td>
                         <td>{{ $item['effective_from'] ? date('M d, Y', strtotime($item['effective_from'])) : '-' }}</td>
                         <td>{{ $item['effective_until'] ? date('M d, Y', strtotime($item['effective_until'])) : '-' }}</td>
                         <td>
@@ -52,14 +47,14 @@
                                         @csrf
                                         <input type="hidden" name="action" value="activate_price">
                                         <input type="hidden" name="price_id" value="{{ $item['id'] }}">
-                                        <button type="submit" class="dropdown-item" onclick="return confirm('Activate this scheduled price now?')">Set Active Now</button>
+                                        <button type="submit" class="dropdown-item" onclick="return confirm('Activate this scheduled price now?')">Activate Now</button>
                                     </form>
                                     <form method="POST" action="price_management.php" style="display: inline;">
                                         @csrf
                                         <input type="hidden" name="action" value="deactivate_price">
                                         <input type="hidden" name="price_id" value="{{ $item['id'] }}">
                                         <input type="hidden" name="reason" value="Cancelled schedule">
-                                        <button type="submit" class="dropdown-item" onclick="return confirm('Cancel this scheduled price change?')" style="color: var(--danger);">Cancel Schedule</button>
+                                        <button type="submit" class="dropdown-item" onclick="return confirm('Deactivate this scheduled price?')" style="color: var(--danger);">Cancel Schedule</button>
                                     </form>
                                 </div>
                             </div>

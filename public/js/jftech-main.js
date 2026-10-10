@@ -242,13 +242,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Format currency
 function formatCurrency(amount) {
-    return '₱' + parseFloat(amount).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
+    return 'PHP ' + parseFloat(amount).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
 }
 
 // Format date
 function formatDate(dateString) {
     const options = { year: 'numeric', month: 'short', day: 'numeric' };
-    return new Date(dateString).toLocaleDateString('en-PH', options);
+    return new Date(dateString).toLocaleDateString('en-US', options);
 }
 
 // Generate random color for markers

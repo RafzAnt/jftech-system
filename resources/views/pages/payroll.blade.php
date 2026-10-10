@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en-PH">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -43,7 +43,7 @@
                 <div class="stat-label">Payroll Records</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value" style="color: var(--accent);">₱{{ number_format($totalNetPay, 2) }}</div>
+                <div class="stat-value" style="color: var(--accent);">PHP {{ number_format($totalNetPay, 2) }}</div>
                 <div class="stat-label">Total Net Pay</div>
             </div>
             <div class="stat-card">
@@ -147,7 +147,7 @@
                                 <table class="payslip-meta-table">
                                     <tr>
                                         <td><span class="payslip-label">Employee Name</span><strong>{{ htmlspecialchars($record['employee_name']) }}</strong></td>
-                                        <td><span class="payslip-label">Employee Code</span><strong>{{ htmlspecialchars($record['employee_code']) }}</strong></td>
+                                        <td><span class="payslip-label">Employee ID</span><strong>{{ htmlspecialchars($record['employee_code']) }}</strong></td>
                                         <td><span class="payslip-label">Position</span><strong>{{ htmlspecialchars($record['position'] ?: 'General Admin') }}</strong></td>
                                     </tr>
                                     <tr>
@@ -160,9 +160,9 @@
                                 <div class="payslip-section-title">Payroll Computation</div>
                                 <table class="payslip-meta-table">
                                     <tr>
-                                        <td><span class="payslip-label">Monthly Basic Salary</span><strong>₱{{ number_format($prMonthlyBasic, 2) }}</strong></td>
-                                        <td><span class="payslip-label">Daily Rate</span><strong>₱{{ number_format($prDailyRate, 2) }}</strong></td>
-                                        <td><span class="payslip-label">Hourly Rate</span><strong>₱{{ number_format($prHourlyRate, 2) }}</strong></td>
+                                        <td><span class="payslip-label">Monthly Basic Salary</span><strong>PHP {{ number_format($prMonthlyBasic, 2) }}</strong></td>
+                                        <td><span class="payslip-label">Daily Rate</span><strong>PHP {{ number_format($prDailyRate, 2) }}</strong></td>
+                                        <td><span class="payslip-label">Hourly Rate</span><strong>PHP {{ number_format($prHourlyRate, 2) }}</strong></td>
                                         <td><span class="payslip-label">Total Days Worked</span><strong>{{ number_format($prDaysWorked) }}</strong></td>
                                     </tr>
                                     <tr>
@@ -181,18 +181,18 @@
                                                 <tr><th>Description</th><th>Amount</th></tr>
                                             </thead>
                                             <tbody>
-                                                <tr><td>Basic Salary</td><td>₱{{ number_format((float) $record['basic_salary'], 2) }}</td></tr>
-                                                <tr><td>Overtime Pay</td><td>₱{{ number_format((float) $record['overtime_pay'], 2) }}</td></tr>
-                                                <tr><td>Regular Holiday</td><td>₱{{ number_format((float) $record['regular_holiday'], 2) }}</td></tr>
-                                                <tr><td>Special Holiday</td><td>₱{{ number_format((float) $record['special_holiday'], 2) }}</td></tr>
-                                                <tr><td>Night Differential</td><td>₱{{ number_format((float) $record['night_differential'], 2) }}</td></tr>
-                                                <tr><td>Incentives</td><td>₱{{ number_format((float) $record['incentives'], 2) }}</td></tr>
-                                                <tr><td>Allowances</td><td>₱{{ number_format((float) $record['allowances'], 2) }}</td></tr>
-                                                <tr><td>Leave Pay</td><td>₱{{ number_format((float) $record['leave_pay'], 2) }}</td></tr>
-                                                <tr><td>Rest Day Pay</td><td>₱{{ number_format((float) $record['rest_day_pay'], 2) }}</td></tr>
-                                                <tr><td>Salary Adjustment</td><td>₱{{ number_format((float) $record['salary_adjustment'], 2) }}</td></tr>
-                                                <tr><td>Other Earnings</td><td>₱{{ number_format((float) $record['other_earnings'], 2) }}</td></tr>
-                                                <tr class="total"><td>Total Gross Pay</td><td>₱{{ number_format($prGross, 2) }}</td></tr>
+                                                <tr><td>Basic Salary</td><td>PHP {{ number_format((float) $record['basic_salary'], 2) }}</td></tr>
+                                                <tr><td>Overtime Pay</td><td>PHP {{ number_format((float) $record['overtime_pay'], 2) }}</td></tr>
+                                                <tr><td>Regular Holiday</td><td>PHP {{ number_format((float) $record['regular_holiday'], 2) }}</td></tr>
+                                                <tr><td>Special Holiday</td><td>PHP {{ number_format((float) $record['special_holiday'], 2) }}</td></tr>
+                                                <tr><td>Night Differential</td><td>PHP {{ number_format((float) $record['night_differential'], 2) }}</td></tr>
+                                                <tr><td>Incentives</td><td>PHP {{ number_format((float) $record['incentives'], 2) }}</td></tr>
+                                                <tr><td>Allowances</td><td>PHP {{ number_format((float) $record['allowances'], 2) }}</td></tr>
+                                                <tr><td>Leave Pay</td><td>PHP {{ number_format((float) $record['leave_pay'], 2) }}</td></tr>
+                                                <tr><td>Rest Day Pay</td><td>PHP {{ number_format((float) $record['rest_day_pay'], 2) }}</td></tr>
+                                                <tr><td>Salary Adjustment</td><td>PHP {{ number_format((float) $record['salary_adjustment'], 2) }}</td></tr>
+                                                <tr><td>Other Earnings</td><td>PHP {{ number_format((float) $record['other_earnings'], 2) }}</td></tr>
+                                                <tr class="total"><td>Total Gross Pay</td><td>PHP {{ number_format($prGross, 2) }}</td></tr>
                                             </tbody>
                                         </table>
                                     </div>
@@ -204,24 +204,24 @@
                                                 <tr><th>Description</th><th>Amount</th></tr>
                                             </thead>
                                             <tbody>
-                                                <tr><td>SSS</td><td>₱{{ number_format((float) $record['sss'], 2) }}</td></tr>
-                                                <tr><td>PhilHealth</td><td>₱{{ number_format((float) $record['philhealth'], 2) }}</td></tr>
-                                                <tr><td>Pag-IBIG</td><td>₱{{ number_format((float) $record['pagibig'], 2) }}</td></tr>
-                                                <tr><td>Withholding Tax</td><td>₱{{ number_format((float) $record['withholding_tax'], 2) }}</td></tr>
-                                                <tr><td>Cash Advance</td><td>₱{{ number_format((float) $record['cash_advance'], 2) }}</td></tr>
-                                                <tr><td>Salary Loan</td><td>₱{{ number_format((float) $record['salary_loan'], 2) }}</td></tr>
-                                                <tr><td>HDMF Loan</td><td>₱{{ number_format((float) $record['hdmf_loan'], 2) }}</td></tr>
-                                                <tr><td>Other Deductions</td><td>₱{{ number_format((float) $record['other_deductions'], 2) }}</td></tr>
-                                                <tr class="total"><td>Total Deductions</td><td>₱{{ number_format($prDeductions, 2) }}</td></tr>
+                                                <tr><td>SSS</td><td>PHP {{ number_format((float) $record['sss'], 2) }}</td></tr>
+                                                <tr><td>PhilHealth</td><td>PHP {{ number_format((float) $record['philhealth'], 2) }}</td></tr>
+                                                <tr><td>Pag-IBIG</td><td>PHP {{ number_format((float) $record['pagibig'], 2) }}</td></tr>
+                                                <tr><td>Withholding Tax</td><td>PHP {{ number_format((float) $record['withholding_tax'], 2) }}</td></tr>
+                                                <tr><td>Cash Advance</td><td>PHP {{ number_format((float) $record['cash_advance'], 2) }}</td></tr>
+                                                <tr><td>Salary Loan</td><td>PHP {{ number_format((float) $record['salary_loan'], 2) }}</td></tr>
+                                                <tr><td>HDMF Loan</td><td>PHP {{ number_format((float) $record['hdmf_loan'], 2) }}</td></tr>
+                                                <tr><td>Other Deductions</td><td>PHP {{ number_format((float) $record['other_deductions'], 2) }}</td></tr>
+                                                <tr class="total"><td>Total Deductions</td><td>PHP {{ number_format($prDeductions, 2) }}</td></tr>
                                             </tbody>
                                         </table>
                                     </div>
                                 </div>
 
                                 <table class="payslip-summary">
-                                    <tr><td>Gross Pay</td><td>₱{{ number_format($prGross, 2) }}</td></tr>
-                                    <tr><td>Total Deductions</td><td>₱{{ number_format($prDeductions, 2) }}</td></tr>
-                                    <tr class="netpay"><td>Net Pay</td><td>₱{{ number_format($prNet, 2) }}</td></tr>
+                                    <tr><td>Gross Pay</td><td>PHP {{ number_format($prGross, 2) }}</td></tr>
+                                    <tr><td>Total Deductions</td><td>PHP {{ number_format($prDeductions, 2) }}</td></tr>
+                                    <tr class="netpay"><td>Net Pay</td><td>PHP {{ number_format($prNet, 2) }}</td></tr>
                                 </table>
 
                                 <div class="payslip-confirm">
@@ -282,7 +282,7 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Daily Rate (₱) *</label>
+                            <label class="form-label">Daily Rate (PHP) *</label>
                             <input type="number" name="daily_rate" id="dailyRate" class="form-input calc-readonly" step="0.01" min="0" required readonly>
                         </div>
                         <div class="form-group">
@@ -379,7 +379,7 @@
                 </div>
 
                 <div class="alert alert-info" style="margin-top: 1rem;">
-                    Daily rate, attendance, late/absent deductions, and SSS, PhilHealth, and Pag-IBIG are calculated automatically. Configure the weekly statutory amounts in Business Settings.
+                    Daily rate, attendance, late/absent deductions, and SSS, PhilHealth, and Pag-IBIG are calculated automatically. Configure the weekly statutory amounts in System Settings.
                 </div>
                 <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1rem; flex-wrap: wrap;">
                     <button type="button" class="btn btn-secondary" onclick="document.getElementById('payrollModal').classList.remove('active'); if (typeof window.closePayrollModal === 'function') window.closePayrollModal();">Cancel</button>
@@ -460,8 +460,8 @@
         const monthlyBasic = dailyRate * 26;
         const hourlyRate = dailyRate / 8;
 
-        setVal('monthlyBasic', '₱' + monthlyBasic.toFixed(2));
-        setVal('hourlyRate', '₱' + hourlyRate.toFixed(2));
+        setVal('monthlyBasic', 'PHP ' + monthlyBasic.toFixed(2));
+        setVal('hourlyRate', 'PHP ' + hourlyRate.toFixed(2));
 
         let gross = 0;
         EARNING_FIELDS.forEach(function(id) { gross += num(id); });
@@ -469,9 +469,9 @@
         DEDUCTION_FIELDS.forEach(function(id) { totalDeductions += num(id); });
         const net = Math.max(0, gross - totalDeductions);
 
-        setVal('grossPay', '₱' + gross.toFixed(2));
-        setVal('totalDeductions', '₱' + totalDeductions.toFixed(2));
-        setVal('netPay', '₱' + net.toFixed(2));
+        setVal('grossPay', 'PHP ' + gross.toFixed(2));
+        setVal('totalDeductions', 'PHP ' + totalDeductions.toFixed(2));
+        setVal('netPay', 'PHP ' + net.toFixed(2));
     }
 
     function syncAttendance() {
@@ -523,7 +523,7 @@
         const monthlyBasic = rv('monthly_basic_salary') || dailyRate * 26;
         const hourlyRate = rv('hourly_rate') || dailyRate / 8;
         const empStatus = (record.employment_status || 'Regular').toString().replace(/^./, c => c.toUpperCase());
-        const money = n => '₱' + Number(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        const money = n => 'PHP ' + Number(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
         const employmentDate = record.created_at ? record.created_at : record.payroll_period_end;
 
         const earningRows = [
@@ -623,7 +623,7 @@
                         <table class="meta-table">
                             <tr>
                                 <td><span class="lbl">Employee Name</span><strong>${record.employee_name}</strong></td>
-                                <td><span class="lbl">Employee Code</span><strong>${record.employee_code}</strong></td>
+                                <td><span class="lbl">Employee ID</span><strong>${record.employee_code}</strong></td>
                                 <td><span class="lbl">Position</span><strong>${record.position || 'General Admin'}</strong></td>
                             </tr>
                             <tr>

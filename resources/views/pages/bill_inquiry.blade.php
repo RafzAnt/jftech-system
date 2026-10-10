@@ -1,9 +1,17 @@
 <!DOCTYPE html>
-<html lang="en-PH">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JFTECH - Client Accounts</title>
+    <script>
+        try {
+            var savedTheme = localStorage.getItem('jftech-theme');
+            document.documentElement.setAttribute('data-theme', savedTheme === 'dark' ? 'dark' : 'light');
+        } catch (error) {
+            document.documentElement.setAttribute('data-theme', 'light');
+        }
+    </script>
     <link rel="stylesheet" href="{{ asset('css/jftech-theme.css') }}?{{ $themeCssVersion }}">
     <link rel="stylesheet" href="{{ asset('css/bill_inquiry.css') }}?{{ $billInquiryCssVersion }}">
 </head>
@@ -81,9 +89,8 @@
                         <thead>
                             <tr>
                                 <th>Name</th>
-                                <th>Branch</th>
                                 <th>Barangay</th>
-                                <th>Mobile Number</th>
+                                <th>Contact Number</th>
                                 <th>Email</th>
                                 <th>Plan</th>
                                 <th>Status</th>
@@ -94,7 +101,6 @@
                             @foreach ($searchResults as $client)
                             <tr>
                                 <td>{{ htmlspecialchars($client['full_name']) }}</td>
-                                <td>{{ $client['branch_name'] ?: 'N/A' }}</td>
                                 <td>{{ $client['barangay_name'] ?: 'N/A' }}</td>
                                 <td>{{ $client['contact_number'] ?: '--' }}</td>
                                 <td>{{ $client['email'] ?: '--' }}</td>
@@ -104,7 +110,7 @@
                             </tr>
                             @endforeach
                             @if (empty($searchResults))
-                            <tr><td colspan="8" style="text-align: center; color: var(--text-muted);">No clients found</td></tr>
+                            <tr><td colspan="7" style="text-align: center; color: var(--text-muted);">No clients found</td></tr>
                             @endif
                         </tbody>
                     </table>
@@ -118,7 +124,7 @@
                         <thead>
                             <tr>
                                 <th>Name</th>
-                                <th>Mobile Number</th>
+                                <th>Contact Number</th>
                                 <th>Email</th>
                                 <th>Plan</th>
                                 <th>Status</th>
@@ -149,21 +155,21 @@
             <div class="card-header" style="flex-wrap: wrap; gap: 0.5rem;">
                 <div>
                     <span class="card-title">{{ htmlspecialchars($selectedClient['full_name']) }}</span>
-                    <p style="margin: 0; color: var(--text-muted); font-size: 0.8rem;">{{ $selectedClient['branch_name'] ?: 'N/A' }} · {{ $selectedClient['barangay_name'] ?: 'N/A' }}</p>
+                    <p style="margin: 0; color: var(--text-muted); font-size: 0.8rem;">{{ $selectedClient['barangay_name'] }}</p>
                 </div>
                 <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                     <span class="badge badge-info">{{ $selectedClient['wifi_plan'] }}</span>
-                    <span class="badge badge-success">₱{{ number_format($selectedClient['monthly_rate'], 2) }}/mo</span>
+                    <span class="badge badge-success">PHP {{ number_format($selectedClient['monthly_rate'], 2) }}/mo</span>
                 </div>
             </div>
             <div class="card-body">
                 <div class="stats-grid" style="margin-bottom: 0;">
                     <div class="stat-card" style="padding: 1rem;">
-                        <div class="stat-value" style="font-size: 1.5rem;">₱{{ number_format($totalDue, 2) }}</div>
+                        <div class="stat-value" style="font-size: 1.5rem;">PHP {{ number_format($totalDue, 2) }}</div>
                         <div class="stat-label">Outstanding Balance</div>
                     </div>
                     <div class="stat-card" style="padding: 1rem;">
-                        <div class="stat-value" style="font-size: 1.5rem; color: var(--success);">₱{{ number_format($totalPaid, 2) }}</div>
+                        <div class="stat-value" style="font-size: 1.5rem; color: var(--success);">PHP {{ number_format($totalPaid, 2) }}</div>
                         <div class="stat-label">Total Paid</div>
                     </div>
                     <div class="stat-card" style="padding: 1rem;">
@@ -192,7 +198,7 @@
                         <thead>
                             <tr>
                                 <th>Bill #</th>
-                                <th>Billing Period</th>
+                                <th>Period</th>
                                 <th>Amount</th>
                                 <th>Balance</th>
                                 <th>Due Date</th>
@@ -206,10 +212,10 @@
                             <tr>
                                 <td><strong>{{ $bill['bill_number'] }}</strong></td>
                                 <td>{{ date('M d', strtotime($bill['billing_period_start'])) }} - {{ date('M d, Y', strtotime($bill['billing_period_end'])) }}</td>
-                                <td style="font-weight: 600;">₱{{ number_format($bill['amount'], 2) }}</td>
+                                <td style="font-weight: 600;">PHP {{ number_format($bill['amount'], 2) }}</td>
                                 <td>
                                     @if ((float) $bill['balance'] > 0)
-                                    <span class="badge {{ (float) $bill['balance'] < (float) $bill['amount'] ? 'badge-warning' : 'badge-danger' }}">₱{{ number_format($bill['balance'], 2) }}</span>
+                                    <span class="badge {{ (float) $bill['balance'] < (float) $bill['amount'] ? 'badge-warning' : 'badge-danger' }}">PHP {{ number_format($bill['balance'], 2) }}</span>
                                     @else
                                     <span style="color: var(--text-muted);">--</span>
                                     @endif
@@ -255,8 +261,8 @@
                                  <th>Bill Amount</th>
                                  <th>Paid Amount</th>
                                  <th>Balance</th>
-                                 <th>Payment Method</th>
-                                 <th>Reference No.</th>
+                                 <th>Method</th>
+                                 <th>Reference</th>
                                  <th>Received By</th>
                                  <th>Print</th>
                             </tr>
@@ -272,11 +278,11 @@
                                         <span style="color: var(--text-muted);">Unlinked legacy payment</span>
                                     @endif
                                 </td>
-                                <td>{{ $payment['bill_amount'] ? '₱' . number_format($payment['bill_amount'], 2) : '-' }}</td>
-                                <td style="font-weight: 600; color: var(--success);">₱{{ number_format($payment['amount'], 2) }}</td>
+                                <td>{{ $payment['bill_amount'] ? 'PHP ' . number_format($payment['bill_amount'], 2) : '-' }}</td>
+                                <td style="font-weight: 600; color: var(--success);">PHP {{ number_format($payment['amount'], 2) }}</td>
                                 <td style="font-weight: 600; color: {{ (float) $payment['balance'] > 0 ? 'var(--warning)' : 'var(--text-muted)' }};">
                                     @if ((float) $payment['balance'] > 0)
-                                    ₱{{ number_format((float) $payment['balance'], 2) }}
+                                    PHP {{ number_format((float) $payment['balance'], 2) }}
                                     @else
                                     --
                                     @endif
@@ -307,8 +313,8 @@
                     @forelse ($planChangeHistory as $change)
                     <tr>
                         <td>{{ date('M d, Y h:i A', strtotime($change['created_at'])) }}</td>
-                        <td>{{ $change['previous_plan_name'] ?: 'No assigned plan' }}<br><small style="color:var(--text-muted)">₱{{ number_format($change['previous_monthly_rate'], 2) }}/mo</small></td>
-                        <td><strong>{{ $change['new_plan_name'] }}</strong><br><small style="color:var(--success)">₱{{ number_format($change['new_monthly_rate'], 2) }}/mo</small></td>
+                        <td>{{ $change['previous_plan_name'] ?: 'No assigned plan' }}<br><small style="color:var(--text-muted)">PHP {{ number_format($change['previous_monthly_rate'], 2) }}/mo</small></td>
+                        <td><strong>{{ $change['new_plan_name'] }}</strong><br><small style="color:var(--success)">PHP {{ number_format($change['new_monthly_rate'], 2) }}/mo</small></td>
                         <td>{{ $change['reason'] ?: '—' }}</td>
                         <td>{{ $change['changed_by_name'] ?: 'System' }}</td>
                     </tr>
@@ -344,7 +350,7 @@
                             <input class="form-input" type="text" id="paymentBillLabel" readonly>
                         </div>
                         <div class="form-group">
-                            <label class="form-label" for="paymentAmount">Amount (₱) *</label>
+                            <label class="form-label" for="paymentAmount">Amount (PHP) *</label>
                             <input class="form-input" type="number" name="amount" id="paymentAmount" step="0.01" min="0.01" required>
                         </div>
                         <div class="form-group">
@@ -356,7 +362,7 @@
                             <select class="form-select" name="payment_method" id="paymentMethod"><option value="cash">Cash</option><option value="gcash">GCash</option></select>
                         </div>
                         <div class="form-group">
-                            <label class="form-label" for="paymentReference">Reference No.</label>
+                            <label class="form-label" for="paymentReference">Reference Number</label>
                             <input class="form-input" type="text" name="reference_number" id="paymentReference" placeholder="Ref # (optional)">
                         </div>
                     </div>
@@ -384,7 +390,7 @@
     function openPaymentModal(button) {
         const balance = Number(button.dataset.balance || 0);
         document.getElementById('paymentBillId').value = button.dataset.billId;
-        document.getElementById('paymentBillLabel').value = `${button.dataset.billNumber} — Balance: ₱${balance.toFixed(2)}`;
+        document.getElementById('paymentBillLabel').value = `${button.dataset.billNumber} — Balance: PHP ${balance.toFixed(2)}`;
         const amount = document.getElementById('paymentAmount');
         amount.value = balance.toFixed(2);
         amount.max = balance.toFixed(2);

@@ -35,13 +35,13 @@ class ReportController extends Controller
         $response->setCallback(function () use ($filters) {
             echo "\xEF\xBB\xBF"; // UTF-8 BOM for Excel
             $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['Date & Time', 'Record No.', 'Record Type', 'Activity', 'Name', 'Reference Code', 'Status', 'Amount', 'Quantity', 'Notes'], ',', '"', '');
+            fputcsv($handle, ['Date/Time', 'Record ID', 'Report Type', 'Activity Type', 'Person Responsible', 'Record Code', 'Status', 'Amount', 'Quantity', 'Remarks'], ',', '"', '');
             $records = $this->service->activityFeed($filters, 5000);
             foreach ($records as $r) {
                 fputcsv($handle, [
                     $r['activity_datetime'] ?? '',
                     $r['record_id'] ?? '',
-                    $this->service->reportTypes()[$r['report_type'] ?? ''] ?? ($r['report_type'] ?? ''),
+                    $r['report_type'] ?? '',
                     $r['activity_type'] ?? '',
                     $r['person'] ?? '',
                     $r['record_code'] ?? '',
@@ -74,13 +74,13 @@ class ReportController extends Controller
         $response->setCallback(function () use ($filters) {
             echo "\xEF\xBB\xBF"; // UTF-8 BOM
             $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['Date & Time', 'Record No.', 'Record Type', 'Activity', 'Name', 'Reference Code', 'Status', 'Amount', 'Quantity', 'Notes'], ',', '"', '');
+            fputcsv($handle, ['Date/Time', 'Record ID', 'Report Type', 'Activity Type', 'Person Responsible', 'Record Code', 'Status', 'Amount', 'Quantity', 'Remarks'], ',', '"', '');
             $records = $this->service->activityFeed($filters, 5000);
             foreach ($records as $r) {
                 fputcsv($handle, [
                     $r['activity_datetime'] ?? '',
                     $r['record_id'] ?? '',
-                    $this->service->reportTypes()[$r['report_type'] ?? ''] ?? ($r['report_type'] ?? ''),
+                    $r['report_type'] ?? '',
                     $r['activity_type'] ?? '',
                     $r['person'] ?? '',
                     $r['record_code'] ?? '',
