@@ -1,3 +1,8 @@
+@php
+    $currencyCode = strtoupper(trim((string) ($currency ?? 'PHP')));
+    $currencySymbol = $currencyCode === 'PHP' ? '₱' : $currencyCode;
+    $currencyPrefix = $currencyCode === 'PHP' ? '₱' : $currencyCode . ' ';
+@endphp
 <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; margin-bottom: 1.5rem;">
     <button class="btn btn-success" onclick="openModal('schedulePriceModal')">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -16,7 +21,7 @@
                 <thead>
                     <tr>
                         <th>Product</th>
-                        <th>SKU</th>
+                        <th>Product Code</th>
                         <th>Original Price</th>
                         <th>Discount Type</th>
                         <th>Discount Value</th>
@@ -35,16 +40,16 @@
                     <tr data-price-id="{{ $discount['id'] }}">
                         <td><strong>{{ htmlspecialchars($discount['product_name'] ?? 'N/A') }}</strong></td>
                         <td>{{ htmlspecialchars($discount['sku'] ?? 'N/A') }}</td>
-                        <td>{{ $currency }} {{ number_format((float)($discount['base_price'] ?? 0), 2) }}</td>
+                        <td>{{ $currencyPrefix }}{{ number_format((float)($discount['base_price'] ?? 0), 2) }}</td>
                         <td>{{ ucfirst($discount['discount_type'] ?? 'none') }}</td>
                         <td>
                             @if ($discount['discount_type'] === 'percentage')
                                 {{ $discount['discount_value'] }}%
                             @else
-                                {{ $currency }} {{ number_format((float)($discount['discount_value'] ?? 0), 2) }}
+                                {{ $currencyPrefix }}{{ number_format((float)($discount['discount_value'] ?? 0), 2) }}
                             @endif
                         </td>
-                        <td style="font-weight: 600; color: var(--accent);">{{ $currency }} {{ number_format((float)($discount['final_price'] ?? 0), 2) }}</td>
+                        <td style="font-weight: 600; color: var(--accent);">{{ $currencyPrefix }}{{ number_format((float)($discount['final_price'] ?? 0), 2) }}</td>
                         <td>{{ $discount['effective_from'] ? date('M d, Y', strtotime($discount['effective_from'])) : '-' }}</td>
                         <td>{{ $discount['effective_until'] ? date('M d, Y', strtotime($discount['effective_until'])) : '-' }}</td>
                         <td>

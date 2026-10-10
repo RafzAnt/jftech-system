@@ -31,7 +31,7 @@ class ReportService
             SELECT c.id AS record_id, 'client' AS report_type, 'Client Registration' AS activity_type, c.created_at AS activity_datetime,
                 c.full_name AS person, c.client_code AS record_code, c.status AS status,
                 NULL AS amount, NULL AS quantity,
-                CONCAT('Plan: ', IFNULL(NULLIF(c.wifi_plan,''), 'N/A'), ' | Rate: PHP ', c.monthly_rate) AS remarks,
+                CONCAT('Plan: ', IFNULL(NULLIF(c.wifi_plan,''), 'N/A'), ' | Rate: ₱', c.monthly_rate) AS remarks,
                 'Clients' AS category,
                 CASE WHEN c.status='active' THEN 'completed' ELSE 'pending' END AS outcome
             FROM clients c
@@ -48,7 +48,7 @@ class ReportService
 
             UNION ALL
 
-            SELECT b.id, 'bill', 'Bill Generated', b.created_at,
+            SELECT b.id, 'bill', 'Bill Issued', b.created_at,
                 c.full_name, b.bill_number, b.status,
                 b.amount, NULL,
                 CONCAT('Period: ', b.billing_period_start, ' to ', b.billing_period_end, ' | Due: ', b.due_date),
@@ -62,7 +62,7 @@ class ReportService
             SELECT p.id, 'payment', 'Payment Received', p.created_at,
                 IFNULL(u.full_name, c.full_name), p.reference_number, 'completed' AS status,
                 p.amount, NULL,
-                CONCAT('Method: ', p.payment_method, ' | Ref: ', IFNULL(p.reference_number,'N/A')),
+                CONCAT('Payment Method: ', p.payment_method, ' | Reference: ', IFNULL(p.reference_number,'N/A')),
                 'Payments',
                 'completed' AS outcome
             FROM payments p
@@ -71,7 +71,7 @@ class ReportService
 
             UNION ALL
 
-            SELECT a.id, 'attendance', 'Attendance Record', a.created_at,
+            SELECT a.id, 'attendance', 'Attendance Entry', a.created_at,
                 e.full_name, e.employee_code, CONCAT(a.status_morning,'/',a.status_afternoon),
                 NULL, a.total_hours,
                 CONCAT('Date: ', a.attendance_date, ' | Hours: ', a.total_hours),
@@ -82,7 +82,7 @@ class ReportService
 
             UNION ALL
 
-            SELECT i.id, 'inventory', 'Inventory Item', i.created_at,
+            SELECT i.id, 'inventory', 'Stock Item', i.created_at,
                 'System', i.category, i.status,
                 i.unit_price, i.quantity,
                 CONCAT('Category: ', IFNULL(i.category,'N/A'), ' | Supplier: ', IFNULL(i.supplier,'N/A')),
@@ -92,11 +92,11 @@ class ReportService
 
             UNION ALL
 
-            SELECT ir.id, 'inventory_request', 'Inventory Request', ir.created_at,
+            SELECT ir.id, 'inventory_request', 'Stock Request', ir.created_at,
                 ir.employee_name, ir.item_name, ir.status,
                 NULL, ir.quantity,
-                CONCAT('Qty: ', ir.quantity, ' | Comments: ', IFNULL(ir.comments,'N/A')),
-                'Inventory Requests',
+                CONCAT('Quantity: ', ir.quantity, ' | Notes: ', IFNULL(ir.comments,'N/A')),
+                'Stock Requests',
                 CASE WHEN ir.status='approved' THEN 'completed' WHEN ir.status='denied' THEN 'cancelled' ELSE 'pending' END
             FROM inventory_requests ir
 
@@ -105,7 +105,7 @@ class ReportService
             SELECT py.id, 'payroll', 'Payroll Processed', py.created_at,
                 e.full_name, e.employee_code, py.status,
                 py.net_pay, py.total_days_worked,
-                CONCAT('Period: ', py.payroll_period_start, ' to ', py.payroll_period_end, ' | Gross: PHP ', py.gross_pay),
+                CONCAT('Period: ', py.payroll_period_start, ' to ', py.payroll_period_end, ' | Gross: ₱', py.gross_pay),
                 IFNULL(e.department,'N/A'),
                 CASE WHEN py.status='paid' THEN 'completed' WHEN py.status IN ('draft','processed') THEN 'pending' ELSE 'pending' END
             FROM payroll py
@@ -659,15 +659,15 @@ class ReportService
     public function reportTypes(): array
     {
         return [
-            'client' => 'Client Registration',
-            'employee' => 'Employee Record',
-            'bill' => 'Bill Generated',
-            'payment' => 'Payment Received',
-            'attendance' => 'Attendance Record',
-            'inventory' => 'Inventory Item',
-            'inventory_request' => 'Inventory Request',
-            'payroll' => 'Payroll Processed',
-            'login' => 'User Login',
+            'client' => 'Client',
+            'employee' => 'Employee',
+            'bill' => 'Bill',
+            'payment' => 'Payment',
+            'attendance' => 'Attendance',
+            'inventory' => 'Stock Item',
+            'inventory_request' => 'Stock Request',
+            'payroll' => 'Payroll',
+            'login' => 'User Account',
         ];
     }
 

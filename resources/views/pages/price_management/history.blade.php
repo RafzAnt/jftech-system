@@ -1,4 +1,9 @@
 @php
+    $currencyCode = strtoupper(trim((string) ($currency ?? 'PHP')));
+    $currencySymbol = $currencyCode === 'PHP' ? '₱' : $currencyCode;
+    $currencyPrefix = $currencyCode === 'PHP' ? '₱' : $currencyCode . ' ';
+@endphp
+@php
     $historyFilters = $filters ?? [];
 @endphp
 
@@ -42,9 +47,9 @@
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th>Date/Time</th>
+                        <th>Date & Time</th>
                         <th>Product</th>
-                        <th>SKU</th>
+                        <th>Product Code</th>
                         <th>Previous Price</th>
                         <th>New Price</th>
                         <th>Difference</th>
@@ -63,16 +68,16 @@
                         $diffSign = $diff >= 0 ? '+' : '';
                         $prevDiscount = $item['previous_discount_type'] ?? 'none';
                         $newDiscount = $item['new_discount_type'] ?? 'none';
-                        $prevDiscountValue = $prevDiscount !== 'none' ? ($prevDiscount === 'percentage' ? number_format((float)$item['previous_discount_value'], 2) . '%' : $currency . ' ' . number_format((float)$item['previous_discount_value'], 2) . ' OFF') : 'No Discount';
-                        $newDiscountValue = $newDiscount !== 'none' ? ($newDiscount === 'percentage' ? number_format((float)$item['new_discount_value'], 2) . '%' : $currency . ' ' . number_format((float)$item['new_discount_value'], 2) . ' OFF') : 'No Discount';
+                        $prevDiscountValue = $prevDiscount !== 'none' ? ($prevDiscount === 'percentage' ? number_format((float)$item['previous_discount_value'], 2) . '%' : $currencyPrefix . number_format((float)$item['previous_discount_value'], 2) . ' OFF') : 'No Discount';
+                        $newDiscountValue = $newDiscount !== 'none' ? ($newDiscount === 'percentage' ? number_format((float)$item['new_discount_value'], 2) . '%' : $currencyPrefix . number_format((float)$item['new_discount_value'], 2) . ' OFF') : 'No Discount';
                     @endphp
                     <tr>
                         <td style="color: var(--text-muted); font-size: 0.85rem;">{{ $item['changed_at'] ? date('M d, Y h:i A', strtotime($item['changed_at'])) : '-' }}</td>
                         <td><strong>{{ htmlspecialchars($item['product_name'] ?? 'N/A') }}</strong></td>
                         <td>{{ htmlspecialchars($item['sku'] ?? 'N/A') }}</td>
-                        <td>{{ $currency }} {{ number_format((float)($item['previous_price'] ?? 0), 2) }}</td>
-                        <td>{{ $currency }} {{ number_format((float)($item['new_price'] ?? 0), 2) }}</td>
-                        <td class="{{ $diffClass }}">{{ $diffSign }}{{ $currency }} {{ number_format($diff, 2) }}</td>
+                        <td>{{ $currencyPrefix }}{{ number_format((float)($item['previous_price'] ?? 0), 2) }}</td>
+                        <td>{{ $currencyPrefix }}{{ number_format((float)($item['new_price'] ?? 0), 2) }}</td>
+                        <td class="{{ $diffClass }}">{{ $diffSign }}{{ $currencyPrefix }}{{ number_format($diff, 2) }}</td>
                         <td class="{{ $diffClass }}">{{ $diffSign }}{{ number_format((float)($item['change_percentage'] ?? 0), 2) }}%</td>
                         <td>{{ $prevDiscountValue }}</td>
                         <td>{{ $newDiscountValue }}</td>
@@ -101,7 +106,7 @@
                 <div class="timeline-time">{{ $item['changed_at'] ? date('M d, Y h:i A', strtotime($item['changed_at'])) : '' }}</div>
                 <div class="timeline-content">
                     <div style="font-weight: 600; display: flex; justify-content: space-between;">
-                        <span>{{ $currency }} {{ number_format((float)($item['new_price'] ?? 0), 2) }}</span>
+                        <span>{{ $currencyPrefix }}{{ number_format((float)($item['new_price'] ?? 0), 2) }}</span>
                         <span style="color: var(--text-secondary); font-size: 0.8rem;">{{ ucfirst($item['change_percentage'] ? 'Price Changed' : 'Initial Price') }}</span>
                     </div>
                     <div style="color: var(--text-muted); font-size: 0.8rem; margin-top: 0.25rem;">

@@ -72,7 +72,7 @@ if ($verified && $request->isMethod('post')) {
             } elseif ($firstName === '' || $lastName === '') {
                 throw new Exception('First name and last name are required. Middle name is optional.');
             }
-            if ($phone !== '' && ! preg_match('/^\d{11}$/', $phone)) throw new Exception('Phone number must contain exactly 11 digits.');
+            if ($phone !== '' && ! preg_match('/^\d{11}$/', $phone)) throw new Exception('Mobile number must contain exactly 11 digits.');
 
             $password = password_hash($plainPassword, PASSWORD_DEFAULT);
 
@@ -103,7 +103,7 @@ if ($verified && $request->isMethod('post')) {
             $employeePosition = trim((string) $request->input('employee_position'));
             if ($firstName === '' || $lastName === '') throw new Exception('First name and last name are required. Middle name is optional.');
             if ($role === 'employee' && ! in_array($employeePosition, $employeePositions, true)) throw new Exception('Select a valid employee position.');
-            if ($phone !== '' && ! preg_match('/^\d{11}$/', $phone)) throw new Exception('Phone number must contain exactly 11 digits.');
+            if ($phone !== '' && ! preg_match('/^\d{11}$/', $phone)) throw new Exception('Mobile number must contain exactly 11 digits.');
             
             $stmt = $pdo->prepare("UPDATE users SET full_name = ?, email = ?, phone = ?, role = ?, status = ? WHERE id = ?");
             $stmt->execute([$fullName, $email, $phone, $role, $status, $userId]);

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-PH">
 <head>
     <meta charset="UTF-8">
     <title>Inventory Stock Report</title>
@@ -102,7 +102,7 @@
         @include('partials.print_company')
         <div class="doc-title">
             <strong>INVENTORY STOCK REPORT</strong><br>
-            Generated: {{ date('M d, Y h:i A') }}
+            Prepared: {{ date('M d, Y h:i A') }}
         </div>
     </div>
 
@@ -111,18 +111,18 @@
         Category: <strong>{{ htmlspecialchars($categoryLabel) }}</strong> &nbsp;|&nbsp;
         @endif
         Total Items: <strong>{{ number_format($totalItems) }}</strong> &nbsp;|&nbsp;
-        Total Qty: <strong>{{ number_format($totalQuantity) }}</strong> &nbsp;|&nbsp;
-        Total Value: <strong>PHP {{ number_format($totalValue, 2) }}</strong> &nbsp;|&nbsp;
+        Total Quantity: <strong>{{ number_format($totalQuantity) }}</strong> &nbsp;|&nbsp;
+        Total Value: <strong>₱{{ number_format($totalValue, 2) }}</strong> &nbsp;|&nbsp;
         Low Stock: <strong>{{ number_format($lowStockItems) }}</strong>
     </div>
 
     <table>
         <thead>
             <tr>
-                <th style="width: 8%;">ID</th>
+                <th style="width: 8%;">Item No.</th>
                 <th>Item Name</th>
                 <th>Category</th>
-                <th class="amount" style="width: 12%;">Qty</th>
+                <th class="amount" style="width: 12%;">Quantity</th>
                 <th class="amount" style="width: 12%;">Unit Price</th>
                 <th class="amount" style="width: 14%;">Total Value</th>
                 <th style="width: 12%;">Supplier</th>
@@ -136,8 +136,8 @@
                 <td>{{ htmlspecialchars($item['item_name']) }}</td>
                 <td>{{ htmlspecialchars($item['category']) }}</td>
                 <td class="amount">{{ number_format((int) $item['quantity']) }}</td>
-                <td class="amount">PHP {{ number_format((float) $item['unit_price'], 2) }}</td>
-                <td class="amount">PHP {{ number_format((float) $item['quantity'] * (float) $item['unit_price'], 2) }}</td>
+                <td class="amount">₱{{ number_format((float) $item['unit_price'], 2) }}</td>
+                <td class="amount">₱{{ number_format((float) $item['quantity'] * (float) $item['unit_price'], 2) }}</td>
                 <td>{{ htmlspecialchars($item['supplier'] ?: 'N/A') }}</td>
                 <td>{{ ucfirst($item['status']) }}</td>
             </tr>
@@ -151,7 +151,7 @@ if (empty($inventoryItems)) { echo '<tr><td colspan="8" style="text-align: cente
                 <td colspan="3">TOTAL</td>
                 <td class="amount">{{ number_format($totalQuantity) }}</td>
                 <td class="amount">-</td>
-                <td class="amount">PHP {{ number_format($totalValue, 2) }}</td>
+                <td class="amount">₱{{ number_format($totalValue, 2) }}</td>
                 <td colspan="2">{{ number_format($totalItems) }} Items</td>
             </tr>
         </tfoot>

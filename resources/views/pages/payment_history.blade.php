@@ -1,17 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-PH">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JFTECH - Payment History</title>
-    <script>
-        try {
-            var savedTheme = localStorage.getItem('jftech-theme');
-            document.documentElement.setAttribute('data-theme', savedTheme === 'dark' ? 'dark' : 'light');
-        } catch (error) {
-            document.documentElement.setAttribute('data-theme', 'light');
-        }
-    </script>
     <link rel="stylesheet" href="{{ asset('css/jftech-theme.css') }}?{{ $themeCssVersion }}">
     <link rel="stylesheet" href="{{ asset('css/payment_history.css') }}?{{ $paymentHistoryCssVersion }}">
 </head>
@@ -24,49 +16,19 @@
         <div class="top-bar">
             <div>
                 <h1 class="page-title">Payment History</h1>
-                <p style="color: var(--text-muted); font-size: 0.85rem;">Review all recorded client payments</p>
+                <p style="color: var(--text-muted); font-size: 0.85rem;">Review recorded client payments and collection details</p>
             </div>
         </div>
-
-        @if ($success)
-        <div class="alert alert-success">{{ $success }}</div>
-        @endif
-        @if ($error)
-        <div class="alert alert-danger">{{ $error }}</div>
-        @endif
 
         <!-- Stats -->
         <div class="stats-grid" style="margin-bottom: 1.5rem;">
             <div class="stat-card" style="padding: 1.25rem; --stat-color: var(--success);">
-                <div class="stat-value">PHP {{ number_format($totalPayments, 2) }}</div>
+                <div class="stat-value">₱{{ number_format($totalPayments, 2) }}</div>
                 <div class="stat-label">Total Payments</div>
             </div>
             <div class="stat-card" style="padding: 1.25rem; --stat-color: var(--accent);">
-                <div class="stat-value" style="color: var(--success);">PHP {{ number_format($todayPayments, 2) }}</div>
+                <div class="stat-value" style="color: var(--success);">₱{{ number_format($todayPayments, 2) }}</div>
                 <div class="stat-label">Today's Collection</div>
-            </div>
-        </div>
-
-        <div class="card" style="margin-bottom: 1.5rem;">
-            <div class="card-body">
-                <form method="GET" action="{{ url('/pages/payment_history.php') }}" id="paymentFilters" style="display:flex;gap:1rem;align-items:flex-end;flex-wrap:wrap;">
-                    <div class="form-group" style="min-width:220px;margin:0;">
-                        <label class="form-label" for="barangayFilter">Barangay</label>
-                        <select class="form-select" name="barangay" id="barangayFilter" onchange="this.form.submit()">
-                            <option value="">All Barangays</option>
-                            @foreach ($barangays as $barangay)
-                            <option value="{{ $barangay['id'] }}" {{ $selectedBarangay == $barangay['id'] ? 'selected' : '' }}>{{ $barangay['barangay_name'] }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="form-group" style="flex:1;min-width:240px;margin:0;">
-                        <label class="form-label" for="paymentSearch">Search client</label>
-                        <div class="search-box" style="max-width:none;">
-                            <input type="search" class="search-input" name="search" id="paymentSearch" placeholder="Search client name..." value="{{ htmlspecialchars($searchTerm) }}">
-                        </div>
-                    </div>
-                    <button type="submit" class="btn btn-primary">Search</button>
-                </form>
             </div>
         </div>
 
@@ -79,34 +41,29 @@
                 <div class="data-table-container">
                     <table class="data-table">
                         <thead>
-<tr>
+                                    <tr>
                                         <th>Client</th>
-                                         <th>Barangay</th>
                                          <th>Bill #</th>
                                          <th>Bill Amount</th>
                                          <th>Paid Amount</th>
                                          <th>Balance</th>
                                          <th>Date</th>
-                                         <th>Method</th>
-                                         <th>Reference</th>
+                                         <th>Payment Method</th>
+                                         <th>Reference No.</th>
                                          <th>Received By</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach ($payments as $payment)
                                     <tr>
-                                        <td><strong>{{ htmlspecialchars($payment['client_name']) }}</strong></td>
-                                        <td>{{ htmlspecialchars($payment['barangay_name'] ?: 'Unassigned') }}</td>
-                                        <td>@if ($payment['bill_number']){{ $payment['bill_number'] }}@else<span style="color: var(--text-muted);">—</span>@endif</td>
-                                        <td>{{ $payment['bill_amount'] ? 'PHP ' . number_format($payment['bill_amount'], 2) : '-' }}</td>
-                                        <td style="color: var(--success); font-weight: 700;">PHP {{ number_format($payment['amount'], 2) }}</td>
-                                        <td style="color: {{ (float) $payment['balance'] > 0 ? 'var(--warning)' : 'var(--text-muted)' }}; font-weight: 700;">
-                                            @if ((float) $payment['balance'] > 0)
-                                            PHP {{ number_format((float) $payment['balance'], 2) }}
-                                            @else
-                                            --
-                                            @endif
+                                        <td>
+                                             <strong>{{ $payment['client_code'] }}</strong><br>
+                                             <span style="font-size: 0.8rem; color: var(--text-muted);">{{ htmlspecialchars($payment['client_name']) }}</span>
                                         </td>
+                                        <td>@if ($payment['bill_number']){{ $payment['bill_number'] }}@else<span style="color: var(--text-muted);">—</span>@endif</td>
+                                        <td>{{ $payment['bill_amount'] ? '₱' . number_format($payment['bill_amount'], 2) : '-' }}</td>
+                                        <td style="color: var(--success); font-weight: 700;">₱{{ number_format($payment['amount'], 2) }}</td>
+                                        <td style="color: {{ (float) $payment['balance'] > 0 ? 'var(--warning)' : 'var(--success)' }}; font-weight: 700;">₱{{ number_format(max(0, (float) $payment['balance']), 2) }}</td>
                                         <td>{{ date('M d, Y', strtotime($payment['payment_date'])) }}</td>
                                         <td><span class="badge badge-info">{{ ucfirst($payment['payment_method']) }}</span></td>
                                         <td>{{ $payment['reference_number'] ?: '-' }}</td>
@@ -114,7 +71,7 @@
                                     </tr>
                                     @endforeach
                                     @if (empty($payments))
-                                    <tr><td colspan="11" style="text-align: center; color: var(--text-muted); padding: 2rem;">No payment records found for the selected filter</td></tr>
+                                    <tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 2rem;">No payment records found</td></tr>
                                     @endif
                                 </tbody>
                     </table>

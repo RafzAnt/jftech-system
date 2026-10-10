@@ -39,7 +39,7 @@ if ($request->isMethod('post')) {
             throw new \RuntimeException('Please complete all required client registration fields.');
         }
         if (! preg_match('/^\d{11}$/', $contactNumber)) {
-            throw new \RuntimeException('Contact number must contain exactly 11 digits.');
+            throw new \RuntimeException('Mobile number must contain exactly 11 digits.');
         }
         if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
             throw new \RuntimeException('Please enter a valid email address.');

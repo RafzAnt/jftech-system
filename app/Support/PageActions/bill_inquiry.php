@@ -81,7 +81,7 @@ if ($request->isMethod('post') && $request->has('record_payment')) {
             $paidStmt->execute([$data['bill_id']]);
             $remaining = (float) $bill['amount'] - (float) $paidStmt->fetchColumn();
             if ((float) $data['amount'] > $remaining) {
-                throw new \RuntimeException('Payment amount cannot exceed the remaining bill balance of PHP ' . number_format(max(0, $remaining), 2) . '.');
+                throw new \RuntimeException('Payment amount cannot exceed the remaining bill balance of ₱' . number_format(max(0, $remaining), 2) . '.');
             }
 
             $stmt = $pdo->prepare('INSERT INTO payments (client_id, bill_id, amount, payment_date, payment_method, reference_number, notes, received_by, submission_token) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
@@ -107,7 +107,7 @@ if ($request->isMethod('post') && $request->has('record_payment')) {
 
 // Search and select client
 if ($request->has('client_id') && $request->query('client_id')) {
-    $stmt = $pdo->prepare("SELECT c.*, b.barangay_name FROM clients c LEFT JOIN barangays b ON c.barangay_id = b.id WHERE c.id = ?");
+    $stmt = $pdo->prepare("SELECT c.*, COALESCE(c.registered_barangay_name, b.barangay_name) AS barangay_name FROM clients c LEFT JOIN barangays b ON c.barangay_id = b.id WHERE c.id = ?");
     $stmt->execute([$request->query('client_id')]);
     $selectedClient = $stmt->fetch();
 
@@ -156,7 +156,7 @@ if ($request->has('client_id') && $request->query('client_id')) {
 $searchResults = [];
 if ($request->filled('search')) {
     $search = '%' . trim((string) $request->query('search')) . '%';
-    $query = 'SELECT c.*, b.barangay_name FROM clients c LEFT JOIN barangays b ON c.barangay_id = b.id WHERE c.full_name LIKE ?';
+    $query = 'SELECT c.*, COALESCE(c.registered_barangay_name, b.barangay_name) AS barangay_name FROM clients c LEFT JOIN barangays b ON c.barangay_id = b.id WHERE c.full_name LIKE ?';
     $params = [$search];
 
     $query .= $showArchived ? ' AND c.archived = 1' : ' AND (c.archived IS NULL OR c.archived = 0)';

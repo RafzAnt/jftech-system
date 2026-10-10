@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-PH">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JFTECH - System Settings</title>
+    <title>JFTECH - Business Settings</title>
     <script>
         try {
             var savedTheme = localStorage.getItem('jftech-theme');
@@ -23,7 +23,7 @@
     <div class="main-content">
         <div class="top-bar">
             <div>
-                <h1 class="page-title">System Settings</h1>
+                <h1 class="page-title">Business Settings</h1>
                 <p style="color: var(--text-muted); font-size: 0.85rem;">Configure system preferences</p>
             </div>
         </div>
@@ -51,15 +51,15 @@
                     <input type="hidden" name="update_settings" value="1">
                     <div class="form-grid">
                         <div class="form-group">
-                            <label class="form-label">Company Name</label>
+                            <label class="form-label">Business Name</label>
                             <input type="text" name="settings[company_name]" class="form-input" value="{{ htmlspecialchars($settings['company_name']['setting_value'] ?? '') }}">
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Company Address</label>
+                            <label class="form-label">Business Address</label>
                             <input type="text" name="settings[company_address]" class="form-input" value="{{ htmlspecialchars($settings['company_address']['setting_value'] ?? '') }}">
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Contact Number</label>
+                            <label class="form-label">Mobile Number</label>
                             <input type="text" name="settings[company_contact]" class="form-input" value="{{ htmlspecialchars($settings['company_contact']['setting_value'] ?? '') }}" inputmode="numeric" pattern="[0-9]{11}" minlength="11" maxlength="11">
                         </div>
                         <div class="form-group">
@@ -69,6 +69,7 @@
                         <div class="form-group">
                             <label class="form-label">Currency</label>
                             <input type="text" name="settings[currency]" class="form-input" value="{{ $settings['currency']['setting_value'] ?? 'PHP' }}">
+                            <small style="color:var(--text-muted);">Use PHP for the Philippine peso.</small>
                         </div>
                     </div>
                     <div class="settings-form-actions"><button type="submit" class="btn btn-primary">Save Settings</button></div>
@@ -81,13 +82,13 @@
                 <span class="card-title">Weekly Payroll Deductions</span>
             </div>
             <div class="card-body">
-                <p style="margin:0 0 1rem;color:var(--text-muted);font-size:.85rem;">These amounts are filled automatically when payroll is generated. They are matched using the employee’s saved daily rate. The system automatically creates processed payroll every Sunday at 11:55 PM (Asia/Manila) after the attendance week ends; the administrator only reviews it and marks it paid when released.</p>
+                            <p style="margin:0 0 1rem;color:var(--text-muted);font-size:.85rem;">These amounts are filled in automatically using each employee’s saved daily rate. Payroll is prepared every Sunday at 11:55 PM (Philippine time) after the work week ends. The admin reviews it and marks it paid when the pay is released.</p>
                 <form method="POST" action="" class="settings-form">
                     @csrf
                     <input type="hidden" name="update_settings" value="1">
                     <div class="form-grid">
                         @foreach ([500 => 'Technician', 580 => 'Technician II', 600 => 'Admin'] as $rate => $role)
-                        <div class="form-group" style="grid-column:1/-1;margin-bottom:0;"><strong>PHP {{ $rate }}/day — {{ $role }}</strong></div>
+                        <div class="form-group" style="grid-column:1/-1;margin-bottom:0;"><strong>₱{{ $rate }}/day — {{ $role }}</strong></div>
                         <div class="form-group"><label class="form-label">Pag-IBIG / HDMF</label><input type="number" name="settings[payroll_{{ $rate }}_pagibig]" class="form-input" step="0.01" min="0" value="{{ $settings['payroll_' . $rate . '_pagibig']['setting_value'] ?? '0.00' }}"></div>
                         <div class="form-group"><label class="form-label">SSS</label><input type="number" name="settings[payroll_{{ $rate }}_sss]" class="form-input" step="0.01" min="0" value="{{ $settings['payroll_' . $rate . '_sss']['setting_value'] ?? '0.00' }}"></div>
                         <div class="form-group"><label class="form-label">PhilHealth</label><input type="number" name="settings[payroll_{{ $rate }}_philhealth]" class="form-input" step="0.01" min="0" value="{{ $settings['payroll_' . $rate . '_philhealth']['setting_value'] ?? '0.00' }}"></div>
@@ -137,7 +138,7 @@
                             </div>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Late Threshold (minutes)</label>
+                            <label class="form-label">Mark as Late After (minutes)</label>
                             <input type="number" name="settings[late_threshold_minutes]" class="form-input" value="{{ $settings['late_threshold_minutes']['setting_value'] ?? '30' }}" min="1" max="120">
                             <small style="color: var(--text-muted);">Status stays blank until this many minutes after the session starts. It becomes absent after the session ends when there is no time in or time out.</small>
                         </div>

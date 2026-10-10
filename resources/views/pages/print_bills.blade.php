@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-PH">
 <head>
     <meta charset="UTF-8">
     <title>Billing Report</title>
@@ -102,7 +102,7 @@
         @include('partials.print_company')
         <div class="doc-title">
             <strong>BILLING REPORT</strong><br>
-            Generated: {{ date('M d, Y h:i A') }}
+            Prepared: {{ date('M d, Y h:i A') }}
         </div>
     </div>
 
@@ -112,7 +112,7 @@
         Status: <strong>{{ htmlspecialchars($statusLabel) }}</strong> &nbsp;|&nbsp;
         @endif
         Total Bills: <strong>{{ number_format($totalBills) }}</strong> &nbsp;|&nbsp;
-        Total Amount: <strong>PHP {{ number_format($totalAmount, 2) }}</strong>
+        Total Amount: <strong>₱{{ number_format($totalAmount, 2) }}</strong>
     </div>
 
     <table>
@@ -120,7 +120,7 @@
             <tr>
                 <th style="width: 10%;">Bill #</th>
                 <th>Client</th>
-                <th style="width: 12%;">Code</th>
+                <th style="width: 12%;">Client Code</th>
                 <th style="width: 14%;">Period Start</th>
                 <th style="width: 14%;">Period End</th>
                 <th style="width: 14%;">Due Date</th>
@@ -137,7 +137,7 @@
                 <td>{{ date('M d, Y', strtotime($bill['billing_period_start'])) }}</td>
                 <td>{{ date('M d, Y', strtotime($bill['billing_period_end'])) }}</td>
                 <td>{{ date('M d, Y', strtotime($bill['due_date'])) }}</td>
-                <td class="amount">PHP {{ number_format((float) $bill['amount'], 2) }}</td>
+                <td class="amount">₱{{ number_format((float) $bill['amount'], 2) }}</td>
                 <td>
                     @if ($bill['status'] === 'paid')
                         <span style="color: #16a34a; font-weight: 600;">Paid</span>
@@ -158,7 +158,7 @@ if (empty($bills)) { echo '<tr><td colspan="8" style="text-align: center; color:
         <tfoot>
             <tr>
                 <td colspan="6">GRAND TOTAL</td>
-                <td class="amount">PHP {{ number_format($totalAmount, 2) }}</td>
+                <td class="amount">₱{{ number_format($totalAmount, 2) }}</td>
                 <td>{{ number_format($totalBills) }} bills</td>
             </tr>
         </tfoot>

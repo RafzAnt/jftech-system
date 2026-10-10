@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-PH">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -76,7 +76,7 @@
 
         <div class="divider"></div>
         <table class="items">
-            <tr><td class="small">Amount Paid:</td><td class="small right total">PHP {{ number_format((float)$payment['amount'], 2) }}</td></tr>
+            <tr><td class="small">Amount Paid:</td><td class="small right total">₱{{ number_format((float)$payment['amount'], 2) }}</td></tr>
             <tr><td class="small">Bill Amount:</td><td class="small right">{{ number_format((float)($payment['bill_amount'] ?? 0), 2) }}</td></tr>
             <tr><td class="small">Balance:</td><td class="small right">{{ number_format((float)($payment['balance'] ?? 0), 2) }}</td></tr>
         </table>

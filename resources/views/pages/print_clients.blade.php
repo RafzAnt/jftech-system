@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-PH">
 <head>
     <meta charset="UTF-8">
     <title>Client Masterlist Report</title>
@@ -102,7 +102,7 @@
         @include('partials.print_company')
         <div class="doc-title">
             <strong>CLIENT MASTERLIST REPORT</strong><br>
-            Generated: {{ date('M d, Y h:i A') }}
+            Prepared: {{ date('M d, Y h:i A') }}
         </div>
     </div>
 
@@ -119,9 +119,10 @@
     <table>
         <thead>
             <tr>
-                <th style="width: 12%;">Code</th>
+                <th style="width: 12%;">Client Code</th>
                 <th>Full Name</th>
-                <th>Contact</th>
+                <th>Mobile Number</th>
+                <th>Branch</th>
                 <th>Barangay</th>
                 <th>Plan</th>
                 <th class="amount" style="width: 14%;">Monthly Rate</th>
@@ -134,20 +135,21 @@
                 <td><strong>{{ htmlspecialchars($client['client_code']) }}</strong></td>
                 <td>{{ htmlspecialchars($client['full_name']) }}</td>
                 <td>{{ htmlspecialchars($client['contact_number'] ?: '-') }}</td>
+                <td>{{ htmlspecialchars($client['branch_name'] ?: 'N/A') }}</td>
                 <td>{{ htmlspecialchars($client['barangay_name'] ?: 'N/A') }}</td>
                 <td>{{ htmlspecialchars($client['wifi_plan'] ?: 'N/A') }}</td>
-                <td class="amount">PHP {{ number_format((float) $client['monthly_rate'], 2) }}</td>
+                <td class="amount">₱{{ number_format((float) $client['monthly_rate'], 2) }}</td>
                 <td>{{ ucfirst($client['status']) }}</td>
             </tr>
             @endforeach
             @php
-if (empty($clients)) { echo '<tr><td colspan="7" style="text-align: center; color: #64748b; padding: 18px;">No clients found.</td></tr>'; } 
+if (empty($clients)) { echo '<tr><td colspan="8" style="text-align: center; color: #64748b; padding: 18px;">No clients found.</td></tr>'; }
 @endphp
         </tbody>
         <tfoot>
             <tr>
-                <td colspan="5">TOTAL CLIENTS</td>
-                <td class="amount">PHP {{ number_format(array_sum(array_map(function($c) { return (float) $c['monthly_rate']; }, $clients)), 2) }}</td>
+                <td colspan="6">TOTAL CLIENTS</td>
+                <td class="amount">₱{{ number_format(array_sum(array_map(function($c) { return (float) $c['monthly_rate']; }, $clients)), 2) }}</td>
                 <td>{{ number_format($totalClients) }}</td>
             </tr>
         </tfoot>

@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-PH">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JFTECH - Inventory Requests</title>
+    <title>JFTECH - Stock Requests</title>
     <script>
         try {
             var savedTheme = localStorage.getItem('jftech-theme');
@@ -23,7 +23,7 @@
     <div class="main-content">
         <div class="top-bar">
             <div>
-                <h1 class="page-title">Inventory Requests</h1>
+                <h1 class="page-title">Stock Requests</h1>
                 <p style="color: var(--text-muted); font-size: 0.85rem;">Approve technician inventory requests</p>
             </div>
             @if ($pendingCount > 0)
@@ -53,14 +53,14 @@
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th>ID</th>
+                                <th>Request No.</th>
                                 <th>Employee</th>
                                 <th>Item</th>
                                 <th>Quantity</th>
-                                <th>Comments / Area</th>
+                                <th>Request Details</th>
                                 <th>Status</th>
                                 <th>Date</th>
-                                <th>Processed By</th>
+                                <th>Handled By</th>
                                 <th class="actions-column" aria-label="Request menu"></th>
                             </tr>
                         </thead>
