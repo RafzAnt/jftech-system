@@ -285,7 +285,7 @@ if ($request->isMethod('post') && $request->has('save_employee')) {
             throw new Exception('The selected position does not have a configured daily rate.');
         }
         if ($contactNumber !== '' && ! preg_match('/^\d{11}$/', $contactNumber)) {
-            throw new Exception('Contact number must contain exactly 11 digits.');
+            throw new Exception('Mobile number must contain exactly 11 digits.');
         }
 
         $pdo->beginTransaction();
@@ -294,14 +294,14 @@ if ($request->isMethod('post') && $request->has('save_employee')) {
             $stmt = $pdo->prepare("UPDATE employees SET full_name = ?, position = ?, department = NULL, contact_number = ?, email = ?, address = ?, date_hired = ?, daily_rate = ? WHERE id = ?");
             $stmt->execute([$fullName, $position, $contactNumber, $email, $address, $dateHired, $dailyRate, $employeeId]);
             $pdo->commit();
-            $success = 'Employee updated successfully! User accounts are managed in User Management.';
+            $success = 'Employee updated successfully! User accounts are managed in User Accounts.';
         } else {
             $employeeCode = 'EMP-' . date('Y') . '-' . strtoupper(uniqid());
             $stmt = $pdo->prepare("INSERT INTO employees (employee_code, user_id, full_name, position, department, contact_number, email, address, date_hired, daily_rate, status) VALUES (?, NULL, ?, ?, NULL, ?, ?, ?, ?, ?, 'active')");
             $stmt->execute([$employeeCode, $fullName, $position, $contactNumber, $email, $address, $dateHired, $dailyRate]);
             
             $pdo->commit();
-            $success = 'Employee added successfully. Create and link an app account from User Management when needed.';
+            $success = 'Employee added successfully. Create and link an account from User Accounts when needed.';
         }
 
         // Refresh employees list

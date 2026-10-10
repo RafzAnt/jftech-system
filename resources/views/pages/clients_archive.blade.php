@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-PH">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -32,10 +32,11 @@
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th>Code</th>
+                                <th>Client Code</th>
                                 <th>Name</th>
+                                <th>Branch</th>
                                 <th>Barangay</th>
-                                <th>Installed</th>
+                                <th>Installation Date</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -44,6 +45,7 @@
                             <tr>
                                 <td><strong>{{ $client['client_code'] }}</strong></td>
                                 <td>{{ htmlspecialchars($client['full_name']) }}</td>
+                                <td>{{ $client['branch_name'] ?: 'N/A' }}</td>
                                 <td>{{ $client['barangay_name'] ?: 'N/A' }}</td>
                                 <td>{{ $client['installation_date'] ? date('M d, Y', strtotime($client['installation_date'])) : '-' }}</td>
                                 <td>
@@ -61,7 +63,7 @@
                             </tr>
                             @endforeach
                             @if (empty($archivedClients))
-                            <tr><td colspan="5" style="text-align:center;color:var(--text-muted);">No archived clients</td></tr>
+                            <tr><td colspan="6" style="text-align:center;color:var(--text-muted);">No archived clients</td></tr>
                             @endif
                         </tbody>
                     </table>

@@ -12,7 +12,7 @@
 
             <div class="sidebar-brand__text">
                 <h1>JFTECH</h1>
-                <p>Management System</p>
+                <p>Business Management System</p>
             </div>
         </div>
     </div>
@@ -41,7 +41,7 @@
             'login_history' => '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
         ];
         $navItems = $navItems ?? [
-            ['id' => 'dashboard', 'label' => 'Dashboard', 'url' => url('/dashboard')],
+            ['id' => 'dashboard', 'label' => 'Overview', 'url' => url('/dashboard')],
             ['id' => 'clients_browse', 'label' => 'Clients', 'url' => url('/clients')],
             ['id' => 'bill_inquiry', 'label' => 'Client Accounts', 'url' => url('/client-accounts')],
             ['id' => 'payment_history', 'label' => 'Payment History', 'url' => url('/payments')],
@@ -49,13 +49,13 @@
             ['id' => 'payroll', 'label' => 'Payroll', 'url' => url('/payroll')],
             ['id' => 'inventory', 'label' => 'Inventory', 'url' => url('/inventory'), 'submenu' => [
                 ['label' => 'Stock Management', 'url' => url('/inventory')],
-                ['label' => 'Movement History', 'url' => url('/inventory?tab=movements')],
-                ['label' => 'Requests', 'url' => url('/inventory-requests')],
+                ['label' => 'Stock Update History', 'url' => url('/inventory?tab=movements')],
+                ['label' => 'Stock Requests', 'url' => url('/inventory-requests'), 'page' => 'inventory_requests'],
             ]],
-            ['id' => 'price_management', 'label' => 'Price Management', 'url' => url('/price-management?view=dashboard')],
+            ['id' => 'price_management', 'label' => 'Internet Plans', 'url' => url('/price-management?view=dashboard')],
             ['id' => 'reports', 'label' => 'Reports', 'url' => url('/reports')],
-            ['id' => 'settings', 'label' => 'System Settings', 'url' => url('/settings')],
-            ['id' => 'user_management', 'label' => 'User Management', 'url' => url('/users')],
+            ['id' => 'settings', 'label' => 'Business Settings', 'url' => url('/settings')],
+            ['id' => 'user_management', 'label' => 'User Accounts', 'url' => url('/users')],
             ['id' => 'login_history', 'label' => 'Login History', 'url' => url('/login-history')],
         ];
     @endphp
@@ -68,7 +68,7 @@
                 $hasActiveSubmenu = false;
                 if ($hasSubmenu) {
                     foreach ($item['submenu'] as $sub) {
-                        $subPath = basename(parse_url($sub['url'], PHP_URL_PATH), '.php');
+                        $subPath = $sub['page'] ?? basename(parse_url($sub['url'], PHP_URL_PATH), '.php');
                         parse_str(parse_url($sub['url'], PHP_URL_QUERY) ?? '', $subQuery);
                         if ($currentPage === $subPath && (!isset($subQuery['tab']) || $currentTab === $subQuery['tab']) && (!isset($subQuery['view']) || $currentView === $subQuery['view'])) {
                             $hasActiveSubmenu = true;
@@ -92,7 +92,7 @@
                 <div id="{{ $submenuId }}" class="submenu {{ $isActive ? 'show' : '' }}">
                     @foreach ($item['submenu'] as $sub)
                         @php
-                            $subPath = basename(parse_url($sub['url'], PHP_URL_PATH), '.php');
+                            $subPath = $sub['page'] ?? basename(parse_url($sub['url'], PHP_URL_PATH), '.php');
                             parse_str(parse_url($sub['url'], PHP_URL_QUERY) ?? '', $subQuery);
                             $isSubActive = $currentPage === $subPath && (!isset($subQuery['tab']) || $currentTab === $subQuery['tab']) && (!isset($subQuery['view']) || $currentView === $subQuery['view']);
                         @endphp

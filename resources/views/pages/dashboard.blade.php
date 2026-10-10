@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-PH">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JFTECH - Dashboard</title>
+    <title>JFTECH - Business Overview</title>
     <script>
         try {
             var savedTheme = localStorage.getItem('jftech-theme');
@@ -24,9 +24,9 @@
         <!-- Top Bar -->
         <div class="top-bar dashboard-topbar">
             <div>
-                <p class="dashboard-eyebrow">Operations overview</p>
-                <h1 class="page-title">Business Dashboard</h1>
-                <p class="dashboard-subtitle">Monitor customer activity, collections, and your team from one workspace.</p>
+                <p class="dashboard-eyebrow">Business overview</p>
+                <h1 class="page-title">Business Overview</h1>
+                <p class="dashboard-subtitle">View client activity, payments received, and your team in one place.</p>
             </div>
             <div class="top-bar-actions">
                 <span class="dashboard-date">{{ date('D, M j, Y') }}</span>
@@ -50,8 +50,8 @@
                 </div>
             </a>
             <a href="payment_history.php" class="stat-card stat-card-link" style="--stat-color: var(--success)" aria-label="View payment history">
-                <div class="stat-value">PHP {{ number_format($stats['total_revenue'], 2) }}</div>
-                <div class="stat-label">Total Revenue</div>
+                <div class="stat-value">₱{{ number_format($stats['total_revenue'], 2) }}</div>
+                <div class="stat-label">Total Payments Received</div>
                 <div class="stat-change positive">
                     <span>All time</span>
                 </div>
@@ -70,9 +70,9 @@
                     <span>{{ $stats['today_attendance'] }} Present Today</span>
                 </div>
             </a>
-            <a href="user_management.php" class="stat-card stat-card-link" style="--stat-color: var(--accent-secondary)" aria-label="View system users">
+            <a href="user_management.php" class="stat-card stat-card-link" style="--stat-color: var(--accent-secondary)" aria-label="View user accounts">
                 <div class="stat-value">{{ number_format($stats['total_users']) }}</div>
-                <div class="stat-label">System Users</div>
+                <div class="stat-label">User Accounts</div>
                 <div class="stat-change positive">
                     <span>Active accounts</span>
                 </div>
@@ -90,7 +90,7 @@
         <div class="row-grid" style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
             <div class="card dashboard-chart-card">
                 <div class="card-header dashboard-chart-header">
-                    <span class="card-title">Monthly Revenue</span>
+                    <span class="card-title">Monthly Payments Received</span>
                     <span class="badge badge-info">This Year</span>
                 </div>
                 <div class="card-body">
@@ -126,14 +126,14 @@
                                     <th>Client</th>
                                     <th>Amount</th>
                                     <th>Date</th>
-                                    <th>Method</th>
+                                    <th>Payment Method</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach ($recentPayments as $payment)
                                 <tr>
                                     <td>{{ htmlspecialchars($payment['client_name']) }}</td>
-                                    <td style="color: var(--success); font-weight: 600;">PHP {{ number_format($payment['amount'], 2) }}</td>
+                                    <td style="color: var(--success); font-weight: 600;">₱{{ number_format($payment['amount'], 2) }}</td>
                                     <td>{{ date('M d, Y', strtotime($payment['payment_date'])) }}</td>
                                     <td><span class="badge badge-info">{{ str_replace('_', ' ', strtoupper($payment['payment_method'])) }}</span></td>
                                 </tr>
@@ -150,7 +150,7 @@
             <!-- Billing Priorities -->
             <div class="card">
                 <div class="card-header">
-                    <span class="card-title">Billing Priorities</span>
+                    <span class="card-title">Bills to Follow Up</span>
                     <a href="bill_inquiry.php" class="btn btn-sm btn-primary">View All</a>
                 </div>
                 <div class="card-body" style="padding: 0;">
@@ -169,7 +169,7 @@
                                 <tr>
                                     <td>{{ htmlspecialchars($bill['client_name']) }}</td>
                                     <td>{{ date('M d, Y', strtotime($bill['due_date'])) }}</td>
-                                    <td style="font-weight: 600;">PHP {{ number_format($bill['amount'], 2) }}</td>
+                                    <td style="font-weight: 600;">₱{{ number_format($bill['amount'], 2) }}</td>
                                     <td>
                                         @if ($bill['status'] === 'overdue')
                                             <span class="badge badge-danger">Overdue</span>
@@ -203,7 +203,7 @@
                                 <th>User</th>
                                 <th>Role</th>
                                 <th>Login Time</th>
-                                <th>Logged Out At</th>
+                                <th>Logout Time</th>
                                 <th>Status</th>
                             </tr>
                         </thead>
@@ -230,7 +230,7 @@
                             </tr>
                             @endforeach
                             @if (empty($recentLogins))
-                            <tr><td colspan="5" style="text-align:center;color:var(--text-muted);">No login history</td></tr>
+                            <tr><td colspan="5" style="text-align:center;color:var(--text-muted);">No login records</td></tr>
                             @endif
                         </tbody>
                     </table>
@@ -290,7 +290,7 @@
             return { x, y, value };
         });
 
-        const formatCurrency = value => `PHP ${Math.round(value).toLocaleString()}`;
+        const formatCurrency = value => `₱${Math.round(value).toLocaleString()}`;
         const maxY = rawMax;
         const grid = [0, 0.25, 0.5, 0.75, 1].map(fraction => {
             const y = bottom - (height * fraction);

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-PH">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -44,7 +44,7 @@
             <div class="card-body">
                 <form method="GET" action="" style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap;">
                     <div class="form-group" style="flex: 1; margin: 0;">
-                        <label class="form-label">Search by name, code, or contact number</label>
+                        <label class="form-label">Search by name, client code, or mobile number</label>
                         <input type="text" name="search" class="form-input" placeholder="Enter search term..." value="{{ htmlspecialchars(request()->query('search') ?? '') }}" required>
                     </div>
                     <button type="submit" class="btn btn-primary">Search</button>
@@ -56,10 +56,10 @@
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th>Code</th>
+                                <th>Client Code</th>
                                 <th>Name</th>
                                 <th>Barangay</th>
-                                <th>Contact</th>
+                                <th>Mobile Number</th>
                                 <th>Status</th>
                                 <th>Action</th>
                             </tr>
@@ -126,11 +126,11 @@
                             <input type="text" name="last_name" class="form-input" value="{{ htmlspecialchars($clientLastName) }}" required>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Contact Number *</label>
+                            <label class="form-label">Mobile Number *</label>
                             <input type="text" name="contact_number" class="form-input" value="{{ htmlspecialchars($client['contact_number']) }}" inputmode="numeric" pattern="[0-9]{11}" minlength="11" maxlength="11" required>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Email</label>
+                            <label class="form-label">Email Address</label>
                             <input type="email" name="email" class="form-input" value="{{ htmlspecialchars($client['email'] ?? '') }}">
                         </div>
                         <div class="form-group">
@@ -145,7 +145,7 @@
                             <small style="display:block;margin-top:.4rem;color:var(--text-muted);">Changing the plan uses its current price. Saving other client details keeps the recorded installation price.</small>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Monthly Rate (PHP)</label>
+                            <label class="form-label">Monthly Rate (₱)</label>
                             <input type="number" name="monthly_rate" class="form-input" id="monthlyRate" value="{{ $client['monthly_rate'] }}" step="0.01" readonly>
                         </div>
                     </div>
@@ -164,7 +164,7 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Exact Address</label>
+                            <label class="form-label">House No. / Street / Purok / Sitio</label>
                             <input type="text" name="exact_address" class="form-input" value="{{ htmlspecialchars($client['exact_address'] ?? '') }}">
                         </div>
                     </div>

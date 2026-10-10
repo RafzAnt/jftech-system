@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-PH">
 <head>
     <meta charset="UTF-8">
     <title>{{ htmlspecialchars($reportName) }}</title>
@@ -144,14 +144,14 @@
         @include('partials.print_company')
         <div class="doc-title">
             <strong>{{ strtoupper($reportName) }}</strong><br>
-            Generated: {{ date('M d, Y h:i A') }}
+            Prepared: {{ date('M d, Y h:i A') }}
         </div>
     </div>
 
     <div class="meta">
         Period: <strong>{{ htmlspecialchars($rangeLabel) }}</strong> &nbsp;|&nbsp;
         View Type: <strong>{{ ucfirst(htmlspecialchars($reportViewType)) }}</strong> &nbsp;|&nbsp;
-        Total Records: <strong>{{ number_format($summary['total']) }}</strong> &nbsp;|&nbsp;
+        Total Entries: <strong>{{ number_format($summary['total']) }}</strong> &nbsp;|&nbsp;
         Completed: <strong>{{ number_format($summary['completed']) }}</strong> &nbsp;|&nbsp;
         Pending: <strong>{{ number_format($summary['pending']) }}</strong> &nbsp;|&nbsp;
         Cancelled: <strong>{{ number_format($summary['cancelled']) }}</strong> &nbsp;|&nbsp;
@@ -159,7 +159,7 @@
     </div>
 
     <div class="summary-bar">
-        <div class="box">Total Amount: <strong>PHP {{ number_format((float) $summary['amount'], 2) }}</strong></div>
+        <div class="box">Total Amount: <strong>₱{{ number_format((float) $summary['amount'], 2) }}</strong></div>
         <div class="box">Total Quantity: <strong>{{ number_format((int) $summary['quantity']) }}</strong></div>
         @php
             $completionRate = $summary['total'] > 0 ? round($summary['completed'] / $summary['total'] * 100, 1) : 0;
@@ -168,8 +168,8 @@
         <div class="box">Completion Rate: <strong>{{ $completionRate }}%</strong></div>
         <div class="box">Overdue Rate: <strong>{{ $overdueRate }}%</strong></div>
         @if ($performance)
-        <div class="box">Avg Records/{{ $performance['period_type'] === 'day' ? 'Day' : 'Month' }}: <strong>{{ number_format($performance['avg_per_day'], 1) }}</strong></div>
-        <div class="box">Avg Amount/{{ $performance['period_type'] === 'day' ? 'Day' : 'Month' }}: <strong>PHP {{ number_format($performance['avg_amount_per_day'], 2) }}</strong></div>
+        <div class="box">Average Entries per {{ $performance['period_type'] === 'day' ? 'Day' : 'Month' }}: <strong>{{ number_format($performance['avg_per_day'], 1) }}</strong></div>
+        <div class="box">Average Amount per {{ $performance['period_type'] === 'day' ? 'Day' : 'Month' }}: <strong>₱{{ number_format($performance['avg_amount_per_day'], 2) }}</strong></div>
         @endif
     </div>
 
@@ -187,7 +187,7 @@
         </thead>
         <tbody>
             <tr>
-                <td>Total Records</td>
+                <td>Total Entries</td>
                 <td class="amount">{{ number_format($summary['total']) }}</td>
                 <td class="amount">{{ number_format($previousSummary['total']) }}</td>
                 <td class="amount">{{ isset($percentageChanges['total']) && $percentageChanges['total'] !== null ? number_format($percentageChanges['total'], 2) . '%' : 'N/A' }}</td>
@@ -218,8 +218,8 @@
             </tr>
             <tr>
                 <td>Total Amount</td>
-                <td class="amount">PHP {{ number_format((float) $summary['amount'], 2) }}</td>
-                <td class="amount">PHP {{ number_format((float) $previousSummary['amount'], 2) }}</td>
+                <td class="amount">₱{{ number_format((float) $summary['amount'], 2) }}</td>
+                <td class="amount">₱{{ number_format((float) $previousSummary['amount'], 2) }}</td>
                 <td class="amount">{{ isset($percentageChanges['amount']) && $percentageChanges['amount'] !== null ? number_format($percentageChanges['amount'], 2) . '%' : 'N/A' }}</td>
             </tr>
         </tbody>
@@ -239,7 +239,7 @@
                 <th>Cancelled</th>
                 <th>Overdue</th>
                 <th>Amount</th>
-                <th>Qty</th>
+                <th>Quantity</th>
             </tr>
         </thead>
         <tbody>
@@ -251,7 +251,7 @@
                 <td>{{ number_format($day['pending']) }}</td>
                 <td>{{ number_format($day['cancelled']) }}</td>
                 <td>{{ number_format($day['overdue']) }}</td>
-                <td class="amount">{{ $day['amount'] > 0 ? 'PHP ' . number_format((float) $day['amount'], 2) : '-' }}</td>
+                <td class="amount">{{ $day['amount'] > 0 ? '₱' . number_format((float) $day['amount'], 2) : '-' }}</td>
                 <td>{{ $day['quantity'] > 0 ? number_format((int) $day['quantity']) : '-' }}</td>
             </tr>
             @endforeach
@@ -272,7 +272,7 @@
                 <th>Cancelled</th>
                 <th>Overdue</th>
                 <th>Amount</th>
-                <th>Qty</th>
+                <th>Quantity</th>
             </tr>
         </thead>
         <tbody>
@@ -284,7 +284,7 @@
                 <td>{{ number_format($m['pending']) }}</td>
                 <td>{{ number_format($m['cancelled']) }}</td>
                 <td>{{ number_format($m['overdue']) }}</td>
-                <td class="amount">{{ $m['amount'] > 0 ? 'PHP ' . number_format((float) $m['amount'], 2) : '-' }}</td>
+                <td class="amount">{{ $m['amount'] > 0 ? '₱' . number_format((float) $m['amount'], 2) : '-' }}</td>
                 <td>{{ $m['quantity'] > 0 ? number_format((int) $m['quantity']) : '-' }}</td>
             </tr>
             @endforeach
@@ -296,15 +296,15 @@
     <table>
         <thead>
             <tr>
-                <th style="width: 12%;">Date/Time</th>
-                <th style="width: 5%;">ID</th>
-                <th style="width: 9%;">Type</th>
+                <th style="width: 12%;">Date & Time</th>
+                <th style="width: 5%;">Record No.</th>
+                <th style="width: 9%;">Record Type</th>
                 <th>Activity</th>
-                <th style="width: 12%;">Person</th>
+                <th style="width: 12%;">Name</th>
                 <th style="width: 9%;">Status</th>
                 <th class="amount" style="width: 9%;">Amount</th>
-                <th class="amount" style="width: 6%;">Qty</th>
-                <th>Remarks</th>
+                <th class="amount" style="width: 6%;">Quantity</th>
+                <th>Notes</th>
             </tr>
         </thead>
         <tbody>
@@ -312,11 +312,11 @@
             <tr>
                 <td>{{ $act['activity_datetime'] ? date('M d, Y h:i A', strtotime($act['activity_datetime'])) : '-' }}</td>
                 <td>{{ $act['record_id'] }}</td>
-                <td>{{ ucfirst(htmlspecialchars($act['report_type'])) }}</td>
+                <td>{{ $reportTypes[$act['report_type']] ?? ucfirst(str_replace('_', ' ', $act['report_type'])) }}</td>
                 <td>{{ htmlspecialchars($act['activity_type']) }}</td>
                 <td>{{ htmlspecialchars($act['person'] ?: '-') }}</td>
                 <td class="badge-cell">{{ ucfirst(htmlspecialchars($act['status'])) }}</td>
-                <td class="amount">{{ $act['amount'] !== null ? 'PHP ' . number_format((float) $act['amount'], 2) : '-' }}</td>
+                <td class="amount">{{ $act['amount'] !== null ? '₱' . number_format((float) $act['amount'], 2) : '-' }}</td>
                 <td class="amount">{{ $act['quantity'] !== null ? number_format((int) $act['quantity']) : '-' }}</td>
                 <td>{{ htmlspecialchars($act['remarks'] ?: '-') }}</td>
             </tr>
@@ -328,8 +328,8 @@
     </table>
 
     <div class="footer">
-        This report is system-generated by JFTECH WiFi Billing &amp; Management System.
-        Report Name: {{ htmlspecialchars($reportName) }} | Period: {{ htmlspecialchars($rangeLabel) }} | Date Generated: {{ date('M d, Y h:i A') }}
+        Prepared by JFTECH WiFi Billing &amp; Management System.
+        Report Name: {{ htmlspecialchars($reportName) }} | Period: {{ htmlspecialchars($rangeLabel) }} | Date Prepared: {{ date('M d, Y h:i A') }}
     </div>
 
     <script>

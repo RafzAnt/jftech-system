@@ -11,7 +11,7 @@ return function (\Illuminate\Http\Request $request): array {
     $from = (string) $request->query('from', '');
     $to = (string) $request->query('to', '');
     $isValidDate = static fn (string $date): bool => (bool) preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)
-        && strtotime($date) !== false;
+        && checkdate((int) substr($date, 5, 2), (int) substr($date, 8, 2), (int) substr($date, 0, 4));
 
     // A complete date range takes priority over the month selector.
     if ($isValidDate($from) && $isValidDate($to)) {
@@ -21,17 +21,17 @@ return function (\Illuminate\Http\Request $request): array {
         $periodEnd = date('Y-m-t', strtotime($periodStart));
     }
 
-    $payments = DB::table('payments')->join('clients', 'clients.id', '=', 'payments.client_id')
-        ->select('payments.payment_date', 'payments.reference_number', 'payments.payment_method', 'payments.amount', 'clients.full_name')
-        ->whereBetween('payments.payment_date', [$periodStart, $periodEnd])->orderByDesc('payments.payment_date')->orderByDesc('payments.id')->get();
-    $bills = DB::table('bills')->join('clients', 'clients.id', '=', 'bills.client_id')
-        ->select('bills.bill_number', 'bills.due_date', 'bills.amount', 'bills.status', 'clients.full_name')
-        ->whereBetween('bills.billing_period_start', [$periodStart, $periodEnd])
-        ->orderBy('bills.due_date')->get();
-    $openBills = $bills->whereIn('status', ['pending', 'overdue']);
-    $paidBills = $bills->where('status', 'paid');
-    $lowStockItems = DB::table('inventory')->select('item_name', 'category', 'quantity', 'reorder_level')
-        ->where('archived', 0)->where('status', 'active')->whereColumn('quantity', '<=', 'reorder_level')->orderBy('quantity')->limit(8)->get();
+    $paymentSummary = DB::table('payments')->whereBetween('payment_date', [$periodStart, $periodEnd])
+        ->selectRaw('COUNT(*) AS payment_count, COALESCE(SUM(amount), 0) AS collections')->first();
+    $billSummary = DB::table('bills')->whereBetween('billing_period_start', [$periodStart, $periodEnd])
+        ->selectRaw("COUNT(*) AS total_bills,
+            COALESCE(SUM(amount), 0) AS billed_amount,
+            COALESCE(SUM(CASE WHEN status = 'paid' THEN amount ELSE 0 END), 0) AS settled_amount,
+            COALESCE(SUM(CASE WHEN status IN ('pending', 'overdue') THEN GREATEST(COALESCE(amount, 0) - (SELECT COALESCE(SUM(p.amount), 0) FROM payments p WHERE p.bill_id = bills.id), 0) ELSE 0 END), 0) AS outstanding,
+            COALESCE(SUM(CASE WHEN status IN ('pending', 'overdue') THEN 1 ELSE 0 END), 0) AS open_bills")
+        ->first();
+    $lowStockCount = DB::table('inventory')->where('archived', 0)->where('status', 'active')
+        ->whereColumn('quantity', '<=', 'reorder_level')->count();
     $clientStatus = DB::table('clients')->where(function ($query) {
         $query->whereNull('archived')->orWhere('archived', 0);
     })->select('status', DB::raw('COUNT(*) as total'))->groupBy('status')->pluck('total', 'status');
@@ -47,26 +47,27 @@ return function (\Illuminate\Http\Request $request): array {
         'inventoryValue' => (float) DB::table('inventory')->where('archived', 0)->where('status', 'active')->sum(DB::raw('quantity * unit_price')),
     ];
 
-    $billedAmount = (float) $bills->sum('amount');
-    $settledAmount = (float) $paidBills->sum('amount');
+    $billedAmount = (float) $billSummary->billed_amount;
+    $settledAmount = (float) $billSummary->settled_amount;
 
     return [
         'currentPage' => 'reports',
         'themeCssVersion' => @filemtime(public_path('css/jftech-theme.css')) ?: 1,
         'reportsCssVersion' => @filemtime(public_path('css/reports.css')) ?: 1,
         'month' => $month, 'periodStart' => $periodStart, 'periodEnd' => $periodEnd,
-        'payments' => $payments, 'bills' => $bills, 'lowStockItems' => $lowStockItems, 'clientStatus' => $clientStatus,
+        'clientStatus' => $clientStatus,
         'attendanceSummary' => $attendanceSummary, 'systemSnapshot' => $systemSnapshot,
         'metrics' => [
-            'collections' => (float) DB::table('payments')->whereBetween('payment_date', [$periodStart, $periodEnd])->sum('amount'),
-            'paymentCount' => DB::table('payments')->whereBetween('payment_date', [$periodStart, $periodEnd])->count(),
-            'billedAmount' => $billedAmount,
+            'collections' => (float) $paymentSummary->collections,
+            'paymentCount' => (int) $paymentSummary->payment_count,
+            'totalBills' => (int) $billSummary->total_bills,
+            'totalBillsAmount' => $billedAmount,
             'settlementRate' => $billedAmount > 0 ? ($settledAmount / $billedAmount) * 100 : 0,
-            'outstanding' => (float) $openBills->sum('amount'),
-            'openBills' => $openBills->count(),
+            'outstanding' => (float) $billSummary->outstanding,
+            'openBills' => (int) $billSummary->open_bills,
             'activeClients' => (int) ($clientStatus['active'] ?? 0),
             'totalClients' => (int) $clientStatus->sum(),
-            'lowStock' => $lowStockItems->count(),
+            'lowStock' => $lowStockCount,
         ],
     ];
 };

@@ -49,7 +49,7 @@
     <span class="card-title">{{ htmlspecialchars($generatedReport['report_name'] ?? 'Activity Report') }}</span>
     <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
         <span class="badge badge-info">Period: {{ $periodLabel }}</span>
-        <span class="badge badge-info">Generated: {{ $generatedReport['generated_at'] ?? date('Y-m-d H:i:s') }}</span>
+        <span class="badge badge-info">Prepared: {{ $generatedReport['generated_at'] ?? date('Y-m-d H:i:s') }}</span>
         <span class="badge badge-success">By: {{ htmlspecialchars($generatedReport['generated_by'] ?? 'System') }}</span>
     </div>
 </div>
@@ -59,7 +59,7 @@
     <div class="stats-grid" style="margin-bottom: 1.5rem;">
         <div class="stat-card" style="--stat-color: var(--accent);">
             <div class="stat-value">{{ number_format($summary['total']) }}</div>
-            <div class="stat-label">Total Records</div>
+            <div class="stat-label">Total Entries</div>
         </div>
         <div class="stat-card" style="--stat-color: var(--success);">
             <div class="stat-value" style="color: var(--success);">{{ number_format($summary['completed']) }}</div>
@@ -78,12 +78,12 @@
             <div class="stat-label">Overdue</div>
         </div>
         <div class="stat-card" style="--stat-color: var(--success);">
-            <div class="stat-value" style="color: var(--success); font-size: 1.4rem;">PHP {{ number_format((float) $summary['amount'], 2) }}</div>
+            <div class="stat-value" style="color: var(--success); font-size: 1.4rem;">₱{{ number_format((float) $summary['amount'], 2) }}</div>
             <div class="stat-label">Total Amount</div>
         </div>
         <div class="stat-card" style="--stat-color: var(--accent);">
             <div class="stat-value">{{ number_format((int) $summary['quantity']) }}</div>
-            <div class="stat-label">Total Qty</div>
+            <div class="stat-label">Total Quantity</div>
         </div>
     </div>
 
@@ -98,11 +98,11 @@
             <div class="stats-grid" style="margin-bottom: 0;">
                 <div class="stat-card" style="--stat-color: var(--accent);">
                     <div class="stat-value" style="font-size: 1.5rem;">{{ number_format($performance['avg_per_day'], 1) }}</div>
-                    <div class="stat-label">Avg Records/{{ $performance['period_type'] === 'day' ? 'Day' : 'Month' }}</div>
+                    <div class="stat-label">Average Entries per {{ $performance['period_type'] === 'day' ? 'Day' : 'Month' }}</div>
                 </div>
                 <div class="stat-card" style="--stat-color: var(--success);">
                     <div class="stat-value" style="font-size: 1.5rem; color: var(--success);">{{ number_format($performance['avg_amount_per_day'], 2) }}</div>
-                    <div class="stat-label">Avg Amount/{{ $performance['period_type'] === 'day' ? 'Day' : 'Month' }}</div>
+                    <div class="stat-label">Average Amount per {{ $performance['period_type'] === 'day' ? 'Day' : 'Month' }}</div>
                 </div>
                 <div class="stat-card" style="--stat-color: var(--info);">
                     <div class="stat-value" style="font-size: 1.5rem;">{{ number_format($performance['completion_rate'], 1) }}%</div>
@@ -206,7 +206,7 @@
                     @endif
                 </div>
                 <div class="stat-card" style="--stat-color: var(--success);">
-                    <div class="stat-value" style="color: var(--success); font-size: 1.4rem;">PHP {{ number_format((float) $previousSummary['amount'], 2) }}</div>
+                    <div class="stat-value" style="color: var(--success); font-size: 1.4rem;">₱{{ number_format((float) $previousSummary['amount'], 2) }}</div>
                     <div class="stat-label">Prev Amount</div>
                     @if (isset($pctChanges['amount']) && $pctChanges['amount'] !== null)
                     <div class="stat-change {{ $pctChanges['amount'] >= 0 ? 'positive' : 'negative' }}">
@@ -216,7 +216,7 @@
                 </div>
                 <div class="stat-card" style="--stat-color: var(--accent);">
                     <div class="stat-value">{{ number_format((int) $previousSummary['quantity']) }}</div>
-                    <div class="stat-label">Prev Qty</div>
+                    <div class="stat-label">Previous Quantity</div>
                 </div>
             </div>
         </div>
@@ -249,7 +249,7 @@
                             <th style="width: 13%;">Cancelled</th>
                             <th style="width: 10%;">Overdue</th>
                             <th style="width: 10%;">Amount</th>
-                            <th>Qty</th>
+                            <th>Quantity</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -261,7 +261,7 @@
                             <td style="color: var(--warning);">{{ number_format($day['pending']) }}</td>
                             <td style="color: var(--danger);">{{ number_format($day['cancelled']) }}</td>
                             <td style="color: var(--info);">{{ number_format($day['overdue']) }}</td>
-                            <td>{{ $day['amount'] > 0 ? 'PHP ' . number_format((float) $day['amount'], 2) : '-' }}</td>
+                            <td>{{ $day['amount'] > 0 ? '₱' . number_format((float) $day['amount'], 2) : '-' }}</td>
                             <td>{{ $day['quantity'] > 0 ? number_format((int) $day['quantity']) : '-' }}</td>
                         </tr>
                         @endforeach
@@ -290,7 +290,7 @@
                             <th style="width: 12%;">Cancelled</th>
                             <th style="width: 10%;">Overdue</th>
                             <th style="width: 12%;">Amount</th>
-                            <th>Qty</th>
+                            <th>Quantity</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -302,7 +302,7 @@
                             <td style="color: var(--warning);">{{ number_format($m['pending']) }}</td>
                             <td style="color: var(--danger);">{{ number_format($m['cancelled']) }}</td>
                             <td style="color: var(--info);">{{ number_format($m['overdue']) }}</td>
-                            <td>{{ $m['amount'] > 0 ? 'PHP ' . number_format((float) $m['amount'], 2) : '-' }}</td>
+                            <td>{{ $m['amount'] > 0 ? '₱' . number_format((float) $m['amount'], 2) : '-' }}</td>
                             <td>{{ $m['quantity'] > 0 ? number_format((int) $m['quantity']) : '-' }}</td>
                         </tr>
                         @endforeach
@@ -315,7 +315,7 @@
 
     <!-- ==================== Export Actions ==================== -->
     <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; margin-bottom: 1rem;">
-        <button type="button" class="btn btn-sm btn-primary" onclick="window.open('/pages/print_reports.php?{{ $exportQuery }}', '_blank')">Print / Save PDF</button>
+        <button type="button" class="btn btn-sm btn-primary" onclick="window.open('/pages/print_reports.php?{{ $exportQuery }}', '_blank')">Print / Save as PDF</button>
         <a href="/pages/reports_export.php?{{ $exportQuery }}" class="btn btn-sm btn-success">Export CSV</a>
         <a href="/pages/reports_excel.php?{{ $exportQuery }}" class="btn btn-sm btn-info">Export Excel</a>
     </div>
@@ -325,15 +325,15 @@
         <table class="data-table">
             <thead>
                 <tr>
-                    <th style="width: 11%;">Date/Time</th>
-                    <th style="width: 5%;">ID</th>
-                    <th style="width: 8%;">Type</th>
+                    <th style="width: 11%;">Date & Time</th>
+                    <th style="width: 5%;">Record No.</th>
+                    <th style="width: 8%;">Record Type</th>
                     <th>Activity</th>
-                    <th style="width: 12%;">Person</th>
+                    <th style="width: 12%;">Name</th>
                     <th style="width: 9%;">Status</th>
                     <th style="width: 9%;">Amount</th>
-                    <th style="width: 6%;">Qty</th>
-                    <th style="width: 15%;">Remarks</th>
+                    <th style="width: 6%;">Quantity</th>
+                    <th style="width: 15%;">Notes</th>
                 </tr>
             </thead>
             <tbody>
@@ -341,11 +341,11 @@
                 <tr>
                     <td>{{ $act['activity_datetime'] ? date('M d, Y h:i A', strtotime($act['activity_datetime'])) : '-' }}</td>
                     <td>{{ $act['record_id'] }}</td>
-                    <td><span class="badge badge-info">{{ htmlspecialchars($act['report_type']) }}</span></td>
-                    <td>{{ $reportTypes[$act['report_type']] ?? $act['report_type'] }}</td>
+                    <td><span class="badge badge-info">{{ $reportTypes[$act['report_type']] ?? ucfirst(str_replace('_', ' ', $act['report_type'])) }}</span></td>
+                    <td>{{ htmlspecialchars($act['activity_type']) }}</td>
                     <td>{{ htmlspecialchars($act['person'] ?: '-') }}</td>
                     <td>@include('components.status-badge', ['status' => $act['status']])</td>
-                    <td>{{ $act['amount'] !== null ? 'PHP ' . number_format((float) $act['amount'], 2) : '-' }}</td>
+                    <td>{{ $act['amount'] !== null ? '₱' . number_format((float) $act['amount'], 2) : '-' }}</td>
                     <td>{{ $act['quantity'] !== null ? number_format((int) $act['quantity']) : '-' }}</td>
                     <td style="color: var(--text-muted); font-size: 0.82rem;">{{ htmlspecialchars($act['remarks'] ?: '-') }}</td>
                 </tr>
@@ -362,7 +362,7 @@
 <div class="card-footer">
     <div style="font-size: 0.82rem; color: var(--text-muted);">
         Showing {{ number_format(count($records)) }} of {{ number_format($summary['total']) }} matching records.
-        Generated on {{ date('M d, Y h:i A') }}.
+        Prepared on {{ date('M d, Y h:i A') }}.
     </div>
 </div>
 @endif

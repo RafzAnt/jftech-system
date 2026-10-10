@@ -30,14 +30,14 @@ $plans = $stmt->fetchAll();
 // Search clients
 if ($request->has('search') && $request->query('search')) {
     $search = '%' . $request->query('search') . '%';
-    $stmt = $pdo->prepare("SELECT c.*, b.barangay_name FROM clients c LEFT JOIN barangays b ON c.barangay_id = b.id WHERE c.full_name LIKE ? OR c.client_code LIKE ? OR c.contact_number LIKE ? ORDER BY c.full_name");
+    $stmt = $pdo->prepare("SELECT c.*, COALESCE(c.registered_barangay_name, b.barangay_name) AS barangay_name FROM clients c LEFT JOIN barangays b ON c.barangay_id = b.id WHERE c.full_name LIKE ? OR c.client_code LIKE ? OR c.contact_number LIKE ? ORDER BY c.full_name");
     $stmt->execute([$search, $search, $search]);
     $searchResults = $stmt->fetchAll();
 }
 
 // Get client by ID
 if ($request->has('id') && $request->query('id')) {
-    $stmt = $pdo->prepare("SELECT c.*, b.barangay_name FROM clients c LEFT JOIN barangays b ON c.barangay_id = b.id WHERE c.id = ?");
+    $stmt = $pdo->prepare("SELECT c.*, COALESCE(c.registered_barangay_name, b.barangay_name) AS barangay_name FROM clients c LEFT JOIN barangays b ON c.barangay_id = b.id WHERE c.id = ?");
     $stmt->execute([$request->query('id')]);
     $client = $stmt->fetch();
 }
@@ -58,7 +58,7 @@ if ($request->isMethod('post') && $request->has('update_client')) {
             throw new \RuntimeException('First name and last name are required. Middle name is optional.');
         }
         if (! preg_match('/^\d{11}$/', $contactNumber)) {
-            throw new \RuntimeException('Contact number must contain exactly 11 digits.');
+            throw new \RuntimeException('Mobile number must contain exactly 11 digits.');
         }
         // Load the saved client first. A normal profile update must preserve the
         // original plan-price snapshot even if the plan's current price changed.
@@ -100,7 +100,7 @@ if ($request->isMethod('post') && $request->has('update_client')) {
         $success = 'Client updated successfully!';
 
         // Refresh client data
-        $stmt = $pdo->prepare("SELECT c.*, b.barangay_name FROM clients c LEFT JOIN barangays b ON c.barangay_id = b.id WHERE c.id = ?");
+        $stmt = $pdo->prepare("SELECT c.*, COALESCE(c.registered_barangay_name, b.barangay_name) AS barangay_name FROM clients c LEFT JOIN barangays b ON c.barangay_id = b.id WHERE c.id = ?");
         $stmt->execute([$clientId]);
         $client = $stmt->fetch();
     } catch (Exception $e) {

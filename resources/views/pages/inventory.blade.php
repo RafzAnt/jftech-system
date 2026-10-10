@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-PH">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -23,12 +23,12 @@
     <div class="main-content">
         <div class="top-bar">
             <div>
-                <h1 class="page-title">{{ $tab === 'movements' ? 'Stock Movement History' : 'Inventory' }}</h1>
-                <p style="color: var(--text-muted); font-size: 0.85rem;">{{ $tab === 'movements' ? 'Auditable record of every stock change' : 'Manage equipment and supplies' }}</p>
+                <h1 class="page-title">{{ $tab === 'movements' ? 'Stock Update History' : 'Inventory' }}</h1>
+                <p style="color: var(--text-muted); font-size: 0.85rem;">{{ $tab === 'movements' ? 'List of all stock updates' : 'Manage equipment and supplies' }}</p>
             </div>
             @if (!$showArchived && $tab === 'stock')
             <div style="display:flex;gap:.65rem;flex-wrap:wrap;">
-                <a class="btn btn-secondary" href="inventory.php?tab=movements">View Stock Movements</a>
+                <a class="btn btn-secondary" href="inventory.php?tab=movements">View Stock Updates</a>
                 <button class="btn btn-success" onclick="openNewItemModal()">+ Add Item</button>
             </div>
             @endif
@@ -49,12 +49,12 @@
                 <div class="stat-label">Total Items</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value" style="color: var(--success);">PHP {{ number_format($totalValue, 2) }}</div>
+                <div class="stat-value" style="color: var(--success);">₱{{ number_format($totalValue, 2) }}</div>
                 <div class="stat-label">Total Value</div>
             </div>
             <div class="stat-card">
                 <div class="stat-value" style="color: var(--warning);">{{ $lowStock }}</div>
-                <div class="stat-label">Low Available Stock</div>
+                <div class="stat-label">Low Stock Items</div>
             </div>
         </div>
 
@@ -66,7 +66,7 @@
                     <span style="color: var(--text-muted); font-size: 0.85rem; font-weight: 600;">CATEGORIES:</span>
                     <a href="inventory.php{{ $showArchived ? '?view=archived' : '' }}" 
                        class="btn btn-sm {{ !$filterCategory ? 'btn-primary' : 'btn-secondary' }}">
-                        All
+                        All Categories
                     </a>
                     @foreach ($categories as $cat)
                     <a href="inventory.php?category={{ urlencode($cat) }}{{ $showArchived ? '&view=archived' : '' }}" 
@@ -85,7 +85,7 @@
                     <div class="payslip-view-tabs">
                         <a href="inventory.php" class="payslip-view-tab {{ !$showArchived ? 'active' : '' }}">Active</a>
                         <a href="inventory.php?view=archived" class="payslip-view-tab {{ $showArchived ? 'active' : '' }}">Archived ({{ $archivedCount }})</a>
-                        @if (!$showArchived)<a href="inventory.php?tab=movements" class="payslip-view-tab">Movements</a>@endif
+                        @if (!$showArchived)<a href="inventory.php?tab=movements" class="payslip-view-tab">Stock Updates</a>@endif
                     </div>
                     <a class="btn btn-sm btn-secondary" target="_blank" rel="noopener" href="{{ url('/pages/print_inventory.php?category=' . urlencode($filterCategory) . ($showArchived ? '&archived=1' : '')) }}">Print</a>
                 </div>
@@ -97,7 +97,7 @@
                             <tr>
                                 <th>Item Name</th>
                                 <th>Category</th>
-                                <th>On Hand</th>
+                                <th>Stock</th>
                                 <th>Reserved</th>
                                 <th>Available</th>
                                 <th>Unit Price</th>
@@ -124,8 +124,8 @@
                                 </td>
                                 <td>{{ $item['reserved_quantity'] ?: '—' }}</td>
                                 <td><strong style="color: {{ $isLowStock ? 'var(--warning)' : 'var(--success)' }};">{{ $item['available_quantity'] }}</strong></td>
-                                <td>PHP {{ number_format($item['unit_price'], 2) }}</td>
-                                <td style="font-weight: 600;">PHP {{ number_format($item['quantity'] * $item['unit_price'], 2) }}</td>
+                                <td>₱{{ number_format($item['unit_price'], 2) }}</td>
+                                <td style="font-weight: 600;">₱{{ number_format($item['quantity'] * $item['unit_price'], 2) }}</td>
                                 <td>
                                     <span class="badge badge-{{ $item['status'] === 'active' ? 'success' : 'secondary' }}">
                                         {{ ucfirst($item['status']) }}
@@ -146,7 +146,7 @@
                                             <button type="submit" class="inventory-menu-item inventory-menu-item-danger">Delete Permanently</button>
                                         </form>
                                         @else
-                                        <button class="inventory-menu-item" type="button" data-inventory-item='@json($item)' onclick="openStockMovementFromButton(this); closeInventoryActionMenus()">Record Movement</button>
+                                        <button class="inventory-menu-item" type="button" data-inventory-item='@json($item)' onclick="openStockMovementFromButton(this); closeInventoryActionMenus()">Update Stock</button>
                                         <button class="inventory-menu-item" type="button" data-inventory-item='@json($item)' onclick="editItemFromButton(this); closeInventoryActionMenus()">Edit Details</button>
                                         <form method="POST" action="{{ route('inventory.archive', $item['id']) }}" onsubmit="return confirm('Archive this item?')">
             @csrf
@@ -169,26 +169,26 @@
         @else
         <div class="card">
             <div class="card-header">
-                <span class="card-title">Latest Stock Movements</span>
+                <span class="card-title">Recent Stock Updates</span>
                 <a href="inventory.php" class="btn btn-sm btn-secondary">Back to Stock</a>
             </div>
             <div class="card-body" style="padding: 0;">
                 <div class="data-table-container">
                     <table class="data-table">
-                        <thead><tr><th>Date / Time</th><th>Item</th><th>Movement</th><th>Change</th><th>Balance After</th><th>Processed By</th><th>Remarks</th></tr></thead>
+                        <thead><tr><th>Date &amp; Time</th><th>Item</th><th>Update Type</th><th>Quantity Change</th><th>Stock After</th><th>Handled By</th><th>Notes</th></tr></thead>
                         <tbody>
                             @forelse ($movements as $movement)
                             <tr>
                                 <td>{{ \Carbon\Carbon::parse($movement->created_at)->format('M d, Y h:i A') }}</td>
                                 <td><strong>{{ $movement->item_name }}</strong><br><span style="color: var(--text-muted); font-size: .8rem;">{{ $movement->category }}</span></td>
-                                <td>{{ ucwords(str_replace('_', ' ', $movement->movement_type)) }}</td>
+                                <td>{{ ['stock_received' => 'Stock Received', 'stock_issued' => 'Stock Released', 'stock_returned' => 'Stock Returned', 'damaged' => 'Damaged or Lost', 'stock_count' => 'Stock Counted'][$movement->movement_type] ?? ucwords(str_replace('_', ' ', $movement->movement_type)) }}</td>
                                 <td style="font-weight: 700; color: {{ $movement->quantity_change >= 0 ? 'var(--success)' : 'var(--danger)' }};">{{ $movement->quantity_change >= 0 ? '+' : '' }}{{ $movement->quantity_change }}</td>
                                 <td>{{ $movement->balance_after }}</td>
                                 <td>{{ $movement->performed_by_name ?: 'System' }}</td>
                                 <td style="max-width: 260px;">{{ $movement->remarks ?: '—' }}</td>
                             </tr>
                             @empty
-                            <tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">No stock movements recorded yet.</td></tr>
+                            <tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">No stock updates recorded yet.</td></tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -238,12 +238,12 @@
                         <input type="text" name="category" class="form-input" id="customCategory" placeholder="Enter new category name" style="display: none; margin-top: 0.5rem;">
                     </div>
                     <div class="form-group">
-                        <label class="form-label" id="itemQuantityLabel">Opening Quantity *</label>
+                        <label class="form-label" id="itemQuantityLabel">Starting Stock *</label>
                         <input type="number" name="quantity" class="form-input" id="itemQuantity" required min="0">
-                        <small id="itemQuantityHelp" style="display:none;color:var(--text-muted);">This amount will be added to the current stock and saved in movement history.</small>
+                        <small id="itemQuantityHelp" style="display:none;color:var(--text-muted);">This amount will be added to the current stock and saved in the stock update history.</small>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Unit Price (PHP)</label>
+                        <label class="form-label">Unit Price (₱)</label>
                         <input type="number" name="unit_price" class="form-input" id="itemPrice" step="0.01" min="0">
                     </div>
                 </div>
@@ -264,7 +264,7 @@
             <div class="modal-header">
                 <div style="display:flex;align-items:center;gap:.5rem">
                     @include('partials.modal_logo')
-                    <h3 class="modal-title">Record Stock Movement</h3>
+                    <h3 class="modal-title">Update Stock</h3>
                 </div>
                 <button class="modal-close" onclick="closeModal('stockMovementModal')">&times;</button>
             </div>
@@ -272,12 +272,12 @@
                 @csrf
                 <div class="form-grid">
                     <div class="form-group" style="grid-column:1/-1;"><label class="form-label">Item</label><input id="movementItemName" class="form-input calc-readonly" readonly></div>
-                    <div class="form-group"><label class="form-label">Movement Type *</label><select name="movement_type" id="movementType" class="form-input" onchange="syncMovementQuantityLabel()"><option value="stock_received">Receive Stock</option><option value="stock_issued">Issue Stock</option><option value="stock_returned">Return to Stock</option><option value="damaged">Damaged / Lost</option><option value="stock_count">Physical Stock Count</option></select></div>
+                    <div class="form-group"><label class="form-label">Update Type *</label><select name="movement_type" id="movementType" class="form-input" onchange="syncMovementQuantityLabel()"><option value="stock_received">Receive Stock</option><option value="stock_issued">Release Stock</option><option value="stock_returned">Return Stock</option><option value="damaged">Damaged or Lost</option><option value="stock_count">Count Stock</option></select></div>
                     <div class="form-group"><label class="form-label" id="movementQuantityLabel">Quantity Received *</label><input type="number" name="quantity" id="movementQuantity" class="form-input" min="0" required></div>
-                    <div class="form-group" style="grid-column:1/-1;"><label class="form-label">Reference / Remarks *</label><textarea name="remarks" class="form-input" rows="3" required placeholder="Supplier delivery receipt, job order, reason for adjustment, etc."></textarea></div>
+                    <div class="form-group" style="grid-column:1/-1;"><label class="form-label">Reference No. / Notes *</label><textarea name="remarks" class="form-input" rows="3" required placeholder="Delivery receipt, job order, or reason for the stock update."></textarea></div>
                 </div>
-                <p style="margin:0;color:var(--text-muted);font-size:.8rem;">Every movement changes on-hand stock and creates a permanent audit record.</p>
-                <div style="display:flex;justify-content:flex-end;gap:1rem;margin-top:1rem;"><button type="button" class="btn btn-secondary" onclick="closeModal('stockMovementModal')">Cancel</button><button type="submit" class="btn btn-success">Save Movement</button></div>
+                <p style="margin:0;color:var(--text-muted);font-size:.8rem;">Each update changes the item stock and is saved in the history.</p>
+                <div style="display:flex;justify-content:flex-end;gap:1rem;margin-top:1rem;"><button type="button" class="btn btn-secondary" onclick="closeModal('stockMovementModal')">Cancel</button><button type="submit" class="btn btn-success">Save Stock Update</button></div>
             </form>
         </div>
     </div>
@@ -322,7 +322,7 @@
         document.getElementById('itemQuantity').value = '0';
         document.getElementById('itemQuantity').readOnly = false;
         document.getElementById('itemQuantity').classList.remove('calc-readonly');
-        document.getElementById('itemQuantityLabel').textContent = 'Quantity to Add';
+        document.getElementById('itemQuantityLabel').textContent = 'Stock to Add';
         document.getElementById('itemQuantityHelp').style.display = 'block';
         document.getElementById('itemPrice').value = item.unit_price;
         document.getElementById('itemReorder').value = item.reorder_level;
@@ -358,14 +358,14 @@
         document.getElementById('itemNameHelp').style.color = 'var(--text-muted)';
         document.getElementById('itemQuantity').readOnly = false;
         document.getElementById('itemQuantity').classList.remove('calc-readonly');
-        document.getElementById('itemQuantityLabel').textContent = 'Opening Quantity *';
+        document.getElementById('itemQuantityLabel').textContent = 'Starting Stock *';
         document.getElementById('itemQuantityHelp').style.display = 'none';
         toggleCustomCategory();
         openModal('inventoryModal');
     }
 
     function openStockMovement(item) {
-        document.getElementById('movementItemName').value = item.item_name + ' (On hand: ' + item.quantity + ', reserved: ' + item.reserved_quantity + ')';
+        document.getElementById('movementItemName').value = item.item_name + ' (Stock: ' + item.quantity + ', reserved: ' + item.reserved_quantity + ')';
         document.getElementById('movementQuantity').value = '';
         document.getElementById('movementType').value = 'stock_received';
         document.getElementById('stockMovementForm').action = '{{ url('/inventory') }}/' + item.id + '/movement';
@@ -373,7 +373,7 @@
         openModal('stockMovementModal');
     }
     function syncMovementQuantityLabel() {
-        const labels = {stock_received: 'Quantity Received *', stock_issued: 'Quantity Issued *', stock_returned: 'Quantity Returned *', damaged: 'Quantity Damaged / Lost *', stock_count: 'Actual Quantity Counted *'};
+        const labels = {stock_received: 'Quantity Received *', stock_issued: 'Quantity Released *', stock_returned: 'Quantity Returned *', damaged: 'Quantity Damaged or Lost *', stock_count: 'Actual Quantity Counted *'};
         document.getElementById('movementQuantityLabel').textContent = labels[document.getElementById('movementType').value];
     }
     function submitInventoryForm(form) {
@@ -403,7 +403,7 @@
 
         input.setCustomValidity(duplicate ? 'This inventory item already exists.' : '');
         help.textContent = duplicate
-            ? 'This item already exists. Choose it from the suggestions or use Record Movement to add stock.'
+            ? 'This item is already listed. Choose it from the suggestions or select Update Stock to add more.'
             : 'Start typing to see common and existing item names.';
         help.style.color = duplicate ? 'var(--danger)' : 'var(--text-muted)';
         saveButton.disabled = duplicate;

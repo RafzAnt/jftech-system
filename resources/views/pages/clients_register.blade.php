@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-PH">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -53,7 +53,7 @@
                         <input type="text" name="last_name" class="form-input" placeholder="Dela Cruz" required>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Contact Number *</label>
+                        <label class="form-label">Mobile Number *</label>
                         <input type="text" name="contact_number" class="form-input" placeholder="09123456789" inputmode="numeric" pattern="[0-9]{11}" minlength="11" maxlength="11" required>
                     </div>
                     <div class="form-group">
@@ -72,11 +72,11 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Monthly Rate (PHP) *</label>
+                        <label class="form-label">Monthly Rate (₱) *</label>
                         <input type="number" name="monthly_rate" class="form-input" id="monthlyRate" placeholder="500.00" step="0.01" readonly required>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Installation Fee (PHP) *</label>
+                        <label class="form-label">Installation Fee (₱) *</label>
                         <input type="number" class="form-input" id="installationFee" step="0.01" readonly required>
                     </div>
                     <div class="form-group">
@@ -99,7 +99,7 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Exact Address *</label>
+                        <label class="form-label">House No. / Street / Purok / Sitio *</label>
                         <input type="text" name="exact_address" class="form-input" placeholder="Purok 1, Sitio..." required>
                     </div>
                 </div>

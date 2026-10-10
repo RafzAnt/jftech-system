@@ -1,27 +1,27 @@
 @php
     $auditFilters = $filters ?? [];
     $actionOptions = [
-        'created_price' => 'Created Price',
-        'updated_price' => 'Updated Price',
-        'changed_price' => 'Changed Price',
-        'added_discount' => 'Added Discount',
-        'updated_discount' => 'Updated Discount',
-        'removed_discount' => 'Removed Discount',
-        'scheduled_price' => 'Scheduled Price',
-        'activated_price' => 'Activated Price',
-        'deactivated_price' => 'Deactivated Price',
-        'bulk_price_update' => 'Bulk Price Update',
+        'created_price' => 'Price Added',
+        'updated_price' => 'Price Updated',
+        'changed_price' => 'Price Changed',
+        'added_discount' => 'Discount Added',
+        'updated_discount' => 'Discount Updated',
+        'removed_discount' => 'Discount Removed',
+        'scheduled_price' => 'Price Change Scheduled',
+        'activated_price' => 'Set Active',
+        'deactivated_price' => 'Set Inactive',
+        'bulk_price_update' => 'Multiple Prices Updated',
     ];
 @endphp
 
-<!-- Audit Filters -->
+<!-- Price Change Filters -->
 <div style="margin-bottom: 1.5rem;">
     <form method="GET" style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
         <input type="hidden" name="view" value="audit">
 
         <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 150px;">
             <select name="action" class="form-select" style="font-size: 0.85rem; padding: 0.5rem;">
-                <option value="">All Actions</option>
+                <option value="">All Changes</option>
                 @foreach ($actionOptions as $val => $label)
                 <option value="{{ $val }}" {{ ($auditFilters['action'] ?? '') === $val ? 'selected' : '' }}>{{ $label }}</option>
                 @endforeach
@@ -52,21 +52,21 @@
 
 <div class="card">
     <div class="card-header">
-        <span class="card-title">Audit Log</span>
-        <span class="badge badge-info" style="font-size: 0.75rem;">Read-Only</span>
+        <span class="card-title">Price Change History</span>
+        <span class="badge badge-info" style="font-size: 0.75rem;">View Only</span>
     </div>
     <div class="card-body" style="padding: 0;">
         <div class="data-table-container">
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th>Date/Time</th>
-                        <th>Admin</th>
-                        <th>Action</th>
-                        <th>Product</th>
-                        <th>SKU</th>
-                        <th>Old Value</th>
-                        <th>New Value</th>
+                        <th>Date & Time</th>
+                        <th>Changed By</th>
+                        <th>Change</th>
+                        <th>Plan</th>
+                        <th>Plan Code</th>
+                        <th>Previous Details</th>
+                        <th>New Details</th>
                         <th>Reason</th>
                     </tr>
                 </thead>
@@ -78,16 +78,16 @@
                         <td>
                             @php
                                 $actionLabels = [
-                                    'created_price' => 'Created Price',
-                                    'updated_price' => 'Updated Price',
-                                    'changed_price' => 'Changed Price',
-                                    'added_discount' => 'Added Discount',
-                                    'updated_discount' => 'Updated Discount',
-                                    'removed_discount' => 'Removed Discount',
-                                    'scheduled_price' => 'Scheduled Price',
-                                    'activated_price' => 'Activated Price',
-                                    'deactivated_price' => 'Deactivated Price',
-                                    'bulk_price_update' => 'Bulk Price Update',
+                                    'created_price' => 'Price Added',
+                                    'updated_price' => 'Price Updated',
+                                    'changed_price' => 'Price Changed',
+                                    'added_discount' => 'Discount Added',
+                                    'updated_discount' => 'Discount Updated',
+                                    'removed_discount' => 'Discount Removed',
+                                    'scheduled_price' => 'Price Change Scheduled',
+                                    'activated_price' => 'Set Active',
+                                    'deactivated_price' => 'Set Inactive',
+                                    'bulk_price_update' => 'Multiple Prices Updated',
                                 ];
                                 $label = $actionLabels[$log['action'] ?? ''] ?? ucfirst($log['action'] ?? '');
                             @endphp
@@ -130,7 +130,7 @@
                         <td style="color: var(--text-muted); font-size: 0.8rem; max-width: 200px;">{{ htmlspecialchars($log['reason'] ?? '—') }}</td>
                     </tr>
                     @empty
-                    <tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:2rem;">No audit log entries found.</td></tr>
+                    <tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:2rem;">No price changes found.</td></tr>
                     @endforelse
                 </tbody>
             </table>

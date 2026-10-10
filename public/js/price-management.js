@@ -19,8 +19,14 @@
         return _currency;
     };
 
+    window.currencyDisplaySymbol = function () {
+        return _currency.toUpperCase() === 'PHP' ? '₱' : _currency;
+    };
+
     window.formatCurrency = function (amount) {
-        return _currency + ' ' + parseFloat(amount).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
+        const symbol = window.currencyDisplaySymbol();
+        const prefix = symbol === '₱' ? symbol : symbol + ' ';
+        return prefix + parseFloat(amount).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
     };
 
     window.calcFinalPrice = function (base, type, value) {
@@ -90,7 +96,7 @@
         const from = document.getElementById('effectiveFromInput')?.value;
         const until = document.getElementById('effectiveUntilInput')?.value;
         if (from && until && until < from) {
-            alert('Effective Until must be later than Effective From.');
+            alert('End Date must be on or after Start Date.');
             return false;
         }
         return true;
@@ -100,7 +106,7 @@
         const base = document.getElementById('basePriceInput')?.value;
         if (!base || parseFloat(base) < 0) { alert('Price cannot be negative.'); return false; }
         if (!document.getElementById('addProductId')?.value) { alert('Please select a product.'); return false; }
-        if (!document.getElementById('effectiveFromInput')?.value) { alert('Effective From is required.'); return false; }
+        if (!document.getElementById('effectiveFromInput')?.value) { alert('Start Date is required.'); return false; }
         return window.validateDateRange();
     };
 
@@ -126,9 +132,9 @@
         if (!base || parseFloat(base) < 0) { alert('Price cannot be negative.'); return false; }
         if (!document.getElementById('scheduleProductId')?.value) { alert('Please select a product.'); return false; }
         const from = document.getElementById('scheduleEffectiveFrom')?.value;
-        if (!from) { alert('Effective From is required.'); return false; }
+        if (!from) { alert('Start Date is required.'); return false; }
         const until = document.getElementById('scheduleEffectiveUntil')?.value;
-        if (until && until < from) { alert('Effective Until must be later than Effective From.'); return false; }
+        if (until && until < from) { alert('End Date must be on or after Start Date.'); return false; }
         return true;
     };
 
@@ -456,9 +462,9 @@
             switch (op) {
                 case 'increase_percentage': label.textContent = 'Increase (%)'; break;
                 case 'decrease_percentage': label.textContent = 'Decrease (%)'; break;
-                case 'increase_fixed': label.textContent = 'Increase Amount (' + currencySymbol() + ')'; break;
-                case 'decrease_fixed': label.textContent = 'Decrease Amount (' + currencySymbol() + ')'; break;
-                case 'set_price': label.textContent = 'New Price (' + currencySymbol() + ')'; break;
+                case 'increase_fixed': label.textContent = 'Increase Amount (' + currencyDisplaySymbol() + ')'; break;
+                case 'decrease_fixed': label.textContent = 'Decrease Amount (' + currencyDisplaySymbol() + ')'; break;
+                case 'set_price': label.textContent = 'New Price (' + currencyDisplaySymbol() + ')'; break;
                 default: label.textContent = 'Value';
             }
         }

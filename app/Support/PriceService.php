@@ -341,12 +341,12 @@ class PriceService
         }
 
         if (empty($data['effective_from'])) {
-            $errors[] = 'Effective From is required.';
+            $errors[] = 'Start Date is required.';
         }
 
         if (! empty($data['effective_from']) && ! empty($data['effective_until'])) {
             if ($data['effective_until'] < $data['effective_from']) {
-                $errors[] = 'Effective Until must be later than Effective From.';
+                $errors[] = 'End Date must be on or after Start Date.';
             }
         }
 
@@ -506,7 +506,8 @@ class PriceService
 
     public function formatCurrency(float $amount, string $currency = null): string
     {
-        $currency = $currency ?? $this->getCurrency();
-        return $currency . ' ' . number_format($amount, 2);
+        $currency = strtoupper(trim($currency ?? $this->getCurrency()));
+        $prefix = $currency === 'PHP' ? '₱' : $currency . ' ';
+        return $prefix . number_format($amount, 2);
     }
 }
