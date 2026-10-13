@@ -36,7 +36,14 @@ $successfulLogins = $stmt->fetch()['total'];
 $stmt = $pdo->query("SELECT COUNT(*) as total FROM login_history WHERE status = 'failed'");
 $failedLogins = $stmt->fetch()['total'];
 
-$stmt = $pdo->query("SELECT COUNT(DISTINCT user_id) as total FROM login_history WHERE login_time >= CURRENT_TIMESTAMP - INTERVAL '24 hours'");
+// login_time is set by the database, so compare against the database clock.
+$driver = $pdo->getAttribute(\PDO::ATTR_DRIVER_NAME);
+$dayAgo = match ($driver) {
+    'pgsql' => "CURRENT_TIMESTAMP - INTERVAL '24 hours'",
+    'sqlite' => "datetime('now', '-1 day')",
+    default => 'CURRENT_TIMESTAMP - INTERVAL 24 HOUR',
+};
+$stmt = $pdo->query("SELECT COUNT(DISTINCT user_id) as total FROM login_history WHERE login_time >= $dayAgo");
 $activeToday = $stmt->fetch()['total'];
     return get_defined_vars();
 };

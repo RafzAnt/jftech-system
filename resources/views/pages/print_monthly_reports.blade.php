@@ -14,14 +14,52 @@
     <main class="report">
         <header class="header">
             @include('partials.print_company')
-            <div style="text-align:right"><strong>MONTHLY BUSINESS REPORT</strong><br><span class="muted">{{ date('M d, Y', strtotime($from)) }} to {{ date('M d, Y', strtotime($to)) }}</span></div>
+            <div style="text-align:right"><strong>BUSINESS SUMMARY REPORT</strong><br><span class="muted">{{ $report['label'] }}</span></div>
         </header>
+        @php($b = $report['bills'])
         <div class="body">
             <table class="meta"><tr><td><span class="label">Report Period</span><strong>{{ date('F d, Y', strtotime($from)) }} – {{ date('F d, Y', strtotime($to)) }}</strong></td><td><span class="label">Date Prepared</span><strong>{{ now()->format('M d, Y h:i A') }}</strong></td></tr></table>
-            <div class="section-title">Report Summary</div>
-            <table class="summary"><tr><td><span class="label">Total Payments Received</span><strong>₱{{ number_format($collections, 2) }}</strong><br>{{ number_format($paymentCount) }} payment(s)</td><td><span class="label">Total Bills</span><strong>₱{{ number_format($totalBillsAmount, 2) }}</strong><br>{{ number_format($totalBills) }} bill(s)</td><td><span class="label">Outstanding Balance</span><strong>₱{{ number_format($outstanding, 2) }}</strong></td><td><span class="label">Open Bills</span><strong>{{ number_format($openBills) }}</strong></td></tr></table>
-            <div class="section-title">Business Summary</div>
-            <table class="summary"><tr><td><span class="label">Active Clients</span><strong>{{ number_format($systemSnapshot['activeClients']) }}</strong></td><td><span class="label">Active Employees</span><strong>{{ number_format($systemSnapshot['activeEmployees']) }}</strong></td><td><span class="label">Attendance Entries</span><strong>{{ number_format($attendanceSummary->records ?? 0) }}</strong></td><td><span class="label">Low Stock Items</span><strong>{{ number_format($systemSnapshot['lowStock']) }}</strong></td></tr></table>
+
+            <div class="section-title">Billing Summary</div>
+            <table class="summary"><tr>
+                <td><span class="label">Total Bills</span><strong>₱{{ number_format($b['amount'], 2) }}</strong><br>{{ number_format($b['count']) }} bill(s) &middot; {{ number_format($b['billedClients']) }} client(s)</td>
+                <td><span class="label">Paid</span><strong>₱{{ number_format($b['paidAmount'], 2) }}</strong><br>{{ number_format($b['paidCount']) }} bill(s) &middot; {{ number_format($b['paidRate'], 1) }}%</td>
+                <td><span class="label">Pending</span><strong>₱{{ number_format($b['pendingAmount'], 2) }}</strong><br>{{ number_format($b['pendingCount']) }} bill(s)</td>
+                <td><span class="label">Overdue</span><strong>₱{{ number_format($b['overdueAmount'], 2) }}</strong><br>{{ number_format($b['overdueCount']) }} bill(s)</td>
+            </tr></table>
+            <table class="items" style="margin-top:8px">
+                <tr class="total"><td>Outstanding balance (after partial payments)</td><td>₱{{ number_format($b['outstanding'], 2) }}</td></tr>
+                @if ($b['cancelledCount'] > 0)<tr><td>Cancelled bills (not counted above)</td><td>{{ number_format($b['cancelledCount']) }}</td></tr>@endif
+            </table>
+
+            <div class="section-title">Payments Received</div>
+            <table class="items">
+                <thead><tr><th>Payment Method</th><th>Payments</th><th>Amount</th></tr></thead>
+                <tbody>
+                    @forelse ($report['payments']['methods'] as $method)
+                    <tr><td>{{ ucwords(str_replace('_', ' ', $method->payment_method)) }}</td><td style="text-align:right">{{ number_format($method->payment_count) }}</td><td>₱{{ number_format($method->total, 2) }}</td></tr>
+                    @empty
+                    <tr><td colspan="3" style="text-align:center;color:#64748b">No payments received in this period.</td></tr>
+                    @endforelse
+                    <tr class="total"><td>Total payments received</td><td style="text-align:right">{{ number_format($report['payments']['count']) }}</td><td>₱{{ number_format($report['payments']['collected'], 2) }}</td></tr>
+                </tbody>
+            </table>
+
+            <div class="section-title">Clients, Staff and Inventory</div>
+            <table class="summary">
+                <tr>
+                    <td><span class="label">New Installations</span><strong>{{ number_format($report['clients']['new']) }}</strong></td>
+                    <td><span class="label">Clients With Overdue Bills</span><strong>{{ number_format($b['overdueClients']) }}</strong></td>
+                    <td><span class="label">Attendance Records</span><strong>{{ number_format($report['attendance']['records']) }}</strong><br>{{ number_format($report['attendance']['present']) }} present &middot; {{ number_format($report['attendance']['late']) }} late &middot; {{ number_format($report['attendance']['absent']) }} absent</td>
+                    <td><span class="label">Payroll Net Pay</span><strong>₱{{ number_format($report['payroll']['net'], 2) }}</strong><br>{{ number_format($report['payroll']['entries']) }} entr{{ $report['payroll']['entries'] === 1 ? 'y' : 'ies' }}</td>
+                </tr>
+                <tr>
+                    <td><span class="label">Inventory Requests</span><strong>{{ number_format($report['requests']['total']) }}</strong></td>
+                    <td><span class="label">Approved</span><strong>{{ number_format($report['requests']['approved']) }}</strong></td>
+                    <td><span class="label">Pending</span><strong>{{ number_format($report['requests']['pending']) }}</strong></td>
+                    <td><span class="label">Denied</span><strong>{{ number_format($report['requests']['denied']) }}</strong></td>
+                </tr>
+            </table>
             <div class="signatures"><div class="signature">Prepared By:<br><br>____________________________</div><div class="signature">Checked / Approved By:<br><br>____________________________</div></div>
         </div>
     </main>

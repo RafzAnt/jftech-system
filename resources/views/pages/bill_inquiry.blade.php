@@ -400,6 +400,45 @@
     document.addEventListener('DOMContentLoaded', () => document.getElementById('paymentModal').classList.add('active'));
     @endif
     </script>
+    <script>
+    // The table container scrolls, which would clip an absolutely positioned menu.
+    // Float the menu next to its button instead, opening upward when there is no room below.
+    (function () {
+        const openMenus = () => document.querySelectorAll('.client-record-actions[open]');
+
+        function placeMenu(details) {
+            const button = details.querySelector('summary');
+            const menu = details.querySelector('.client-record-actions-menu');
+            if (!button || !menu) return;
+            menu.style.visibility = 'hidden';
+            const b = button.getBoundingClientRect();
+            const m = menu.getBoundingClientRect();
+            const below = b.bottom + 6;
+            const top = below + m.height + 8 <= window.innerHeight ? below : Math.max(8, b.top - m.height - 6);
+            const left = Math.max(8, Math.min(window.innerWidth - m.width - 8, b.right - m.width));
+            menu.style.top = top + 'px';
+            menu.style.left = left + 'px';
+            menu.style.visibility = 'visible';
+        }
+
+        document.querySelectorAll('.client-record-actions').forEach(details => {
+            details.addEventListener('toggle', () => {
+                if (!details.open) return;
+                openMenus().forEach(other => { if (other !== details) other.open = false; });
+                placeMenu(details);
+            });
+        });
+
+        const closeAll = () => openMenus().forEach(details => { details.open = false; });
+        document.addEventListener('click', event => {
+            if (!event.target.closest('.client-record-actions')) closeAll();
+        });
+        document.addEventListener('keydown', event => { if (event.key === 'Escape') closeAll(); });
+        window.addEventListener('resize', closeAll);
+        // Capture phase: the table container scrolls without bubbling to window.
+        window.addEventListener('scroll', closeAll, true);
+    })();
+    </script>
     <script src="{{ asset('js/jftech-main.js') }}?{{ $mainJsVersion }}"></script>
 </body>
 </html>

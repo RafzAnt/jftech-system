@@ -337,27 +337,6 @@
     }
 }
 
-.payslip-view-tabs {
-    display: inline-flex;
-    border: 1px solid var(--glass-border, #1f78f2);
-    border-radius: 8px;
-    overflow: hidden;
-}
-
-.payslip-view-tab {
-    padding: 0.35rem 0.9rem;
-    font-size: 0.82rem;
-    font-weight: 600;
-    color: var(--text-muted, #64748b);
-    text-decoration: none;
-    background: transparent;
-}
-
-.payslip-view-tab.active {
-    background: var(--accent, #1f78f2);
-    color: #ffffff;
-}
-
 /* The page-level Print button outputs payroll records only, never the sidebar,
    filters, search box, or application controls. */
 @media print {

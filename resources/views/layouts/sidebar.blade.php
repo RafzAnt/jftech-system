@@ -41,20 +41,20 @@
             'login_history' => '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
         ];
         $navItems = $navItems ?? [
-            ['id' => 'dashboard', 'label' => 'Overview', 'url' => url('/dashboard')],
-            ['id' => 'clients_browse', 'label' => 'Clients', 'url' => url('/clients')],
+            ['id' => 'dashboard', 'section' => 'Overview', 'label' => 'Overview', 'url' => url('/dashboard')],
+            ['id' => 'clients_browse', 'section' => 'Clients & Billing', 'label' => 'Clients', 'url' => url('/clients')],
             ['id' => 'bill_inquiry', 'label' => 'Client Accounts', 'url' => url('/client-accounts')],
             ['id' => 'payment_history', 'label' => 'Payment History', 'url' => url('/payments')],
-            ['id' => 'employees', 'label' => 'Employees', 'url' => url('/employees')],
+            ['id' => 'price_management', 'label' => 'Internet Plans', 'url' => url('/price-management?view=dashboard')],
+            ['id' => 'employees', 'section' => 'Team', 'label' => 'Employees', 'url' => url('/employees')],
             ['id' => 'payroll', 'label' => 'Payroll', 'url' => url('/payroll')],
-            ['id' => 'inventory', 'label' => 'Inventory', 'url' => url('/inventory'), 'submenu' => [
+            ['id' => 'inventory', 'section' => 'Operations', 'label' => 'Inventory', 'url' => url('/inventory'), 'submenu' => [
                 ['label' => 'Stock Management', 'url' => url('/inventory')],
                 ['label' => 'Stock Update History', 'url' => url('/inventory?tab=movements')],
                 ['label' => 'Stock Requests', 'url' => url('/inventory-requests'), 'page' => 'inventory_requests'],
             ]],
-            ['id' => 'price_management', 'label' => 'Internet Plans', 'url' => url('/price-management?view=dashboard')],
             ['id' => 'reports', 'label' => 'Reports', 'url' => url('/reports')],
-            ['id' => 'settings', 'label' => 'Business Settings', 'url' => url('/settings')],
+            ['id' => 'settings', 'section' => 'Administration', 'label' => 'Business Settings', 'url' => url('/settings')],
             ['id' => 'user_management', 'label' => 'User Accounts', 'url' => url('/users')],
             ['id' => 'login_history', 'label' => 'Login History', 'url' => url('/login-history')],
         ];
@@ -79,6 +79,9 @@
                 $isActive = $currentPage === $item['id'] || $hasActiveSubmenu
                     || ($item['id'] === 'clients_browse' && in_array($currentPage, ['clients_register', 'clients_update'], true));
             @endphp
+        @if (!empty($item['section']))
+        <span class="nav-section-label">{{ $item['section'] }}</span>
+        @endif
         <div class="nav-group">
             @if ($hasSubmenu)
                 <button type="button"
@@ -87,7 +90,7 @@
                    aria-expanded="{{ $isActive ? 'true' : 'false' }}">
                     <span class="nav-icon">{!! $item['icon'] ?? '' !!}</span>
                     <span>{{ $item['label'] }}</span>
-                    <span class="submenu-arrow">▼</span>
+                    <span class="submenu-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span>
                 </button>
                 <div id="{{ $submenuId }}" class="submenu {{ $isActive ? 'show' : '' }}">
                     @foreach ($item['submenu'] as $sub)
@@ -114,20 +117,18 @@
     <div class="sidebar-footer">
         <form id="logout-form" method="POST" action="{{ route('logout') }}">
             @csrf
-            <button type="button" class="btn-logout" data-logout-confirm>
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-            Logout
-            </button>
+            <button type="button" class="btn-logout" data-logout-confirm>Logout</button>
         </form>
     </div>
 </aside>
 
 <dialog class="logout-dialog" id="logout-confirmation" aria-labelledby="logout-confirmation-title">
     <div class="logout-dialog__content">
-        <h2 id="logout-confirmation-title">Do you want to log out?</h2>
+        <h2 id="logout-confirmation-title">Log out of JFTECH?</h2>
+        <p>You will need to sign in again to continue.</p>
         <div class="logout-dialog__actions">
-            <button type="button" class="logout-dialog__no" data-logout-cancel>No</button>
-            <button type="submit" form="logout-form" class="logout-dialog__yes">Yes</button>
+            <button type="button" class="logout-dialog__no" data-logout-cancel>Cancel</button>
+            <button type="submit" form="logout-form" class="logout-dialog__yes">Log out</button>
         </div>
     </div>
 </dialog>
@@ -157,6 +158,22 @@
 
     sidebarOverlay?.addEventListener('click', closeSidebar);
 
+    // The link list can scroll on short screens; start with the current page in view.
+    // Run again after fonts/images settle, since they change the list height.
+    const revealActiveLink = function () {
+        const nav = document.querySelector('.sidebar-nav');
+        const activeLinks = document.querySelectorAll('.sidebar-nav .nav-item.active');
+        const link = activeLinks[activeLinks.length - 1];
+        if (!nav || !link) return;
+        const navBox = nav.getBoundingClientRect();
+        const linkBox = link.getBoundingClientRect();
+        if (linkBox.top < navBox.top || linkBox.bottom > navBox.bottom) {
+            nav.scrollTop += linkBox.top - navBox.top - (nav.clientHeight - linkBox.height) / 2;
+        }
+    };
+    revealActiveLink();
+    window.addEventListener('load', revealActiveLink, { once: true });
+
 document.querySelectorAll('[data-submenu-target]').forEach(function (toggle) {
     toggle.dataset.submenuReady = 'true';
     toggle.addEventListener('click', function () {
@@ -171,98 +188,6 @@ document.querySelectorAll('[data-submenu-target]').forEach(function (toggle) {
 }());
 </script>
 
-<style>
-.btn-logout {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.625rem;
-    width: 100%;
-    margin-top: 0.75rem;
-    padding: 0.75rem 1rem;
-    background: rgba(255, 23, 68, 0.1);
-    border: 1px solid rgba(255, 23, 68, 0.3);
-    border-radius: 10px;
-    color: var(--danger);
-    font-size: 0.85rem;
-    font-weight: 600;
-    transition: var(--transition);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.btn-logout:hover {
-    background: rgba(255, 23, 68, 0.2);
-    border-color: var(--danger);
-    transform: translateY(-1px);
-}
-
-.btn-logout svg {
-    stroke: var(--danger);
-}
-.logout-dialog {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    margin: 0;
-    transform: translate(-50%, -50%);
-    width: min(calc(100% - 2rem), 340px);
-    padding: 0;
-    border: 1px solid var(--border-color);
-    border-radius: 14px;
-    background: var(--card-bg-solid);
-    color: var(--text-primary);
-    box-shadow: var(--shadow-lg);
-}
-.logout-dialog::backdrop {
-    background: rgba(2, 10, 25, 0.65);
-    backdrop-filter: blur(3px);
-}
-.logout-dialog__content { padding: 1.5rem; text-align: center; }
-.logout-dialog h2 { font-size: 1rem; font-weight: 600; }
-.logout-dialog__actions { display: flex; gap: 0.75rem; margin-top: 1.35rem; }
-.logout-dialog__actions button { flex: 1; padding: 0.65rem 1rem; border-radius: 8px; font-weight: 700; cursor: pointer; }
-.logout-dialog__no { border: 1px solid var(--border-color); background: transparent; color: var(--text-secondary); }
-.logout-dialog__yes { border: 1px solid rgba(255, 23, 68, 0.4); background: var(--danger); color: #fff; }
-.submenu {
-    display: none;
-    flex-direction: column;
-    padding-bottom: 0.35rem;
-}
-.submenu.show {
-    display: flex;
-}
-.nav-toggle {
-    width: 100%;
-    background: transparent;
-    border: 0;
-    text-align: left;
-}
-.submenu-arrow {
-    margin-left: auto;
-    font-size: 0.75rem;
-    transition: transform 0.2s ease;
-}
-.nav-toggle[aria-expanded="true"] .submenu-arrow {
-    transform: rotate(180deg);
-}
-.submenu-item {
-    font-size: 0.85rem;
-    padding: 0.625rem 1.5rem 0.625rem 3rem;
-    border-left: 3px solid transparent;
-}
-.submenu-item.active {
-    color: #ffffff;
-    background: #1c1c1c;
-    border-left-color: #8a8a8a;
-}
-@media (max-width: 480px) {
-    .submenu-item {
-        padding-left: 2rem;
-        font-size: 0.8rem;
-    }
-}
-</style>
 <script>
     document.querySelector('[data-logout-confirm]')?.addEventListener('click', () => {
         document.getElementById('logout-confirmation')?.showModal();

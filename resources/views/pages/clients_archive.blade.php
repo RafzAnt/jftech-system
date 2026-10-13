@@ -32,7 +32,6 @@
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th>Client Code</th>
                                 <th>Name</th>
                                 <th>Branch</th>
                                 <th>Barangay</th>
@@ -43,8 +42,7 @@
                         <tbody>
                             @foreach ($archivedClients as $client)
                             <tr>
-                                <td><strong>{{ $client['client_code'] }}</strong></td>
-                                <td>{{ htmlspecialchars($client['full_name']) }}</td>
+                                <td><strong>{{ htmlspecialchars($client['full_name']) }}</strong></td>
                                 <td>{{ $client['branch_name'] ?: 'N/A' }}</td>
                                 <td>{{ $client['barangay_name'] ?: 'N/A' }}</td>
                                 <td>{{ $client['installation_date'] ? date('M d, Y', strtotime($client['installation_date'])) : '-' }}</td>

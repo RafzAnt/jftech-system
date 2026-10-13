@@ -149,15 +149,16 @@
     <table>
         <thead>
             <tr>
-                <th style="width: 10%;">Date</th>
-                <th style="width: 13%;">Employee</th>
-                <th style="width: 10%;">Position</th>
-                <th style="width: 12%;">Employee Code</th>
-                <th style="width: 12%;">Morning In</th>
-                <th style="width: 12%;">Morning Out</th>
-                <th style="width: 12%;">Afternoon In</th>
-                <th style="width: 12%;">Afternoon Out</th>
-                <th style="width: 9%;">Status</th>
+                <th style="width: 9%;">Date</th>
+                <th style="width: 12%;">Employee</th>
+                <th style="width: 9%;">Position</th>
+                <th style="width: 9%;">Branch</th>
+                <th style="width: 11%;">Employee Code</th>
+                <th style="width: 11%;">Morning In</th>
+                <th style="width: 11%;">Morning Out</th>
+                <th style="width: 11%;">Afternoon In</th>
+                <th style="width: 11%;">Afternoon Out</th>
+                <th style="width: 8%;">Status</th>
             </tr>
         </thead>
         <tbody>
@@ -166,6 +167,7 @@
                 <td>{{ date('M d, Y', strtotime($att['attendance_date'])) }}</td>
                 <td>{{ htmlspecialchars($att['full_name']) }}</td>
                 <td>{{ htmlspecialchars($att['position'] ?: '—') }}</td>
+                <td>{{ htmlspecialchars($att['branch_name'] ?: '—') }}</td>
                 <td>{{ htmlspecialchars($att['employee_code']) }}</td>
                 <td>{{ $att['morning_time_in'] ? date('h:i A', strtotime($att['morning_time_in'])) : '-' }}</td>
                 <td>{{ $att['morning_time_out'] ? date('h:i A', strtotime($att['morning_time_out'])) : '-' }}</td>

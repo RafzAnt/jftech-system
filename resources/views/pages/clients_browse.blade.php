@@ -66,15 +66,22 @@
 <form method="get" class="filter-bar card client-filter-card" id="clientFilterForm" style="margin-bottom: 1.5rem;">
     @if ($showArchived)<input type="hidden" name="view" value="archived">@endif
     <div class="card-body client-filter-controls">
-        <div class="form-group client-filter-field client-location-field">
-            <label class="form-label" for="clientLocationInput">Branch, Barangay</label>
+        <div class="form-group client-filter-field client-branch-field">
+            <label class="form-label" for="clientBranchInput">Branch</label>
             <input type="hidden" id="clientBranchFilter" name="branch" value="{{ $selectedBranch }}">
             <div class="client-barangay-picker">
-                <input type="text" class="search-input client-barangay-input" id="clientLocationInput" placeholder="Type a branch name" autocomplete="off" aria-autocomplete="list" aria-controls="clientBarangaySuggestions" aria-expanded="false" value="{{ $selectedBranch ? implode(', ', array_merge([$selectedBranch], $selectedBarangays)) : '' }}">
-                <div id="clientBarangaySuggestions" class="location-suggestions client-filter-suggestions" role="listbox" hidden></div>
-                <div id="clientBarangayHiddenInputs"></div>
+                <input type="text" class="search-input client-barangay-input" id="clientBranchInput" placeholder="Branch" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="clientBranchSuggestions" aria-expanded="false" value="{{ $selectedBranch }}">
+                <div id="clientBranchSuggestions" class="location-suggestions client-filter-suggestions" role="listbox" hidden></div>
             </div>
-            <small class="location-input-help">Choose a branch first, then choose one or more barangays.</small>
+        </div>
+        <div class="form-group client-filter-field client-barangay-field">
+            <label class="form-label" for="clientBarangayInput">Barangay</label>
+            <div class="client-barangay-picker">
+                <input type="text" class="search-input client-barangay-input" id="clientBarangayInput" placeholder="Barangay" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="clientBarangaySuggestions" aria-expanded="false" {{ $selectedBranch ? '' : 'disabled' }}>
+                <div id="clientBarangaySuggestions" class="location-suggestions client-filter-suggestions" role="listbox" hidden></div>
+            </div>
+            <div class="client-barangay-chips" id="clientBarangayChips"></div>
+            <div id="clientBarangayHiddenInputs"></div>
         </div>
         <div class="form-group client-filter-field client-search-field">
             <label class="form-label" for="searchInput">Search Clients</label>
@@ -461,156 +468,170 @@
     }, $clients), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) !!};
 
     const clientBranchFilter = document.getElementById('clientBranchFilter');
-    const clientLocationInput = document.getElementById('clientLocationInput');
+    const clientBranchInput = document.getElementById('clientBranchInput');
+    const clientBarangayInput = document.getElementById('clientBarangayInput');
     const clientBarangayHiddenInputs = document.getElementById('clientBarangayHiddenInputs');
-    const clientBarangaySuggestions = document.getElementById('clientBarangaySuggestions');
+    const clientBarangayChips = document.getElementById('clientBarangayChips');
     const selectedClientBarangays = @json($selectedBarangays, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT);
     const clientBranchNames = @json(array_keys($branches), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT);
-    let clientBarangaySuggestionIndex = -1;
-    let currentClientBranch = clientBranchFilter.value;
 
-    function closeClientBarangaySuggestions() {
-        clientBarangaySuggestions.hidden = true;
-        clientLocationInput.setAttribute('aria-expanded', 'false');
-        clientLocationInput.removeAttribute('aria-activedescendant');
-        clientBarangaySuggestionIndex = -1;
+    // A text box with a suggestion list: type to filter, click / Enter to pick.
+    function createClientCombobox(input, list, getOptions, onPick) {
+        let active = -1;
+
+        function close() {
+            list.hidden = true;
+            input.setAttribute('aria-expanded', 'false');
+            input.removeAttribute('aria-activedescendant');
+            active = -1;
+        }
+
+        function open() {
+            if (input.disabled) return;
+            const query = input.value.trim().toLocaleLowerCase();
+            const options = getOptions()
+                .filter(name => !query || name.toLocaleLowerCase().includes(query))
+                .slice(0, 30);
+            list.replaceChildren();
+            active = -1;
+            options.forEach((name, index) => {
+                const option = document.createElement('button');
+                option.type = 'button';
+                option.className = 'location-suggestion-option';
+                option.id = `${list.id}Option${index}`;
+                option.setAttribute('role', 'option');
+                option.textContent = name;
+                option.addEventListener('mousedown', event => event.preventDefault());
+                option.addEventListener('click', () => {
+                    close();
+                    onPick(name);
+                });
+                list.appendChild(option);
+            });
+            list.hidden = options.length === 0;
+            input.setAttribute('aria-expanded', String(options.length > 0));
+        }
+
+        input.addEventListener('input', open);
+        input.addEventListener('focus', open);
+        input.addEventListener('blur', () => setTimeout(close, 120));
+        input.addEventListener('keydown', event => {
+            const options = list.querySelectorAll('.location-suggestion-option');
+            if (event.key === 'Escape') {
+                close();
+            } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                if (list.hidden) open();
+                if (!options.length) return;
+                event.preventDefault();
+                active = active === -1
+                    ? (event.key === 'ArrowDown' ? 0 : options.length - 1)
+                    : (active + (event.key === 'ArrowDown' ? 1 : -1) + options.length) % options.length;
+                options.forEach((option, index) => option.setAttribute('aria-selected', String(index === active)));
+                input.setAttribute('aria-activedescendant', options[active].id);
+            } else if (event.key === 'Enter') {
+                if (!list.hidden && active >= 0) {
+                    event.preventDefault();
+                    options[active].click();
+                } else {
+                    // Typed an exact name: accept it instead of submitting the form.
+                    const typed = input.value.trim().toLocaleLowerCase();
+                    const exact = getOptions().find(name => name.toLocaleLowerCase() === typed);
+                    if (exact) {
+                        event.preventDefault();
+                        close();
+                        onPick(exact);
+                    }
+                }
+            }
+        });
+        return { close, open };
     }
 
-    function renderClientBarangayInputs() {
+    function renderClientBarangays() {
         clientBarangayHiddenInputs.replaceChildren();
+        clientBarangayChips.replaceChildren();
         selectedClientBarangays.forEach(name => {
             const hidden = document.createElement('input');
             hidden.type = 'hidden';
             hidden.name = 'barangays[]';
             hidden.value = name;
             clientBarangayHiddenInputs.appendChild(hidden);
-        });
-    }
 
-    function updateClientLocationValue(query = '') {
-        const parts = currentClientBranch ? [currentClientBranch, ...selectedClientBarangays] : [];
-        clientLocationInput.value = [...parts, query].filter(Boolean).join(', ');
-    }
-
-    function prepareClientLocationInput() {
-        if (currentClientBranch && !clientLocationInput.value.trimEnd().endsWith(',')) {
-            clientLocationInput.value = `${clientLocationInput.value.replace(/\s+$/, '')}, `;
-        }
-    }
-
-    function showClientLocationSuggestions() {
-        const value = clientLocationInput.value;
-        const typedParts = value.split(',');
-        let query = '';
-        let options = [];
-        if (!currentClientBranch) {
-            query = (typedParts[0] || '').trim().toLocaleLowerCase();
-            options = clientBranchNames.filter(name => !query || name.toLocaleLowerCase().startsWith(query));
-        } else {
-            const prefix = `${currentClientBranch},`;
-            if (!value.toLocaleLowerCase().startsWith(prefix.toLocaleLowerCase())) {
-                currentClientBranch = '';
-                clientBranchFilter.value = '';
-                selectedClientBarangays.splice(0);
-                renderClientBarangayInputs();
-                showClientLocationSuggestions();
-                return;
-            }
-            const afterBranch = value.slice(prefix.length).split(',');
-            const typedBarangays = afterBranch.slice(0, -1).map(name => name.trim()).filter(Boolean);
-            query = (afterBranch[afterBranch.length - 1] || '').trim().toLocaleLowerCase();
-            const selected = new Set([...selectedClientBarangays, ...typedBarangays].map(name => name.toLocaleLowerCase()));
-            options = (registerBarangaysByBranch[currentClientBranch] || [])
-                .filter(name => !selected.has(name.toLocaleLowerCase()) && (!query || name.toLocaleLowerCase().startsWith(query)));
-        }
-        options = options.slice(0, 30);
-        clientBarangaySuggestions.replaceChildren();
-        clientBarangaySuggestionIndex = -1;
-
-        options.forEach((name, index) => {
-            const option = document.createElement('button');
-            option.type = 'button';
-            option.className = 'location-suggestion-option';
-            option.id = `clientBarangayOption${index}`;
-            option.setAttribute('role', 'option');
-            option.textContent = name;
-            option.addEventListener('mousedown', event => event.preventDefault());
-            option.addEventListener('click', () => {
-                if (!currentClientBranch) {
-                    currentClientBranch = name;
-                    clientBranchFilter.value = name;
-                    selectedClientBarangays.splice(0);
-                } else {
-                    selectedClientBarangays.push(name);
-                    renderClientBarangayInputs();
-                }
-                updateClientLocationValue();
-                prepareClientLocationInput();
-                clientLocationInput.focus();
-                closeClientBarangaySuggestions();
-                showClientLocationSuggestions();
+            const chip = document.createElement('span');
+            chip.className = 'client-barangay-chip';
+            chip.textContent = name;
+            const remove = document.createElement('button');
+            remove.type = 'button';
+            remove.setAttribute('aria-label', `Remove ${name}`);
+            remove.textContent = '\u00d7';
+            remove.addEventListener('click', () => {
+                selectedClientBarangays.splice(selectedClientBarangays.indexOf(name), 1);
+                renderClientBarangays();
             });
-            clientBarangaySuggestions.appendChild(option);
+            chip.appendChild(remove);
+            clientBarangayChips.appendChild(chip);
         });
-
-        clientBarangaySuggestions.hidden = options.length === 0;
-        clientLocationInput.setAttribute('aria-expanded', String(options.length > 0));
     }
 
-    clientLocationInput.addEventListener('input', showClientLocationSuggestions);
-    clientLocationInput.addEventListener('focus', () => {
-        prepareClientLocationInput();
-        showClientLocationSuggestions();
-    });
-    clientLocationInput.addEventListener('blur', () => setTimeout(() => {
-        closeClientBarangaySuggestions();
-        updateClientLocationValue();
-    }, 120));
-    clientLocationInput.addEventListener('keydown', event => {
-        if (event.key === ',' || event.key === 'Enter') {
-            const currentPart = clientLocationInput.value.split(',').pop().trim();
-            if (!currentClientBranch) {
-                const branchMatch = clientBranchNames.find(name => name.toLocaleLowerCase() === currentPart.toLocaleLowerCase());
-                if (branchMatch) {
-                    event.preventDefault();
-                    currentClientBranch = branchMatch;
-                    clientBranchFilter.value = branchMatch;
-                    updateClientLocationValue();
-                    prepareClientLocationInput();
-                    showClientLocationSuggestions();
-                    return;
-                }
-            } else {
-                const barangayMatch = (registerBarangaysByBranch[currentClientBranch] || [])
-                    .find(name => name.toLocaleLowerCase() === currentPart.toLocaleLowerCase());
-                if (barangayMatch && !selectedClientBarangays.some(name => name.toLocaleLowerCase() === barangayMatch.toLocaleLowerCase())) {
-                    event.preventDefault();
-                    selectedClientBarangays.push(barangayMatch);
-                    renderClientBarangayInputs();
-                    updateClientLocationValue();
-                    prepareClientLocationInput();
-                    showClientLocationSuggestions();
-                    return;
-                }
-            }
+    function setClientBranch(name) {
+        if (clientBranchFilter.value !== name) {
+            selectedClientBarangays.splice(0);
+            clientBarangayInput.value = '';
         }
-        const options = clientBarangaySuggestions.querySelectorAll('.location-suggestion-option');
-        if (!options.length || clientBarangaySuggestions.hidden) return;
-        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-            event.preventDefault();
-            clientBarangaySuggestionIndex = clientBarangaySuggestionIndex === -1
-                ? (event.key === 'ArrowDown' ? 0 : options.length - 1)
-                : (clientBarangaySuggestionIndex + (event.key === 'ArrowDown' ? 1 : -1) + options.length) % options.length;
-            options.forEach((option, index) => option.setAttribute('aria-selected', String(index === clientBarangaySuggestionIndex)));
-            clientLocationInput.setAttribute('aria-activedescendant', options[clientBarangaySuggestionIndex].id);
-        } else if (event.key === 'Enter' && clientBarangaySuggestionIndex >= 0) {
-            event.preventDefault();
-            options[clientBarangaySuggestionIndex].click();
-        } else if (event.key === 'Escape') {
-            closeClientBarangaySuggestions();
+        clientBranchFilter.value = name;
+        clientBranchInput.value = name;
+        clientBarangayInput.disabled = !name;
+        renderClientBarangays();
+    }
+
+    function addClientBarangay(name) {
+        if (!selectedClientBarangays.some(item => item.toLocaleLowerCase() === name.toLocaleLowerCase())) {
+            selectedClientBarangays.push(name);
+            renderClientBarangays();
+        }
+        clientBarangayInput.value = '';
+        clientBarangayInput.focus();
+    }
+
+    createClientCombobox(
+        clientBranchInput,
+        document.getElementById('clientBranchSuggestions'),
+        () => clientBranchNames,
+        name => {
+            setClientBranch(name);
+            clientBarangayInput.focus();
+        }
+    );
+    createClientCombobox(
+        clientBarangayInput,
+        document.getElementById('clientBarangaySuggestions'),
+        () => (registerBarangaysByBranch[clientBranchFilter.value] || [])
+            .filter(name => !selectedClientBarangays.some(item => item.toLocaleLowerCase() === name.toLocaleLowerCase())),
+        addClientBarangay
+    );
+
+    // Leaving the branch box with text that isn't a real branch resets it to the chosen one.
+    clientBranchInput.addEventListener('blur', () => setTimeout(() => {
+        const typed = clientBranchInput.value.trim();
+        if (!typed) {
+            setClientBranch('');
+            return;
+        }
+        const match = clientBranchNames.find(name => name.toLocaleLowerCase() === typed.toLocaleLowerCase());
+        setClientBranch(match || clientBranchFilter.value);
+    }, 150));
+    clientBarangayInput.addEventListener('blur', () => setTimeout(() => { clientBarangayInput.value = ''; }, 150));
+
+    // A barangay typed in full but not yet picked still counts when searching.
+    document.getElementById('clientFilterForm').addEventListener('submit', () => {
+        const typed = clientBarangayInput.value.trim().toLocaleLowerCase();
+        const match = (registerBarangaysByBranch[clientBranchFilter.value] || []).find(name => name.toLocaleLowerCase() === typed);
+        if (match && !selectedClientBarangays.includes(match)) {
+            selectedClientBarangays.push(match);
+            renderClientBarangays();
         }
     });
-    renderClientBarangayInputs();
+    renderClientBarangays();
 
     // View client details
     function formatDate(dateString) {

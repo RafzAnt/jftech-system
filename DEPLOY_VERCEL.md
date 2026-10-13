@@ -13,9 +13,11 @@ Vercel build command or output directory for this app.
 3. In Supabase SQL Editor, run the PostgreSQL schema supplied for this project
    before the first deployment. Do not run the current MySQL-only Laravel
    migrations against Supabase.
-   For an existing project receiving the client branch/barangay update, run
+   For an existing project receiving the client branch/barangay and internet
+   plan pricing updates, run
    `database/supabase/migrations/2026_10_10_client_branch_columns.sql` in SQL
-   Editor. It is safe to rerun and preserves existing rows.
+   Editor. It is safe to rerun, preserves existing plan prices, and adds the
+   approved plans only when their names are not already present.
 4. Continue using the normal Laravel migrations only for local XAMPP/MySQL:
 
    ```bash

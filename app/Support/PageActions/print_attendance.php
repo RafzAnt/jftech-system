@@ -12,7 +12,7 @@ $selectedDate = $request->query('attendance_date') ?? date('Y-m-d');
 $selectedStart = $request->query('start') ?? '';
 $selectedEnd = $request->query('end') ?? '';
 
-$query = "SELECT a.*, e.full_name, e.employee_code, e.position, e.department
+$query = "SELECT a.*, e.full_name, e.employee_code, e.position, e.department, COALESCE(a.branch_name, e.branch_name) AS branch_name
           FROM attendance a
           JOIN employees e ON a.employee_id = e.id
           WHERE TRUE";
@@ -21,6 +21,12 @@ $params = [];
 if ($selectedEmployee) {
     $query .= " AND a.employee_id = ?";
     $params[] = $selectedEmployee;
+}
+
+$selectedBranch = trim((string) $request->query('branch', ''));
+if ($selectedBranch !== '') {
+    $query .= " AND COALESCE(a.branch_name, e.branch_name) = ?";
+    $params[] = $selectedBranch;
 }
 
 if ($selectedDate && !$selectedStart && !$selectedEnd) {

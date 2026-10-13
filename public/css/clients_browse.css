@@ -384,7 +384,7 @@
 
 .client-filter-controls {
     display: grid;
-    grid-template-columns: minmax(280px, 1.4fr) minmax(220px, 1fr) auto;
+    grid-template-columns: minmax(170px, 1fr) minmax(170px, 1fr) minmax(220px, 1.3fr) auto;
     align-items: start;
     gap: 0.85rem;
 }
@@ -438,7 +438,14 @@
 }
 
 .client-barangay-chips {
-    display: contents;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 0.4rem;
+}
+
+.client-barangay-chips:empty {
+    display: none;
 }
 
 .client-barangay-chip {
@@ -464,17 +471,25 @@
 
 .client-filter-card .client-filter-text-input:focus,
 .client-barangay-input:focus {
-    border-color: #285f9e !important;
-    background: #e0e7ee !important;
-    box-shadow: 0 0 0 3px rgba(40, 95, 158, 0.14) !important;
+    border-color: var(--accent) !important;
+    background: var(--input-bg) !important;
+    box-shadow: var(--ui-focus) !important;
 }
 
 .client-barangay-input:disabled {
     cursor: not-allowed;
+    opacity: 0.6;
 }
 
 .client-filter-suggestions {
     top: calc(100% + 2px);
+}
+
+/* .card clips its children; the suggestion list must be able to hang below the filter card. */
+.client-filter-card {
+    position: relative;
+    z-index: 20;
+    overflow: visible;
 }
 
 .client-filter-submit {
@@ -490,6 +505,15 @@
 .client-filter-submit .btn {
     height: 40px;
     white-space: nowrap;
+}
+
+@media (max-width: 1200px) {
+    .client-filter-controls {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .client-filter-submit {
+        margin-top: 0;
+    }
 }
 
 @media (max-width: 640px) {

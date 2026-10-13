@@ -16,81 +16,77 @@
     <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?{{ $dashboardCssVersion }}">
 </head>
 <body>
-    <div class="grid-overlay"></div>
     
     @include('layouts.sidebar')
 
     <div class="main-content">
-        <!-- Top Bar -->
+        <!-- Page header -->
         <div class="top-bar dashboard-topbar">
             <div>
-                <p class="dashboard-eyebrow">Business overview</p>
+                <p class="dashboard-eyebrow">{{ date('l, F j, Y') }}</p>
                 <h1 class="page-title">Business Overview</h1>
-                <p class="dashboard-subtitle">View client activity, payments received, and your team in one place.</p>
+                <p class="dashboard-subtitle">Client activity, payments received, and your team at a glance.</p>
             </div>
             <div class="top-bar-actions">
-                <span class="dashboard-date">{{ date('D, M j, Y') }}</span>
+                <a href="bill_inquiry.php" class="btn btn-secondary">
+                    <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M7 14h4"/></svg>
+                    Client Accounts
+                </a>
+                <a href="clients_register.php" class="btn btn-primary">
+                    <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                    New Client
+                </a>
             </div>
         </div>
 
-        <!-- Success/Error Messages -->
         @if (null !== request()->query('msg'))
         <div class="alert alert-success">
             {{ htmlspecialchars(request()->query('msg')) }}
         </div>
         @endif
 
-        <!-- Stats Grid -->
-        <div class="stats-grid">
-            <a href="clients_browse.php" class="stat-card stat-card-link" style="--stat-color: var(--accent)" aria-label="View clients">
-                <div class="stat-value">{{ number_format($stats['total_clients']) }}</div>
+        <!-- Key figures -->
+        <div class="stats-grid dashboard-stats">
+            <a href="clients_browse.php" class="stat-card stat-card-link" aria-label="View clients">
                 <div class="stat-label">Total Clients</div>
-                <div class="stat-change positive">
-                    <span>{{ $stats['active_clients'] }} Active</span>
-                </div>
+                <div class="stat-value">{{ number_format($stats['total_clients']) }}</div>
+                <div class="stat-change positive"><span>{{ $stats['active_clients'] }} active</span></div>
             </a>
-            <a href="payment_history.php" class="stat-card stat-card-link" style="--stat-color: var(--success)" aria-label="View payment history">
-                <div class="stat-value">₱{{ number_format($stats['total_revenue'], 2) }}</div>
+            <a href="payment_history.php" class="stat-card stat-card-link" aria-label="View payment history">
                 <div class="stat-label">Total Payments Received</div>
-                <div class="stat-change positive">
-                    <span>All time</span>
-                </div>
+                <div class="stat-value">₱{{ number_format($stats['total_revenue'], 2) }}</div>
+                <div class="stat-change stat-change--muted"><span>All time</span></div>
             </a>
-            <a href="bill_inquiry.php" class="stat-card stat-card-link" style="--stat-color: var(--warning)" aria-label="View clients with pending bills">
-                <div class="stat-value">{{ number_format($stats['clients_with_pending_bills']) }}</div>
+            <a href="bill_inquiry.php" class="stat-card stat-card-link" aria-label="View clients with pending bills">
                 <div class="stat-label">Clients With Pending Bills</div>
-                <div class="stat-change negative">
-                    <span>{{ $stats['overdue_bills'] }} Overdue</span>
-                </div>
+                <div class="stat-value">{{ number_format($stats['clients_with_pending_bills']) }}</div>
+                <div class="stat-change stat-change--muted"><span>Awaiting payment</span></div>
             </a>
-            <a href="employees.php?tab=details" class="stat-card stat-card-link" style="--stat-color: var(--info)" aria-label="View employees">
-                <div class="stat-value">{{ number_format($stats['total_employees']) }}</div>
-                <div class="stat-label">Employees</div>
-                <div class="stat-change positive">
-                    <span>{{ $stats['today_attendance'] }} Present Today</span>
-                </div>
-            </a>
-            <a href="user_management.php" class="stat-card stat-card-link" style="--stat-color: var(--accent-secondary)" aria-label="View user accounts">
-                <div class="stat-value">{{ number_format($stats['total_users']) }}</div>
-                <div class="stat-label">User Accounts</div>
-                <div class="stat-change positive">
-                    <span>Active accounts</span>
-                </div>
-            </a> 
-            <a href="bill_inquiry.php?overdue=1" class="stat-card stat-card-link" style="--stat-color: var(--danger)" aria-label="View clients with overdue bills">
-                <div class="stat-value">{{ number_format($stats['overdue_bills']) }}</div>
+            <a href="bill_inquiry.php?overdue=1" class="stat-card stat-card-link" aria-label="View clients with overdue bills">
                 <div class="stat-label">Overdue Bills</div>
-                <div class="stat-change negative">
-                    <span>Needs attention</span>
-                </div>
+                <div class="stat-value">{{ number_format($stats['overdue_bills']) }}</div>
+                <div class="stat-change {{ $stats['overdue_bills'] > 0 ? 'negative' : 'positive' }}"><span>{{ $stats['overdue_bills'] > 0 ? 'Needs attention' : 'All settled' }}</span></div>
+            </a>
+            <a href="employees.php?tab=details" class="stat-card stat-card-link" aria-label="View employees">
+                <div class="stat-label">Employees</div>
+                <div class="stat-value">{{ number_format($stats['total_employees']) }}</div>
+                <div class="stat-change positive"><span>{{ $stats['today_attendance'] }} present today</span></div>
+            </a>
+            <a href="user_management.php" class="stat-card stat-card-link" aria-label="View user accounts">
+                <div class="stat-label">User Accounts</div>
+                <div class="stat-value">{{ number_format($stats['total_users']) }}</div>
+                <div class="stat-change stat-change--muted"><span>System logins</span></div>
             </a>
         </div>
 
-        <!-- Charts Row -->
-        <div class="row-grid" style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
+        <!-- Charts -->
+        <div class="row-grid dashboard-row dashboard-row--charts">
             <div class="card dashboard-chart-card">
                 <div class="card-header dashboard-chart-header">
-                    <span class="card-title">Monthly Payments Received</span>
+                    <div>
+                        <span class="card-title">Monthly Payments Received</span>
+                        <p class="card-subtitle">Paid bills per month, {{ date('Y') }}</p>
+                    </div>
                     <span class="badge badge-info">This Year</span>
                 </div>
                 <div class="card-body">
@@ -99,7 +95,10 @@
             </div>
             <div class="card dashboard-chart-card">
                 <div class="card-header dashboard-chart-header">
-                    <span class="card-title">Client Account Status</span>
+                    <div>
+                        <span class="card-title">Client Account Status</span>
+                        <p class="card-subtitle">Share of clients by status</p>
+                    </div>
                     <span class="badge badge-success">Live</span>
                 </div>
                 <div class="card-body">
@@ -108,83 +107,75 @@
             </div>
         </div>
 
-        <!-- Outstanding Balances widget removed -->
-
-        <!-- Recent Activity Row -->
-        <div class="row-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
-            <!-- Recent Payments -->
+        <!-- Billing activity -->
+        <div class="row-grid dashboard-row dashboard-row--split">
             <div class="card">
                 <div class="card-header">
                     <span class="card-title">Recent Payments</span>
-                    <a href="payment_history.php" class="btn btn-sm btn-primary">View All</a>
+                    <a href="payment_history.php" class="btn btn-sm btn-secondary">View all</a>
                 </div>
-                <div class="card-body" style="padding: 0;">
-                    <div class="data-table-container">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Client</th>
-                                    <th>Amount</th>
-                                    <th>Date</th>
-                                    <th>Payment Method</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach ($recentPayments as $payment)
-                                <tr>
-                                    <td>{{ htmlspecialchars($payment['client_name']) }}</td>
-                                    <td style="color: var(--success); font-weight: 600;">₱{{ number_format($payment['amount'], 2) }}</td>
-                                    <td>{{ date('M d, Y', strtotime($payment['payment_date'])) }}</td>
-                                    <td><span class="badge badge-info">{{ str_replace('_', ' ', strtoupper($payment['payment_method'])) }}</span></td>
-                                </tr>
-                                @endforeach
-                                @if (empty($recentPayments))
-                                <tr><td colspan="4" style="text-align:center;color:var(--text-muted);">No recent payments</td></tr>
-                                @endif
-                            </tbody>
-                        </table>
-                    </div>
+                <div class="data-table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Client</th>
+                                <th>Date</th>
+                                <th>Method</th>
+                                <th class="text-right">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($recentPayments as $payment)
+                            <tr>
+                                <td class="cell-strong">{{ htmlspecialchars($payment['client_name']) }}</td>
+                                <td class="cell-muted">{{ date('M d, Y', strtotime($payment['payment_date'])) }}</td>
+                                <td><span class="badge badge-secondary">{{ str_replace('_', ' ', strtoupper($payment['payment_method'])) }}</span></td>
+                                <td class="text-right amount amount-positive">₱{{ number_format($payment['amount'], 2) }}</td>
+                            </tr>
+                            @endforeach
+                            @if (empty($recentPayments))
+                            <tr><td colspan="4" class="table-empty">No recent payments</td></tr>
+                            @endif
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
-            <!-- Billing Priorities -->
             <div class="card">
                 <div class="card-header">
                     <span class="card-title">Bills to Follow Up</span>
-                    <a href="bill_inquiry.php" class="btn btn-sm btn-primary">View All</a>
+                    <a href="bill_inquiry.php" class="btn btn-sm btn-secondary">View all</a>
                 </div>
-                <div class="card-body" style="padding: 0;">
-                    <div class="data-table-container">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Client</th>
-                                    <th>Due Date</th>
-                                    <th>Amount</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach ($billingPriorities as $bill)
-                                <tr>
-                                    <td>{{ htmlspecialchars($bill['client_name']) }}</td>
-                                    <td>{{ date('M d, Y', strtotime($bill['due_date'])) }}</td>
-                                    <td style="font-weight: 600;">₱{{ number_format($bill['amount'], 2) }}</td>
-                                    <td>
-                                        @if ($bill['status'] === 'overdue')
-                                            <span class="badge badge-danger">Overdue</span>
-                                        @else
-                                            <span class="badge badge-warning">Pending</span>
-                                        @endif
-                                    </td>
-                                </tr>
-                                @endforeach
-                                @if (empty($billingPriorities))
-                                <tr><td colspan="4" style="text-align:center;color:var(--text-muted);">No billing priorities right now</td></tr>
-                                @endif
-                            </tbody>
-                        </table>
-                    </div>
+                <div class="data-table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Client</th>
+                                <th>Due Date</th>
+                                <th>Status</th>
+                                <th class="text-right">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($billingPriorities as $bill)
+                            <tr>
+                                <td class="cell-strong">{{ htmlspecialchars($bill['client_name']) }}</td>
+                                <td class="cell-muted">{{ date('M d, Y', strtotime($bill['due_date'])) }}</td>
+                                <td>
+                                    @if ($bill['status'] === 'overdue')
+                                        <span class="badge badge-danger">Overdue</span>
+                                    @else
+                                        <span class="badge badge-warning">Pending</span>
+                                    @endif
+                                </td>
+                                <td class="text-right amount">₱{{ number_format($bill['amount'], 2) }}</td>
+                            </tr>
+                            @endforeach
+                            @if (empty($billingPriorities))
+                            <tr><td colspan="4" class="table-empty">No billing priorities right now</td></tr>
+                            @endif
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -193,48 +184,46 @@
         <div class="card">
             <div class="card-header">
                 <span class="card-title">Recent Login Activity</span>
-                <a href="login_history.php" class="btn btn-sm btn-primary">View All</a>
+                <a href="login_history.php" class="btn btn-sm btn-secondary">View all</a>
             </div>
-            <div class="card-body" style="padding: 0;">
-                <div class="data-table-container">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>User</th>
-                                <th>Role</th>
-                                <th>Login Time</th>
-                                <th>Logout Time</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($recentLogins as $login)
-                            <tr>
-                                <td>{{ htmlspecialchars($login['full_name'] ?: $login['username']) }}</td>
-                                <td>{{ ucfirst($login['role']) }}</td>
-                                <td>{{ date('M d, h:i A', strtotime($login['login_time'])) }}</td>
-                                <td>
-                                    @if ($login['logout_time'])
-                                        {{ date('M d, h:i A', strtotime($login['logout_time'])) }}
-                                    @else
-                                        &mdash;
-                                    @endif
-                                </td>
-                                <td>
-                                    @if ($login['status'] === 'success')
-                                        <span class="badge badge-success">Success</span>
-                                    @else
-                                        <span class="badge badge-danger">Failed</span>
-                                    @endif
-                                </td>
-                            </tr>
-                            @endforeach
-                            @if (empty($recentLogins))
-                            <tr><td colspan="5" style="text-align:center;color:var(--text-muted);">No login records</td></tr>
-                            @endif
-                        </tbody>
-                    </table>
-                </div>
+            <div class="data-table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Role</th>
+                            <th>Login Time</th>
+                            <th>Logout Time</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($recentLogins as $login)
+                        <tr>
+                            <td class="cell-strong">{{ htmlspecialchars($login['full_name'] ?: $login['username']) }}</td>
+                            <td class="cell-muted">{{ ucfirst($login['role']) }}</td>
+                            <td>{{ date('M d, h:i A', strtotime($login['login_time'])) }}</td>
+                            <td>
+                                @if ($login['logout_time'])
+                                    {{ date('M d, h:i A', strtotime($login['logout_time'])) }}
+                                @else
+                                    <span class="cell-muted">&mdash;</span>
+                                @endif
+                            </td>
+                            <td>
+                                @if ($login['status'] === 'success')
+                                    <span class="badge badge-success">Success</span>
+                                @else
+                                    <span class="badge badge-danger">Failed</span>
+                                @endif
+                            </td>
+                        </tr>
+                        @endforeach
+                        @if (empty($recentLogins))
+                        <tr><td colspan="5" class="table-empty">No login records</td></tr>
+                        @endif
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -245,7 +234,7 @@
     const clientStatusColors = {
         active: '#22c55e',
         inactive: '#94a3b8',
-        suspended: '#ef4444',
+        suspended: '#f59e0b',
         disconnected: '#ef4444',
     };
 
@@ -313,8 +302,8 @@
             <svg class="chart-svg" viewBox="0 0 620 240" role="img" aria-label="Monthly revenue for the current year">
                 <defs>
                     <linearGradient id="revenueGradient" x1="0" x2="0" y1="0" y2="1">
-                        <stop offset="0%" stop-color="#9b5cff" stop-opacity="0.42"/>
-                        <stop offset="100%" stop-color="#6c3bc1" stop-opacity="0.03"/>
+                        <stop offset="0%" class="chart-gradient-start"/>
+                        <stop offset="100%" class="chart-gradient-end"/>
                     </linearGradient>
                 </defs>
                 ${grid}

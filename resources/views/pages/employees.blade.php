@@ -61,6 +61,7 @@
                                         <th>Employee Code</th>
                                         <th>Name</th>
                                         <th>Position</th>
+                                        <th>Branch</th>
                                         <th>Mobile Number</th>
                                         <th>Daily Rate</th>
                                         <th>Status</th>
@@ -73,6 +74,7 @@
                                         <td><strong>{{ $emp['employee_code'] }}</strong></td>
                                         <td>{{ htmlspecialchars($emp['full_name']) }}</td>
                                         <td>{{ $emp['position'] ?: '—' }}</td>
+                                        <td><span class="badge badge-info">{{ $emp['branch_name'] ?: '—' }}</span></td>
                                         <td>{{ $emp['contact_number'] }}</td>
                                         <td style="color: var(--success); font-weight: 600;">₱{{ number_format($emp['daily_rate'], 2) }}</td>
                                         <td>
@@ -86,7 +88,7 @@
                                     </tr>
                                     @endforeach
                                     @if (empty($employees))
-                                    <tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:2rem;">No employees found</td></tr>
+                                    <tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:2rem;">No employees found</td></tr>
                                     @endif
                                 </tbody>
                             </table>
@@ -197,10 +199,17 @@ $afternoonQR = null;
                                     <option value="{{ $employee['id'] }}" {{ (string) $selectedEmployeeId === (string) $employee['id'] ? 'selected' : '' }}>{{ htmlspecialchars($employee['full_name']) }}</option>
                                     @endforeach
                                 </select>
+                                <select name="branch" class="form-select" style="width: auto; min-width: 150px; padding: 0.5rem;">
+                                    <option value="">All Branches</option>
+                                    @foreach ($employeeBranches as $branch)
+                                    <option value="{{ $branch }}" {{ $selectedAttendanceBranch === $branch ? 'selected' : '' }}>{{ $branch }}</option>
+                                    @endforeach
+                                </select>
                                 <input type="date" name="attendance_date" class="form-input" value="{{ $selectedDate }}" style="width: auto; padding: 0.5rem;">
                                 <button type="submit" class="btn btn-sm btn-primary">View</button>
                             </form>
-                            <a class="btn btn-sm btn-secondary" href="{{ url('/pages/print_attendance.php?start=' . urlencode($monthStart) . '&end=' . urlencode($monthEnd) . ($selectedEmployeeId !== '' ? '&employee_id=' . urlencode($selectedEmployeeId) : '')) }}" target="_blank" rel="noopener">Print / Export</a>
+                            <button type="button" class="btn btn-sm btn-success" onclick="openManualAttendance()">+ Manual Attendance</button>
+                            <a class="btn btn-sm btn-secondary" href="{{ url('/pages/print_attendance.php?start=' . urlencode($monthStart) . '&end=' . urlencode($monthEnd) . ($selectedEmployeeId !== '' ? '&employee_id=' . urlencode($selectedEmployeeId) : '') . ($selectedAttendanceBranch !== '' ? '&branch=' . urlencode($selectedAttendanceBranch) : '')) }}" target="_blank" rel="noopener">Print / Export</a>
                         </div>
                     </div>
                     <div class="card-body" style="padding: 0;">
@@ -210,6 +219,7 @@ $afternoonQR = null;
                                     <tr>
                                         <th>Employee</th>
                                         <th>Position</th>
+                                        <th>Branch</th>
                                         <th>Date</th>
                                         <th>Morning In</th>
                                         <th>Morning Out</th>
@@ -223,8 +233,9 @@ $afternoonQR = null;
                                 <tbody>
                                     @foreach ($attendanceRecords as $record)
                                     <tr>
-                                        <td><strong>{{ htmlspecialchars($record['employee_name']) }}</strong></td>
+                                        <td><strong>{{ htmlspecialchars($record['employee_name']) }}</strong>@if (($record['qr_code_used'] ?? '') === 'manual') <span class="badge badge-secondary" title="{{ $record['notes'] ?? 'Manual entry' }}">Manual</span>@endif</td>
                                         <td>{{ $record['position'] ?: '—' }}</td>
+                                        <td>{{ $record['branch_name'] ?: '—' }}</td>
                                         <td>{{ $record['attendance_date'] ? date('M d, Y', strtotime($record['attendance_date'])) : date('M d, Y', strtotime($selectedDate)) }}</td>
                                         <td class="attendance-in">{{ $record['morning_time_in'] ? date('h:i A', strtotime($record['morning_time_in'])) : '-' }}</td>
                                         <td class="attendance-out">{{ $record['morning_time_out'] ? date('h:i A', strtotime($record['morning_time_out'])) : '-' }}</td>
@@ -256,7 +267,7 @@ $afternoonQR = null;
                                     </tr>
                                     @endforeach
                                     @if (empty($attendanceRecords))
-                                    <tr><td colspan="10" style="text-align:center;color:var(--text-muted);padding:2rem;">No attendance records for {{ $attendanceView === 'date' ? date('M d, Y', strtotime($selectedDate)) : date('F Y', strtotime($selectedMonth . '-01')) }}</td></tr>
+                                    <tr><td colspan="11" style="text-align:center;color:var(--text-muted);padding:2rem;">No attendance records for {{ $attendanceView === 'date' ? date('M d, Y', strtotime($selectedDate)) : date('F Y', strtotime($selectedMonth . '-01')) }}</td></tr>
                                     @endif
                                 </tbody>
                             </table>
@@ -265,6 +276,72 @@ $afternoonQR = null;
                 </div>
             </div>
 
+        </div>
+    </div>
+
+    <!-- Manual Attendance Modal -->
+    @php($manualOld = fn ($key, $default = '') => !empty($manualAttendanceFailed) ? (string) request()->input($key, $default) : $default)
+    <div class="modal-overlay" id="manualAttendanceModal">
+        <div class="modal-content modal-medium">
+            <div class="modal-header">
+                <div style="display:flex;align-items:center;gap:.5rem">
+                    @include('partials.modal_logo')
+                    <h3 class="modal-title">Manual Attendance</h3>
+                </div>
+                <button class="modal-close" type="button" onclick="closeModal('manualAttendanceModal')">&times;</button>
+            </div>
+            <form method="POST" action="?tab=attendance">
+                @csrf
+                <p style="margin: 0 0 1rem; color: var(--text-muted); font-size: 0.85rem;">Record attendance by hand when an employee could not scan the QR code. Saving a day that already has a record updates the sessions you fill in. "Auto" sets Present or Late from the time in.</p>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label" for="manualEmployee">Employee *</label>
+                        <select name="manual_employee_id" id="manualEmployee" class="form-select" required>
+                            <option value="">Select employee</option>
+                            @foreach ($employees as $employee)
+                            @if ($employee['status'] === 'active')
+                            <option value="{{ $employee['id'] }}" {{ $manualOld('manual_employee_id', (string) $selectedEmployeeId) === (string) $employee['id'] ? 'selected' : '' }}>{{ htmlspecialchars($employee['full_name']) }} — {{ $employee['branch_name'] }}</option>
+                            @endif
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="manualDate">Date *</label>
+                        <input type="date" name="manual_date" id="manualDate" class="form-input" value="{{ $manualOld('manual_date', $selectedDate) }}" max="{{ date('Y-m-d') }}" required>
+                    </div>
+                </div>
+                @foreach (['morning' => 'Morning', 'afternoon' => 'Afternoon'] as $key => $label)
+                <div class="manual-session" data-session="{{ $key }}">
+                    <div class="manual-session__title">{{ $label }} session <small>{{ formatScheduleTime($key === 'morning' ? $qrMorningStart : $qrAfternoonStart) }} - {{ formatScheduleTime($key === 'morning' ? $qrMorningEnd : $qrAfternoonEnd) }}</small></div>
+                    <div class="form-grid manual-session__grid">
+                        <div class="form-group">
+                            <label class="form-label" for="manual_{{ $key }}_status">Status</label>
+                            <select name="manual_{{ $key }}_status" id="manual_{{ $key }}_status" class="form-select manual-status">
+                                @foreach (['' => 'Auto', 'present' => 'Present', 'late' => 'Late', 'absent' => 'Absent'] as $value => $text)
+                                <option value="{{ $value }}" {{ $manualOld("manual_{$key}_status") === (string) $value ? 'selected' : '' }}>{{ $text }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="manual_{{ $key }}_in">Time in</label>
+                            <input type="time" name="manual_{{ $key }}_in" id="manual_{{ $key }}_in" class="form-input" value="{{ $manualOld("manual_{$key}_in") }}">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="manual_{{ $key }}_out">Time out</label>
+                            <input type="time" name="manual_{{ $key }}_out" id="manual_{{ $key }}_out" class="form-input" value="{{ $manualOld("manual_{$key}_out") }}">
+                        </div>
+                    </div>
+                </div>
+                @endforeach
+                <div class="form-group">
+                    <label class="form-label" for="manualRemarks">Reason / remarks <span style="color: var(--text-muted);">(Optional)</span></label>
+                    <textarea name="manual_remarks" id="manualRemarks" class="form-input" rows="2" maxlength="300" placeholder="e.g. Phone battery died, scanned late in person">{{ $manualOld('manual_remarks') }}</textarea>
+                </div>
+                <div style="display: flex; gap: 1rem; justify-content: flex-end; flex-wrap: wrap;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('manualAttendanceModal')">Cancel</button>
+                    <button type="submit" name="manual_attendance" value="1" class="btn btn-success">Save Attendance</button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -299,6 +376,15 @@ $afternoonQR = null;
                         <select name="position" class="form-select" id="empPosition" required onchange="syncPositionRate()">
                             @foreach ($employeePositions as $position)
                             <option value="{{ $position }}">{{ $position }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="empBranch">Branch *</label>
+                        <select name="branch_name" class="form-select" id="empBranch" required>
+                            <option value="">Select branch</option>
+                            @foreach ($employeeBranches as $branch)
+                            <option value="{{ $branch }}">{{ $branch }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -356,6 +442,26 @@ $afternoonQR = null;
     });
     @endif
 
+    function openManualAttendance() {
+        syncManualSessions();
+        openModal('manualAttendanceModal');
+    }
+
+    // Absent sessions have no clock times, so lock those fields.
+    function syncManualSessions() {
+        document.querySelectorAll('.manual-session').forEach(block => {
+            const absent = block.querySelector('.manual-status').value === 'absent';
+            block.querySelectorAll('input[type="time"]').forEach(input => {
+                input.disabled = absent;
+                if (absent) input.value = '';
+            });
+        });
+    }
+    document.querySelectorAll('.manual-status').forEach(select => select.addEventListener('change', syncManualSessions));
+    @if (!empty($manualAttendanceFailed))
+    document.addEventListener('DOMContentLoaded', openManualAttendance);
+    @endif
+
     function openEmployeeModal() {
         document.getElementById('modalTitle').textContent = 'Add Employee';
         document.getElementById('employeeId').value = '';
@@ -363,6 +469,7 @@ $afternoonQR = null;
         document.getElementById('empMiddleName').value = '';
         document.getElementById('empLastName').value = '';
         document.getElementById('empPosition').value = 'Technician I';
+        document.getElementById('empBranch').value = '';
         document.getElementById('empContact').value = '';
         document.getElementById('empEmail').value = '';
         syncPositionRate();
@@ -390,6 +497,7 @@ $afternoonQR = null;
         document.getElementById('empLastName').value = nameParts.length ? nameParts.pop() : '';
         document.getElementById('empMiddleName').value = nameParts.join(' ');
         document.getElementById('empPosition').value = payrollPositionRates[emp.position] ? emp.position : 'Technician I';
+        document.getElementById('empBranch').value = emp.branch_name || '';
         document.getElementById('empContact').value = emp.contact_number;
         document.getElementById('empEmail').value = emp.email;
         syncPositionRate();

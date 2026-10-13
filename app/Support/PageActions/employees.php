@@ -82,6 +82,9 @@ $employeePositionRates = [
 ];
 $employeePositions = array_keys($employeePositionRates);
 
+// Branches come from the same list the Clients module uses.
+$employeeBranches = array_keys(config('bohol_branches', []));
+
 // Get all employees
 $stmt = $pdo->query("SELECT e.*, u.username, u.status as user_status FROM employees e LEFT JOIN users u ON e.user_id = u.id ORDER BY e.full_name");
 $employees = $stmt->fetchAll();
@@ -138,6 +141,11 @@ function updateAttendanceStatuses($pdo, $selectedDate) {
                 continue;
             }
 
+            // A status entered by hand is final; the automatic clock must not overwrite it.
+            if ($attendance && ($attendance['qr_code_used'] ?? null) === 'manual' && !empty($attendance[$session['status']])) {
+                continue;
+            }
+
             if (!$attendance && $newStatus === null) {
                 continue;
             }
@@ -159,17 +167,142 @@ function updateAttendanceStatuses($pdo, $selectedDate) {
     }
 }
 
+// Manual attendance: an admin records a day by hand (forgot to scan, no phone, etc.).
+if ($request->isMethod('post') && $request->has('manual_attendance')) {
+    try {
+        $manualEmployeeId = (int) $request->input('manual_employee_id');
+        $manualDate = (string) $request->input('manual_date');
+        $manualRemarks = trim((string) $request->input('manual_remarks'));
+
+        $employeeStmt = $pdo->prepare("SELECT id, full_name, branch_name FROM employees WHERE id = ? AND status = 'active'");
+        $employeeStmt->execute([$manualEmployeeId]);
+        $manualEmployee = $employeeStmt->fetch();
+        if (!$manualEmployee) {
+            throw new Exception('Choose an active employee.');
+        }
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $manualDate) || !checkdate((int) substr($manualDate, 5, 2), (int) substr($manualDate, 8, 2), (int) substr($manualDate, 0, 4))) {
+            throw new Exception('Enter a valid attendance date.');
+        }
+        if ($manualDate > date('Y-m-d')) {
+            throw new Exception('Attendance cannot be recorded for a future date.');
+        }
+
+        $manualSettings = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('qr_morning_start', 'qr_afternoon_start', 'late_threshold_minutes')")->fetchAll(PDO::FETCH_KEY_PAIR);
+        $manualLateThreshold = max(0, (int) ($manualSettings['late_threshold_minutes'] ?? 30));
+        $manualSessions = [
+            'morning' => ['start' => $manualSettings['qr_morning_start'] ?? '08:00:00', 'label' => 'Morning'],
+            'afternoon' => ['start' => $manualSettings['qr_afternoon_start'] ?? '13:00:00', 'label' => 'Afternoon'],
+        ];
+        $normalizeTime = static function ($value): ?string {
+            $value = trim((string) $value);
+            if ($value === '') {
+                return null;
+            }
+            if (!preg_match('/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/', $value)) {
+                throw new Exception('Enter times in a valid format.');
+            }
+            return strlen($value) === 5 ? $value . ':00' : $value;
+        };
+
+        $changes = [];
+        $hours = [];
+        foreach ($manualSessions as $key => $session) {
+            $timeIn = $normalizeTime($request->input("manual_{$key}_in"));
+            $timeOut = $normalizeTime($request->input("manual_{$key}_out"));
+            $status = (string) $request->input("manual_{$key}_status");
+            if (!in_array($status, ['', 'present', 'late', 'absent'], true)) {
+                throw new Exception('Invalid attendance status.');
+            }
+
+            if ($status === 'absent') {
+                // An absent session has no clock times.
+                $changes["status_{$key}"] = 'absent';
+                $changes["{$key}_time_in"] = null;
+                $changes["{$key}_time_out"] = null;
+                continue;
+            }
+            if ($timeIn === null && $timeOut === null && $status === '') {
+                continue; // nothing entered for this session
+            }
+            if ($timeIn === null) {
+                throw new Exception($session['label'] . ' time in is required for a present or late session.');
+            }
+            if ($timeOut !== null && strcmp($timeOut, $timeIn) <= 0) {
+                throw new Exception($session['label'] . ' time out must be after time in.');
+            }
+            if ($status === '') {
+                $lateAt = date('H:i:s', strtotime($session['start']) + ($manualLateThreshold * 60));
+                $status = strcmp($timeIn, $lateAt) > 0 ? 'late' : 'present';
+            }
+            $changes["status_{$key}"] = $status;
+            $changes["{$key}_time_in"] = $timeIn;
+            $changes["{$key}_time_out"] = $timeOut;
+        }
+        if (!$changes) {
+            throw new Exception('Fill in at least one session (morning or afternoon).');
+        }
+
+        $existingStmt = $pdo->prepare('SELECT * FROM attendance WHERE employee_id = ? AND attendance_date = ?');
+        $existingStmt->execute([$manualEmployee['id'], $manualDate]);
+        $existing = $existingStmt->fetch() ?: [];
+
+        // Total hours come from every complete in/out pair, including sessions left unchanged.
+        $totalSeconds = 0;
+        foreach (array_keys($manualSessions) as $key) {
+            $in = array_key_exists("{$key}_time_in", $changes) ? $changes["{$key}_time_in"] : ($existing["{$key}_time_in"] ?? null);
+            $out = array_key_exists("{$key}_time_out", $changes) ? $changes["{$key}_time_out"] : ($existing["{$key}_time_out"] ?? null);
+            if ($in && $out) {
+                $totalSeconds += max(0, strtotime($out) - strtotime($in));
+            }
+        }
+        $changes['total_hours'] = round($totalSeconds / 3600, 2);
+        $changes['qr_code_used'] = 'manual';
+        $changes['branch_name'] = $manualEmployee['branch_name'];
+        $who = auth()->user()->full_name ?? 'admin';
+        $note = 'Manual entry by ' . $who . ($manualRemarks !== '' ? ': ' . $manualRemarks : '');
+        $changes['notes'] = mb_substr($note, 0, 500);
+
+        if ($existing) {
+            $set = implode(', ', array_map(static fn ($column) => "$column = ?", array_keys($changes)));
+            $pdo->prepare("UPDATE attendance SET $set WHERE id = ?")->execute([...array_values($changes), $existing['id']]);
+        } else {
+            $columns = array_merge(['employee_id', 'attendance_date'], array_keys($changes));
+            $values = array_merge([$manualEmployee['id'], $manualDate], array_values($changes));
+            $placeholders = implode(', ', array_fill(0, count($columns), '?'));
+            $pdo->prepare('INSERT INTO attendance (' . implode(', ', $columns) . ") VALUES ($placeholders)")->execute($values);
+        }
+
+        $success = 'Attendance saved for ' . $manualEmployee['full_name'] . ' on ' . date('M d, Y', strtotime($manualDate)) . '.';
+        // Show the day that was just recorded.
+        $selectedDate = $manualDate;
+        $monthStart = $monthEnd = $manualDate;
+        $activeTab = 'attendance';
+    } catch (Exception $e) {
+        $error = $e->getMessage();
+        $activeTab = 'attendance';
+        $manualAttendanceFailed = true;
+    }
+}
+
 // Update attendance status only for the currently active date.
 if (($attendanceView === 'date' && $selectedDate === date('Y-m-d')) || ($attendanceView === 'month' && $selectedMonth === date('Y-m'))) {
     updateAttendanceStatuses($pdo, $selectedDate);
 }
 
 // Include active employees without a scan so their status remains blank until it is due.
-$attendanceQuery = "SELECT e.id as employee_id, e.full_name as employee_name, e.position, a.id as attendance_id, a.attendance_date, a.morning_time_in, a.morning_time_out, a.afternoon_time_in, a.afternoon_time_out, a.status_morning, a.status_afternoon, a.total_hours FROM employees e LEFT JOIN attendance a ON e.id = a.employee_id AND a.attendance_date BETWEEN ? AND ? WHERE e.status = 'active'";
+$attendanceQuery = "SELECT e.id as employee_id, e.full_name as employee_name, e.position, a.id as attendance_id, a.attendance_date, a.morning_time_in, a.morning_time_out, a.afternoon_time_in, a.afternoon_time_out, a.status_morning, a.status_afternoon, a.total_hours, a.qr_code_used, a.notes, COALESCE(a.branch_name, e.branch_name) AS branch_name FROM employees e LEFT JOIN attendance a ON e.id = a.employee_id AND a.attendance_date BETWEEN ? AND ? WHERE e.status = 'active'";
 $attendanceParams = [$monthStart, $monthEnd];
 if ($selectedEmployeeId !== '') {
     $attendanceQuery .= " AND e.id = ?";
     $attendanceParams[] = $selectedEmployeeId;
+}
+// Optional branch filter for the attendance table (the branch recorded that day, else the employee's branch).
+$selectedAttendanceBranch = trim((string) $request->query('branch', ''));
+if ($selectedAttendanceBranch !== '' && in_array($selectedAttendanceBranch, $employeeBranches, true)) {
+    $attendanceQuery .= " AND COALESCE(a.branch_name, e.branch_name) = ?";
+    $attendanceParams[] = $selectedAttendanceBranch;
+} else {
+    $selectedAttendanceBranch = '';
 }
 $attendanceQuery .= " ORDER BY e.full_name";
 $stmt = $pdo->prepare($attendanceQuery);
@@ -274,6 +407,7 @@ if ($request->isMethod('post') && $request->has('save_employee')) {
         $address = trim($request->input('address'));
         $dateHired = $request->input('date_hired');
         $dailyRate = $employeePositionRates[$position] ?? null;
+        $branchName = trim((string) $request->input('branch_name'));
 
         if ($firstName === '' || $lastName === '') {
             throw new Exception('First name and last name are required. Middle name is optional.');
@@ -284,6 +418,9 @@ if ($request->isMethod('post') && $request->has('save_employee')) {
         if ($dailyRate === null) {
             throw new Exception('The selected position does not have a configured daily rate.');
         }
+        if (! in_array($branchName, $employeeBranches, true)) {
+            throw new Exception('Select the branch this employee belongs to.');
+        }
         if ($contactNumber !== '' && ! preg_match('/^\d{11}$/', $contactNumber)) {
             throw new Exception('Mobile number must contain exactly 11 digits.');
         }
@@ -291,14 +428,14 @@ if ($request->isMethod('post') && $request->has('save_employee')) {
         $pdo->beginTransaction();
 
         if ($employeeId) {
-            $stmt = $pdo->prepare("UPDATE employees SET full_name = ?, position = ?, department = NULL, contact_number = ?, email = ?, address = ?, date_hired = ?, daily_rate = ? WHERE id = ?");
-            $stmt->execute([$fullName, $position, $contactNumber, $email, $address, $dateHired, $dailyRate, $employeeId]);
+            $stmt = $pdo->prepare("UPDATE employees SET full_name = ?, position = ?, branch_name = ?, department = NULL, contact_number = ?, email = ?, address = ?, date_hired = ?, daily_rate = ? WHERE id = ?");
+            $stmt->execute([$fullName, $position, $branchName, $contactNumber, $email, $address, $dateHired, $dailyRate, $employeeId]);
             $pdo->commit();
             $success = 'Employee updated successfully! User accounts are managed in User Accounts.';
         } else {
             $employeeCode = 'EMP-' . date('Y') . '-' . strtoupper(uniqid());
-            $stmt = $pdo->prepare("INSERT INTO employees (employee_code, user_id, full_name, position, department, contact_number, email, address, date_hired, daily_rate, status) VALUES (?, NULL, ?, ?, NULL, ?, ?, ?, ?, ?, 'active')");
-            $stmt->execute([$employeeCode, $fullName, $position, $contactNumber, $email, $address, $dateHired, $dailyRate]);
+            $stmt = $pdo->prepare("INSERT INTO employees (employee_code, user_id, full_name, position, branch_name, department, contact_number, email, address, date_hired, daily_rate, status) VALUES (?, NULL, ?, ?, ?, NULL, ?, ?, ?, ?, ?, 'active')");
+            $stmt->execute([$employeeCode, $fullName, $position, $branchName, $contactNumber, $email, $address, $dateHired, $dailyRate]);
             
             $pdo->commit();
             $success = 'Employee added successfully. Create and link an account from User Accounts when needed.';

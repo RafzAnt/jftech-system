@@ -57,8 +57,7 @@
                                     @foreach ($payments as $payment)
                                     <tr>
                                         <td>
-                                             <strong>{{ $payment['client_code'] ?? '—' }}</strong><br>
-                                             <span style="font-size: 0.8rem; color: var(--text-muted);">{{ htmlspecialchars($payment['client_name']) }}</span>
+                                             <strong>{{ htmlspecialchars($payment['client_name']) }}</strong>
                                         </td>
                                         <td>@if ($payment['bill_number']){{ $payment['bill_number'] }}@else<span style="color: var(--text-muted);">—</span>@endif</td>
                                         <td>{{ $payment['bill_amount'] ? '₱' . number_format($payment['bill_amount'], 2) : '-' }}</td>

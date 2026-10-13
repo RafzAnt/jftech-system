@@ -56,7 +56,6 @@
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th>Client Code</th>
                                 <th>Name</th>
                                 <th>Barangay</th>
                                 <th>Mobile Number</th>
@@ -67,8 +66,7 @@
                         <tbody>
                             @foreach ($searchResults as $result)
                             <tr>
-                                <td><strong>{{ $result['client_code'] }}</strong></td>
-                                <td>{{ htmlspecialchars($result['full_name']) }}</td>
+                                <td><strong>{{ htmlspecialchars($result['full_name']) }}</strong></td>
                                 <td>{{ $result['barangay_name'] ?: 'N/A' }}</td>
                                 <td>{{ $result['contact_number'] }}</td>
                                 <td>
@@ -97,7 +95,6 @@
         <div class="card">
             <div class="card-header">
                 <span class="card-title">Edit Client: {{ htmlspecialchars($client['full_name']) }}</span>
-                <span class="badge badge-info">{{ $client['client_code'] }}</span>
             </div>
             <div class="card-body">
                 <form method="POST" action="">
