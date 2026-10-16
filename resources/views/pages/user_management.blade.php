@@ -67,7 +67,7 @@
 
         <!-- Actions -->
         <div style="display: flex; justify-content: flex-end; margin-bottom: 1.5rem;">
-            <form method="GET" action="" style="display: flex; gap: 0.5rem; width: min(100%, 400px); align-items: stretch;">
+            <form method="GET" action="" style="display: flex; gap: 0.5rem; width: min(100%, 400px); align-items: center;">
                 <input type="text" name="search" class="form-input" placeholder="Search users..." value="{{ htmlspecialchars(request()->query('search') ?? '') }}" style="flex:1; min-width:0;">
                 <button type="submit" class="btn btn-sm btn-primary" style="white-space:nowrap;">Search</button>
             </form>

@@ -303,31 +303,19 @@
 }
 
 /* ===== "VIEW ALL" CARD BUTTONS ===== */
-.btn-view-all {
+/* Dark mode keeps the standard secondary button (like Archived Plans); light mode is white with a black outline. */
+html:not([data-theme="dark"]) .btn-view-all {
     background: #ffffff;
     border-color: #000000;
     color: #000000;
     box-shadow: none;
 }
 
-.btn-view-all:hover {
+html:not([data-theme="dark"]) .btn-view-all:hover {
     background: #f1f5f9;
     border-color: #000000;
     color: #000000;
     box-shadow: none;
-}
-
-/* Dark mode: inverse of the light button (dark fill, white border, white text). */
-html[data-theme="dark"] .btn-view-all {
-    background: transparent;
-    border-color: #ffffff;
-    color: #ffffff;
-}
-
-html[data-theme="dark"] .btn-view-all:hover {
-    background: rgba(255, 255, 255, 0.12);
-    border-color: #ffffff;
-    color: #ffffff;
 }
 
 .dashboard-branch-form {

@@ -124,7 +124,6 @@
 }
 
 .client-filter-submit .btn {
-    height: 40px;
     white-space: nowrap;
 }
 
@@ -153,6 +152,6 @@
         justify-content: space-between;
     }
     .client-filter-submit .btn {
-        height: 40px;
+        white-space: nowrap;
     }
 }

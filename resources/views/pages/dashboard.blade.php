@@ -132,7 +132,7 @@
             <div class="card">
                 <div class="card-header">
                     <span class="card-title">Recent Payments</span>
-                    <a href="payment_history.php" class="btn btn-sm btn-view-all">View All</a>
+                    <a href="payment_history.php" class="btn btn-sm btn-secondary btn-view-all">View All</a>
                 </div>
                 <div class="card-body" style="padding: 0;">
                     <div class="data-table-container">
@@ -167,7 +167,7 @@
             <div class="card">
                 <div class="card-header">
                     <span class="card-title">Bills to Follow Up</span>
-                    <a href="bill_inquiry.php" class="btn btn-sm btn-view-all">View All</a>
+                    <a href="bill_inquiry.php" class="btn btn-sm btn-secondary btn-view-all">View All</a>
                 </div>
                 <div class="card-body" style="padding: 0;">
                     <div class="data-table-container">
@@ -210,7 +210,7 @@
             <div class="card-header">
                 <span class="card-title">Recent Login Activity</span>
                 @if (auth()->user()?->isSuperAdmin())
-                <a href="login_history.php" class="btn btn-sm btn-view-all">View All</a>
+                <a href="login_history.php" class="btn btn-sm btn-secondary btn-view-all">View All</a>
                 @endif
             </div>
             <div class="card-body" style="padding: 0;">

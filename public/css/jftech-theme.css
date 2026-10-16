@@ -371,16 +371,24 @@ textarea.form-input {
 }
 
 /* ===== BUTTONS ===== */
+/* One button size everywhere (the size of the dashboard "View All" button). */
+:root {
+    --btn-min-height: 28px;
+    --btn-padding: 0.3rem 0.65rem;
+    --btn-font-size: 0.76rem;
+    --btn-radius: 7px;
+}
+
 .btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 0.4rem;
-    min-height: 34px;
-    padding: 0.45rem 0.85rem;
+    min-height: var(--btn-min-height);
+    padding: var(--btn-padding);
     border: 1px solid transparent;
-    border-radius: var(--radius-sm);
-    font-size: 0.82rem;
+    border-radius: var(--btn-radius);
+    font-size: var(--btn-font-size);
     font-weight: 600;
     line-height: 1.2;
     text-align: center;
@@ -497,17 +505,13 @@ html:not([data-theme]) .btn-primary {
     color: var(--text-primary);
 }
 
-.btn-sm {
-    min-height: 28px;
-    padding: 0.3rem 0.65rem;
-    font-size: 0.76rem;
-    border-radius: 7px;
-}
-
+/* Size variants kept for existing markup; they all use the shared button size. */
+.btn-sm,
 .btn-lg {
-    min-height: 40px;
-    padding: 0.6rem 1.15rem;
-    font-size: 0.9rem;
+    min-height: var(--btn-min-height);
+    padding: var(--btn-padding);
+    font-size: var(--btn-font-size);
+    border-radius: var(--btn-radius);
 }
 
 .btn-block {
@@ -1828,10 +1832,6 @@ html:not([data-theme]) .btn-primary {
     select,
     textarea {
         font-size: 16px !important;
-    }
-
-    .btn:not(.btn-sm) {
-        min-height: 38px;
     }
 
     .modal-overlay {

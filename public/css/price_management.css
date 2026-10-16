@@ -36,11 +36,6 @@
     flex-wrap: wrap;
 }
 
-.btn-group-action .btn {
-    padding: 0.25rem 0.5rem;
-    font-size: 0.7rem;
-}
-
 /* Table action menu */
 .action-menu {
     position: relative;
