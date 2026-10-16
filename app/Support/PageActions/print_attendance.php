@@ -16,7 +16,10 @@ $query = "SELECT a.*, e.full_name, e.employee_code, e.position, e.department, CO
           FROM attendance a
           JOIN employees e ON a.employee_id = e.id
           WHERE TRUE";
-$params = [];
+// A branch admin only prints the attendance recorded in their own branch.
+$scopeBranch = \App\Support\BranchScope::current();
+[$attendanceScope, $params] = \App\Support\BranchScope::attendance($scopeBranch, 'a');
+$query .= $attendanceScope;
 
 if ($selectedEmployee) {
     $query .= " AND a.employee_id = ?";
@@ -55,7 +58,9 @@ $stmt = $pdo->query("SELECT qr_code, qr_type, valid_from, valid_until FROM qr_co
 $attendanceQrCodes = $stmt->fetchAll();
 
 // Get employees for filter
-$stmt = $pdo->query("SELECT id, employee_code, full_name, department FROM employees ORDER BY full_name");
+[$filterScope, $filterScopeParams] = \App\Support\BranchScope::employees($scopeBranch, 'e');
+$stmt = $pdo->prepare("SELECT e.id, e.employee_code, e.full_name, e.department FROM employees e WHERE 1 = 1" . $filterScope . " ORDER BY e.full_name");
+$stmt->execute($filterScopeParams);
 $allEmployees = $stmt->fetchAll();
 
 $totalPresent = count(array_filter($attendanceRecords, function($a) { return $a['status_morning'] === 'present' || $a['status_afternoon'] === 'present'; }));

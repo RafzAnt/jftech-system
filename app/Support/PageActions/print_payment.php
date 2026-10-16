@@ -20,6 +20,7 @@ return function (\Illuminate\Http\Request $request): array {
     $payment = $payment->fetch();
 
     abort_unless($payment, 404);
+    \App\Support\BranchScope::abortUnlessClient($payment['client_id']);
 
     return compact('payment');
 };

@@ -16,7 +16,9 @@ $query = "SELECT b.*, c.full_name, c.client_code, c.wifi_plan
           FROM bills b 
           JOIN clients c ON b.client_id = c.id 
           WHERE TRUE";
-$params = [];
+// A branch admin only prints bills of their own branch's clients.
+[$branchScope, $params] = \App\Support\BranchScope::clients(\App\Support\BranchScope::current(), 'c');
+$query .= $branchScope;
 
 if ($selectedStatus) {
     $query .= " AND b.status = ?";

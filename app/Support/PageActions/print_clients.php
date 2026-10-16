@@ -14,7 +14,9 @@ $query = "SELECT c.*, COALESCE(c.registered_barangay_name, b.barangay_name) AS b
           FROM clients c 
           LEFT JOIN barangays b ON c.barangay_id = b.id 
           WHERE TRUE";
-$params = [];
+// A branch admin only prints their own branch's clients.
+[$branchScope, $params] = \App\Support\BranchScope::clients(\App\Support\BranchScope::current(), 'c');
+$query .= $branchScope;
 
 if ($selectedBarangay) {
     $query .= " AND c.barangay_id = ?";

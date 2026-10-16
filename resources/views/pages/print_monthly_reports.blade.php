@@ -18,7 +18,7 @@
         </header>
         @php($b = $report['bills'])
         <div class="body">
-            <table class="meta"><tr><td><span class="label">Report Period</span><strong>{{ date('F d, Y', strtotime($from)) }} – {{ date('F d, Y', strtotime($to)) }}</strong></td><td><span class="label">Date Prepared</span><strong>{{ now()->format('M d, Y h:i A') }}</strong></td></tr></table>
+            <table class="meta"><tr><td><span class="label">Report Period</span><strong>{{ date('F d, Y', strtotime($from)) }} – {{ date('F d, Y', strtotime($to)) }}</strong></td><td><span class="label">Branch</span><strong>{{ $branchLabel }}</strong></td><td><span class="label">Date Prepared</span><strong>{{ now()->format('M d, Y h:i A') }}</strong></td></tr></table>
 
             <div class="section-title">Billing Summary</div>
             <table class="summary"><tr>
@@ -53,12 +53,14 @@
                     <td><span class="label">Attendance Records</span><strong>{{ number_format($report['attendance']['records']) }}</strong><br>{{ number_format($report['attendance']['present']) }} present &middot; {{ number_format($report['attendance']['late']) }} late &middot; {{ number_format($report['attendance']['absent']) }} absent</td>
                     <td><span class="label">Payroll Net Pay</span><strong>₱{{ number_format($report['payroll']['net'], 2) }}</strong><br>{{ number_format($report['payroll']['entries']) }} entr{{ $report['payroll']['entries'] === 1 ? 'y' : 'ies' }}</td>
                 </tr>
+                @if ($report['requests'] !== null)
                 <tr>
                     <td><span class="label">Inventory Requests</span><strong>{{ number_format($report['requests']['total']) }}</strong></td>
                     <td><span class="label">Approved</span><strong>{{ number_format($report['requests']['approved']) }}</strong></td>
                     <td><span class="label">Pending</span><strong>{{ number_format($report['requests']['pending']) }}</strong></td>
                     <td><span class="label">Denied</span><strong>{{ number_format($report['requests']['denied']) }}</strong></td>
                 </tr>
+                @endif
             </table>
             <div class="signatures"><div class="signature">Prepared By:<br><br>____________________________</div><div class="signature">Checked / Approved By:<br><br>____________________________</div></div>
         </div>

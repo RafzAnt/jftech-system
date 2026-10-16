@@ -49,6 +49,11 @@ class AppServiceProvider extends ServiceProvider
             $currentView = request()->query('view');
             $sessionFullName = Auth::user()?->full_name ?? 'System Administrator';
             $sessionRole = Auth::user()?->role ?? 'administrator';
+            $isSuperAdmin = Auth::user()?->isSuperAdmin() ?? false;
+            // Shown under the logo so an admin always knows whose data they are looking at.
+            $sessionScopeLabel = $isSuperAdmin
+                ? 'Super Admin · All branches'
+                : (Auth::user()?->isBranchAdmin() ? trim((string) Auth::user()->branch_name) . ' Branch Admin' : '');
             $avatarLetter = strtoupper(substr($sessionFullName, 0, 1));
             $mainJsVersion = @filemtime(public_path('js/jftech-main.js')) ?: 1;
 
@@ -70,7 +75,29 @@ class AppServiceProvider extends ServiceProvider
                 ['id' => 'login_history', 'label' => 'Login History', 'icon' => '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>', 'url' => 'login_history.php'],
             ];
 
+            // Stock, pricing, accounts, settings and login history are company-wide, so only the super admin gets them.
+            if (! $isSuperAdmin) {
+                $superAdminOnly = ['price_management', 'inventory', 'settings', 'user_management', 'login_history'];
+                $visible = [];
+                $pendingSection = null;
+                foreach ($navItems as $item) {
+                    if (in_array($item['id'], $superAdminOnly, true)) {
+                        $pendingSection ??= $item['section'] ?? null;
+                        continue;
+                    }
+                    if (! empty($item['section'])) {
+                        $pendingSection = null;
+                    } elseif ($pendingSection !== null) {
+                        $item['section'] = $pendingSection;
+                        $pendingSection = null;
+                    }
+                    $visible[] = $item;
+                }
+                $navItems = $visible;
+            }
+
             $view->with([
+                'sessionScopeLabel' => $sessionScopeLabel,
                 'currentPage' => $currentPage,
                 'currentTab' => $currentTab,
                 'currentView' => $currentView,

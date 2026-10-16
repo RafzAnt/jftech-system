@@ -11,6 +11,7 @@ return function (\Illuminate\Http\Request $request): array {
         ->first();
 
     abort_unless($record, 404);
+    \App\Support\BranchScope::abortUnlessEmployee($record->employee_id);
 
     return compact('record');
 };

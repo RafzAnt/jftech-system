@@ -42,9 +42,11 @@
         <div class="top-bar">
             <div>
                 <h1 class="page-title">Browse Clients</h1>
-                <p style="color: var(--text-muted); font-size: 0.85rem;">View and manage all registered clients</p>
+                <p style="color: var(--text-muted); font-size: 0.85rem;">{{ $canRegisterClients ? 'View and manage all registered clients' : 'Every branch’s clients. Pick a branch, then a barangay, to narrow them down.' }}</p>
             </div>
+            @if ($canRegisterClients)
             <button type="button" class="btn btn-success" onclick="openModal('registerClientModal')">+ Register New Client</button>
+            @endif
         </div>
 
         @if ($success)
@@ -70,7 +72,7 @@
             <label class="form-label" for="clientBranchInput">Branch</label>
             <input type="hidden" id="clientBranchFilter" name="branch" value="{{ $selectedBranch }}">
             <div class="client-barangay-picker">
-                <input type="text" class="search-input client-barangay-input" id="clientBranchInput" placeholder="Branch" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="clientBranchSuggestions" aria-expanded="false" value="{{ $selectedBranch }}">
+                <input type="text" class="search-input client-barangay-input" id="clientBranchInput" placeholder="Branch" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="clientBranchSuggestions" aria-expanded="false" value="{{ $selectedBranch }}" {{ $scopeBranch !== null ? 'readonly' : '' }}>
                 <div id="clientBranchSuggestions" class="location-suggestions client-filter-suggestions" role="listbox" hidden></div>
             </div>
         </div>
@@ -173,10 +175,14 @@
                                 No archived clients.
                             @elseif ($selectedBranch)
                                 No clients found in {{ $selectedBranch }}.
+                                @if ($canRegisterClients)
                                 <button type="button" class="client-register-link" onclick="openModal('registerClientModal')">Register a new client</button>
+                                @endif
                             @else
                                 No clients found.
+                                @if ($canRegisterClients)
                                 <button type="button" class="client-register-link" onclick="openModal('registerClientModal')">Register a new client</button>
+                                @endif
                             @endif
                         </td>
                     </tr>
@@ -187,6 +193,7 @@
     </div>
 </div>
 
+    @if ($canRegisterClients)
     <!-- Register Client Modal -->
     <div class="modal-overlay" id="registerClientModal" role="dialog" aria-modal="true" aria-labelledby="registerClientModalTitle" onclick="if (event.target === this) closeModal('registerClientModal');">
         <div class="modal-content modal-large">
@@ -211,7 +218,7 @@
                     <div class="form-group"><label class="form-label">Installation Date *</label><input type="date" name="installation_date" class="form-input" value="{{ old('installation_date', date('Y-m-d')) }}" required></div>
                     <div class="form-group">
                         <label class="form-label" for="registerBranch">Branch *</label>
-                        <input type="text" name="branch_name" id="registerBranch" class="form-input" list="registerBranchSuggestions" placeholder="Type a branch name" autocomplete="off" required value="{{ old('branch_name') }}">
+                        <input type="text" name="branch_name" id="registerBranch" class="form-input" list="registerBranchSuggestions" placeholder="Type a branch name" autocomplete="off" required value="{{ old('branch_name', $scopeBranch !== null ? $selectedBranch : '') }}" {{ $scopeBranch !== null ? 'readonly' : '' }}>
                         <datalist id="registerBranchSuggestions">
                             @foreach ($branches as $branchName => $psgcCode)
                             <option value="{{ $branchName }}"></option>
@@ -238,6 +245,7 @@
             </form>
         </div>
     </div>
+    @endif
 
     <!-- Client details are rendered dynamically via viewClient() (AJAX) to always reflect live billing/payment status -->
 
@@ -273,13 +281,16 @@
     </div>
 
     <script>
+    // Used by the branch/barangay filters (and by the register form when it exists).
+    const registerBarangaysByBranch = @json($branchBarangays, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT);
+
+    @if ($canRegisterClients)
     function syncRegisterPlanPrice() {
         const plan = document.getElementById('registerWifiPlan');
         document.getElementById('registerMonthlyRate').value = plan.options[plan.selectedIndex]?.dataset.price || '';
     }
 
     const registerBranches = @json($branches, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT);
-    const registerBarangaysByBranch = @json($branchBarangays, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT);
     const branchInput = document.getElementById('registerBranch');
     const barangayInput = document.getElementById('registerBarangay');
     const barangaySuggestions = document.getElementById('registerBarangaySuggestions');
@@ -457,6 +468,7 @@
         syncRegisterPlanPrice();
         openModal('registerClientModal');
     });
+    @endif
     @endif
 
     const clients = {!! json_encode(array_map(function ($c) {

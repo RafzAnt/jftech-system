@@ -4,13 +4,16 @@ return function (\Illuminate\Http\Request $request): array {
     $pdo = \Illuminate\Support\Facades\DB::connection()->getPdo();
     $success = '';
     $error = '';
-    $registerClientOpen = $request->session()->pull('open_register_modal', false)
-        || $request->query('register') === '1';
+    // Only a branch admin registers clients; the super admin just looks at them.
+    $canRegisterClients = auth()->user()?->canRegisterClients() ?? false;
+    $registerClientOpen = $canRegisterClients && ($request->session()->pull('open_register_modal', false)
+        || $request->query('register') === '1');
 
     // Handle archive / restore / delete actions
     if ($request->isMethod('post') && $request->has('action') && $request->has('client_id')) {
         $action = $request->input('action');
         $cid = (int) $request->input('client_id');
+        \App\Support\BranchScope::abortUnlessClient($cid);
         try {
             if ($action === 'archive') {
                 $pdo->prepare("UPDATE clients SET archived = 1, status = 'inactive' WHERE id = ?")->execute([$cid]);
@@ -53,7 +56,13 @@ $stmt = $pdo->query("SELECT * FROM internet_plans WHERE status = 'active' AND ar
 $plans = $stmt->fetchAll();
 $branches = config('bohol_branches', []);
 $branchBarangays = config('bohol_barangays', []);
-$selectedBranch = trim((string) $request->query('branch', ''));
+// A branch admin only works with their own branch: it is the only option and is always selected.
+$scopeBranch = \App\Support\BranchScope::current();
+if ($scopeBranch !== null) {
+    $ownBranches = array_filter(array_keys($branches), static fn (string $name): bool => strcasecmp($name, $scopeBranch) === 0);
+    $branches = array_intersect_key($branches, array_flip($ownBranches));
+}
+$selectedBranch = $scopeBranch !== null ? array_key_first($branches) ?? '' : trim((string) $request->query('branch', ''));
 if (!array_key_exists($selectedBranch, $branches)) {
     $selectedBranch = '';
 }
@@ -63,8 +72,7 @@ $validBarangaysForBranch = $selectedBranch ? ($branchBarangays[$selectedBranch] 
 $selectedBarangays = array_values(array_unique(array_filter(array_map('trim', $selectedBarangays), static function ($name) use ($validBarangaysForBranch) {
     return in_array($name, $validBarangaysForBranch, true);
 })));
-$filterSql = '';
-$filterParams = [];
+[$filterSql, $filterParams] = \App\Support\BranchScope::clients($scopeBranch, 'c');
 if ($selectedBranch) {
     $filterSql .= ' AND LOWER(COALESCE(c.branch_name, \'\')) = LOWER(?)';
     $filterParams[] = $selectedBranch;
@@ -88,6 +96,7 @@ if ($searchTerm !== '') {
 }
 
 if ($request->isMethod('post') && $request->input('action') === 'register') {
+    abort_unless($canRegisterClients, 403);
     $registerClientOpen = true;
     try {
         $firstName = trim((string) $request->input('first_name'));
@@ -181,7 +190,10 @@ if ($showArchived) {
     }
     unset($client);
 
-    $archivedCount = (int) $pdo->query("SELECT COUNT(*) FROM clients WHERE archived = 1")->fetchColumn();
+    [$archivedScope, $archivedScopeParams] = \App\Support\BranchScope::clients($scopeBranch, 'c');
+    $archivedCountStmt = $pdo->prepare("SELECT COUNT(*) FROM clients c WHERE c.archived = 1" . $archivedScope);
+    $archivedCountStmt->execute($archivedScopeParams);
+    $archivedCount = (int) $archivedCountStmt->fetchColumn();
 }
 
     return get_defined_vars();

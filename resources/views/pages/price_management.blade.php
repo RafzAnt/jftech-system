@@ -1,14 +1,14 @@
 <!doctype html>
-<html lang="en-PH">
+<html lang="en-PH" data-theme="dark">
 <head>
     <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
     <title>JFTECH - Internet Plans</title>
     <script>
         try {
             var savedTheme = localStorage.getItem('jftech-theme');
-            document.documentElement.setAttribute('data-theme', savedTheme === 'dark' ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', savedTheme === 'light' ? 'light' : 'dark');
         } catch (error) {
-            document.documentElement.setAttribute('data-theme', 'light');
+            document.documentElement.setAttribute('data-theme', 'dark');
         }
     </script>
     <link rel="stylesheet" href="{{ asset('css/jftech-theme.css') }}?{{ $themeCssVersion }}">

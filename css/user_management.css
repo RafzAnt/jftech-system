@@ -6,3 +6,37 @@
 /* User management relies on shared theme components (cards, tables, badges).
    The payslip preview component styles live in payroll.css.
    Add page-specific overrides below as needed. */
+
+.account-preview {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem 1rem;
+    margin: 0 0 1rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: rgba(41, 121, 255, 0.08);
+}
+
+.account-preview[hidden] {
+    display: none;
+}
+
+.account-preview dt {
+    color: var(--text-muted);
+    font-size: 0.72rem;
+}
+
+.account-preview dd {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 0.88rem;
+    font-weight: 600;
+}
+
+/* Employee, the picked employee's details and the login fields each take a full row. */
+.create-user-form > .create-user-wide,
+.create-user-form > .account-preview,
+.create-user-form > .form-grid {
+    grid-column: 1 / -1;
+}

@@ -13,6 +13,9 @@ class DashboardMonthlyRevenueTest extends TestCase
     {
         parent::setUp();
 
+        // The actions only show a branch's records to its own admin; the super admin sees every branch.
+        $this->actingAs((new \App\Models\User())->forceFill(['id' => 1, 'role' => 'super_admin', 'status' => 'active']));
+
         Schema::create('barangays', function ($table) {
             $table->id();
             $table->string('barangay_name');

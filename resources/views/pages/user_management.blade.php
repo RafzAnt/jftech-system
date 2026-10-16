@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en-PH">
+<html lang="en-PH" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,9 +7,9 @@
     <script>
         try {
             var savedTheme = localStorage.getItem('jftech-theme');
-            document.documentElement.setAttribute('data-theme', savedTheme === 'dark' ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', savedTheme === 'light' ? 'light' : 'dark');
         } catch (error) {
-            document.documentElement.setAttribute('data-theme', 'light');
+            document.documentElement.setAttribute('data-theme', 'dark');
         }
     </script>
     <link rel="stylesheet" href="{{ asset('css/jftech-theme.css') }}?{{ $themeCssVersion }}">
@@ -96,6 +96,7 @@
                                 <th>Position</th>
                                 <th>Email</th>
                                 <th>Role</th>
+                                <th>Branch</th>
                                 <th>Status</th>
                                 <th>Created</th>
                                 <th aria-label="User menu"></th>
@@ -109,7 +110,8 @@
                                 <td>{{ htmlspecialchars($user['full_name']) }}</td>
                                 <td>{{ $user['employee_position'] ?: '—' }}</td>
                                 <td>{{ $user['email'] }}</td>
-                                <td><span class="badge badge-{{ $user['role'] === 'admin' ? 'warning' : 'info' }}">{{ ucfirst($user['role']) }}</span></td>
+                                <td><span class="badge badge-{{ ['super_admin' => 'danger', 'admin' => 'warning'][$user['role']] ?? 'info' }}">{{ ['super_admin' => 'Super Admin', 'admin' => 'Branch Admin'][$user['role']] ?? ucfirst($user['role']) }}</span></td>
+                                <td>{{ $user['role'] === 'super_admin' ? 'All branches' : ($user['branch_name'] ?: '—') }}</td>
                                 <td>
                                     <span class="badge badge-{{ $user['status'] === 'active' ? 'success' : 'secondary' }}">
                                         {{ ucfirst($user['status']) }}
@@ -156,7 +158,7 @@
                             @endforeach
                             @if (empty($users))
                             <tr>
-                                <td colspan="9" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">
+                                <td colspan="10" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">
                                     {{ $showArchived ? 'No archived users.' : 'No users found.' }}
                                 </td>
                             </tr>
@@ -170,65 +172,43 @@
     </div>
 
     @if ($verified)
-    <!-- Create User Modal -->
+    <!-- Create User Modal: creates the login only; the person's details come from the employee record -->
     <div class="modal-overlay" id="createUserModal">
         <div class="modal-content modal-medium create-user-modal-content">
             <div class="modal-header">
                 <div style="display:flex;align-items:center;gap:.5rem">
                     @include('partials.modal_logo')
-                    <h3 class="modal-title">Create New User</h3>
+                    <h3 class="modal-title">Create User Account</h3>
                 </div>
                 <button class="modal-close" onclick="closeModal('createUserModal')">&times;</button>
             </div>
             <form method="POST" action="" class="create-user-form">
             @csrf
                 <input type="hidden" name="create_user" value="1">
-                <div id="createEmployeeGroup" class="form-group">
-                    <label class="form-label">Employee to Create an Account For *</label>
-                    <select name="employee_id" id="createEmployeeId" class="form-select" onchange="showSelectedEmployeeName()">
-                        <option value="">Select an employee</option>
-                        @forelse (collect($availableEmployees)->groupBy(fn ($employee) => $employee['position'] ?: 'No position') as $position => $employeesByPosition)
-                            <optgroup label="{{ $position }}">
-                                @foreach ($employeesByPosition as $employee)
-                                <option value="{{ $employee['id'] }}" data-name="{{ htmlspecialchars($employee['full_name']) }}">{{ htmlspecialchars($employee['full_name']) }}</option>
-                                @endforeach
-                            </optgroup>
-                        @empty
-                            <option value="" disabled>No active employees without an account</option>
-                        @endforelse
-                    </select>
-                    <small class="form-help">Employees are listed by position. Their employee record will be linked to this account.</small>
-                    <input type="text" id="selectedEmployeeName" class="form-input" style="margin-top:.5rem;" placeholder="Selected employee name" readonly>
+                <input type="hidden" name="employee_id" id="createEmployeeId">
+                <div class="form-group create-user-wide">
+                    <label class="form-label" for="createEmployee">Employee *</label>
+                    {{-- Type a name and pick from the suggestions (the list comes from the datalist). --}}
+                    <input type="text" id="createEmployee" class="form-input" list="createEmployeeSuggestions" placeholder="Type an employee's name" autocomplete="off" required>
+                    <datalist id="createEmployeeSuggestions">
+                        @foreach ($employeeChoices as $choice)
+                        <option value="{{ $choice['label'] }}"></option>
+                        @endforeach
+                    </datalist>
+                    <small class="form-help">
+                        @if (count($employeeChoices))
+                        Only employees without an account are listed. Their details come from Employees.
+                        @else
+                        Every active employee already has an account. Add the employee in Employees first.
+                        @endif
+                    </small>
                 </div>
-                <div id="createManualNameGroups" class="form-grid" style="display:none;">
-                    <div class="form-group">
-                        <label class="form-label">First Name *</label>
-                        <input type="text" name="first_name" id="createFirstName" class="form-input">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Middle Name <span style="color: var(--text-muted);">(Optional)</span></label>
-                        <input type="text" name="middle_name" id="createMiddleName" class="form-input">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Last Name *</label>
-                        <input type="text" name="last_name" id="createLastName" class="form-input">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Email Address</label>
-                    <input type="email" name="email" class="form-input">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Mobile Number</label>
-                    <input type="text" name="phone" class="form-input" placeholder="09123456789" inputmode="numeric" pattern="[0-9]{11}" minlength="11" maxlength="11">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Role</label>
-                    <select name="role" id="createUserRole" class="form-select" onchange="toggleCreatePosition()">
-                        <option value="employee">Employee</option>
-                        <option value="admin">Admin</option>
-                    </select>
-                </div>
+                <dl class="account-preview" id="createAccountPreview" hidden>
+                    <div><dt>Name</dt><dd id="previewName"></dd></div>
+                    <div><dt>Position</dt><dd id="previewPosition"></dd></div>
+                    <div><dt>Branch</dt><dd id="previewBranch"></dd></div>
+                    <div><dt>Account role</dt><dd id="previewRole"></dd></div>
+                </dl>
                 <div class="form-grid">
                     <div class="form-group">
                         <label class="form-label">Username *</label>
@@ -241,7 +221,7 @@
                 </div>
                 <div class="create-user-actions" style="display: flex; gap: 1rem; justify-content: flex-end; flex-wrap: wrap;">
                     <button type="button" class="btn btn-secondary" onclick="closeModal('createUserModal')">Cancel</button>
-                    <button type="submit" class="btn btn-success">Create User</button>
+                    <button type="submit" class="btn btn-success">Create Account</button>
                 </div>
             </form>
         </div>
@@ -287,8 +267,19 @@
                     <label class="form-label">Role</label>
                     <select name="role" id="editRole" class="form-select">
                         <option value="employee">Employee</option>
-                        <option value="admin">Admin</option>
+                        <option value="admin">Branch Admin</option>
+                        <option value="super_admin">Super Admin</option>
                     </select>
+                </div>
+                <div class="form-group" id="editBranchGroup" style="display:none;">
+                    <label class="form-label">Branch *</label>
+                    {{-- Type the branch and pick from the suggestions (the list comes from the datalist). --}}
+                    <input type="text" name="branch_name" id="editBranch" class="form-input" list="editBranchSuggestions" placeholder="Type a branch name" autocomplete="off">
+                    <datalist id="editBranchSuggestions">
+                        @foreach ($branches as $branch)
+                        <option value="{{ $branch }}"></option>
+                        @endforeach
+                    </datalist>
                 </div>
                 <div class="form-group" id="editPositionGroup">
                     <label class="form-label">Position *</label>
@@ -361,6 +352,7 @@
         document.getElementById('editRole').value = user.role;
         document.getElementById('editStatus').value = user.status;
         document.getElementById('editEmployeePosition').value = user.employee_position || '';
+        document.getElementById('editBranch').value = user.branch_name || '';
         toggleEditPosition();
         openModal('editUserModal');
     }
@@ -403,27 +395,26 @@
     document.addEventListener('click', event => {
         if (!event.target.closest('.user-action-menu') && !event.target.closest('.user-action-menu-dropdown')) closeUserActionMenus();
     });
-    function showSelectedEmployeeName() {
-        const select = document.getElementById('createEmployeeId');
-        const display = document.getElementById('selectedEmployeeName');
-        display.value = select?.selectedOptions[0]?.dataset.name || '';
+    // Picking an employee shows who they are and the role the new account will get.
+    const employeeChoices = @json($employeeChoices, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT);
+    function syncCreateEmployee() {
+        const input = document.getElementById('createEmployee');
+        const typed = input.value.trim().toLocaleLowerCase();
+        const choice = employeeChoices.find(item => item.label.toLocaleLowerCase() === typed);
+        document.getElementById('createEmployeeId').value = choice ? choice.id : '';
+        input.setCustomValidity(typed === '' || choice ? '' : 'Choose an employee from the suggestions.');
+        const preview = document.getElementById('createAccountPreview');
+        preview.hidden = !choice;
+        if (choice) {
+            document.getElementById('previewName').textContent = choice.name;
+            document.getElementById('previewPosition').textContent = choice.position;
+            document.getElementById('previewBranch').textContent = choice.branch;
+            document.getElementById('previewRole').textContent = choice.roleLabel;
+        }
     }
-    function toggleCreatePosition() {
-        const role = document.getElementById('createUserRole');
-        const employeeGroup = document.getElementById('createEmployeeGroup');
-        const employee = document.getElementById('createEmployeeId');
-        const nameGroups = document.getElementById('createManualNameGroups');
-        const firstName = document.getElementById('createFirstName');
-        const lastName = document.getElementById('createLastName');
-        if (!role || !employeeGroup || !employee || !nameGroups || !firstName || !lastName) return;
-        const isEmployee = role.value === 'employee';
-        employeeGroup.style.display = isEmployee ? '' : 'none';
-        employee.required = isEmployee;
-        nameGroups.style.display = isEmployee ? 'none' : '';
-        firstName.required = !isEmployee;
-        lastName.required = !isEmployee;
-        if (!isEmployee) showSelectedEmployeeName();
-    }
+    // The form only exists once the admin has been verified.
+    document.getElementById('createEmployee')?.addEventListener('input', syncCreateEmployee);
+    document.getElementById('createEmployee')?.addEventListener('change', syncCreateEmployee);
     function toggleEditPosition() {
         const role = document.getElementById('editRole');
         const group = document.getElementById('editPositionGroup');
@@ -432,9 +423,11 @@
         const isEmployee = role.value === 'employee';
         group.style.display = isEmployee ? '' : 'none';
         position.required = isEmployee;
+        const isBranchAdmin = role.value === 'admin';
+        document.getElementById('editBranchGroup').style.display = isBranchAdmin ? '' : 'none';
+        document.getElementById('editBranch').required = isBranchAdmin;
     }
     document.getElementById('editRole').addEventListener('change', toggleEditPosition);
-    toggleCreatePosition();
     </script>
     <script src="{{ asset('js/jftech-main.js') }}?{{ $mainJsVersion }}"></script>
 </body>

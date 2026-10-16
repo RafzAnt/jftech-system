@@ -26,7 +26,9 @@ $paymentQuery = "SELECT p.*, c.client_code, c.full_name as client_name, COALESCE
                  LEFT JOIN users u ON p.received_by = u.id
                  LEFT JOIN bills b ON p.bill_id = b.id
                  WHERE TRUE";
-$paymentParams = [];
+// A branch admin only sees payments of their own branch's clients.
+[$branchScope, $paymentParams] = \App\Support\BranchScope::clients(\App\Support\BranchScope::current(), 'c');
+$paymentQuery .= $branchScope;
 
 if ($selectedBarangay !== '') {
     $paymentQuery .= ' AND c.barangay_id = ?';

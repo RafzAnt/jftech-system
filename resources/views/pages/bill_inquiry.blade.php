@@ -6,6 +6,7 @@
     <title>JFTECH - Client Accounts</title>
     <link rel="stylesheet" href="{{ asset('css/jftech-theme.css') }}?{{ $themeCssVersion }}">
     <link rel="stylesheet" href="{{ asset('css/bill_inquiry.css') }}?{{ $billInquiryCssVersion }}">
+    <link rel="stylesheet" href="{{ asset('css/client_filter.css') }}?{{ $clientFilterCssVersion }}">
 </head>
 <body>
     <div class="grid-overlay"></div>
@@ -39,6 +40,14 @@
             <a href="bill_inquiry.php" class="tab-btn {{ !$showArchived ? 'active' : '' }}">Active Clients</a>
             <a href="bill_inquiry.php?view=archived" class="tab-btn {{ $showArchived ? 'active' : '' }}">Archived ({{ $archivedCount }})</a>
         </div></div>
+        <!-- Branch, barangay, and client search filters -->
+        <form method="GET" action="" class="card client-filter-card" id="clientFilterForm" style="margin-bottom: 1.5rem;">
+            @if ($showArchived)<input type="hidden" name="view" value="archived">@endif
+            @if ($showOverdue)<input type="hidden" name="overdue" value="1">@endif
+            <div class="card-body">
+                @include('pages.partials.client_location_filter')
+            </div>
+        </form>
         <div class="card" style="margin-bottom: 1.5rem;">
                 <div class="card-header">
                     <span class="card-title">{{ $showOverdue ? 'Clients With Overdue Bills' : 'Select Client' }}</span>
@@ -50,32 +59,8 @@
                     @if ($showOverdue)
                     <div class="alert alert-warning" style="margin-bottom: 1.25rem;">Showing active clients with at least one overdue bill.</div>
                     @endif
-                <form method="GET" action="" style="margin-bottom: 1.5rem;">
-                    @if ($showArchived)<input type="hidden" name="view" value="archived">@endif
-                    @if ($showOverdue)<input type="hidden" name="overdue" value="1">@endif
-                    <div style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap;">
-                        <div class="form-group" style="min-width: 220px; margin: 0;">
-                            <label class="form-label" for="barangayFilter">Barangay</label>
-                            <select class="form-select" name="barangay" id="barangayFilter" onchange="this.form.submit()">
-                                <option value="">All Barangays</option>
-                                @foreach ($barangays as $barangay)
-                                <option value="{{ $barangay['id'] }}" {{ $selectedBarangay == $barangay['id'] ? 'selected' : '' }}>
-                                    {{ $barangay['barangay_name'] }}
-                                </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="form-group" style="flex: 1; margin: 0;">
-                            <label class="form-label" for="clientSearch">Search client by name</label>
-                            <div class="search-box" style="max-width: none;">
-                                <input type="search" name="search" id="clientSearch" class="search-input" placeholder="Search..." value="{{ htmlspecialchars(request()->query('search') ?? '') }}">
-                            </div>
-                        </div>
-                        <button type="submit" class="btn btn-primary">Search</button>
-                    </div>
-                </form>
 
-                @if (request()->query('search') ?? '')
+                @if ($searchTerm !== '')
                 <div class="data-table-container">
                     <table class="data-table">
                         <thead>
@@ -118,6 +103,8 @@
                         <thead>
                             <tr>
                                 <th>Name</th>
+                                <th>Branch</th>
+                                <th>Barangay</th>
                                 <th>Mobile Number</th>
                                 <th>Email</th>
                                 <th>Plan</th>
@@ -129,6 +116,8 @@
                             @foreach ($allClients as $client)
                             <tr>
                                 <td>{{ htmlspecialchars($client['full_name']) }}</td>
+                                <td>{{ $client['branch_name'] ?: 'N/A' }}</td>
+                                <td>{{ $client['barangay_name'] ?: 'N/A' }}</td>
                                 <td>{{ $client['contact_number'] ?: '--' }}</td>
                                 <td>{{ $client['email'] ?: '--' }}</td>
                                 <td>{{ htmlspecialchars($client['wifi_plan'] ?? 'N/A') }}</td>
@@ -136,6 +125,9 @@
                                 <td>@include('pages.partials.client_record_actions', ['client' => $client, 'showArchived' => $showArchived])</td>
                             </tr>
                             @endforeach
+                            @if (empty($allClients))
+                            <tr><td colspan="8" style="text-align: center; color: var(--text-muted);">No clients found</td></tr>
+                            @endif
                         </tbody>
                     </table>
                 </div>

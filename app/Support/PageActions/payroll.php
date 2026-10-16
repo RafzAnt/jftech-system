@@ -15,7 +15,13 @@ $selectedStatus = $request->query('status') ?? '';
 $selectedStart = $request->query('period_start') ?? '';
 $selectedEnd = $request->query('period_end') ?? '';
 
-$stmt = $pdo->query("SELECT id, employee_code, full_name, position, department, daily_rate, status FROM employees ORDER BY full_name");
+// A branch admin only works with their own branch's employees and payroll.
+$scopeBranch = \App\Support\BranchScope::current();
+[$employeeScope, $employeeScopeParams] = \App\Support\BranchScope::employees($scopeBranch, 'e');
+[$payrollEmployeeScope, $payrollEmployeeScopeParams] = \App\Support\BranchScope::viaEmployee($scopeBranch, 'payroll.employee_id');
+
+$stmt = $pdo->prepare("SELECT e.id, e.employee_code, e.full_name, e.position, e.department, e.daily_rate, e.status FROM employees e WHERE 1 = 1" . $employeeScope . " ORDER BY e.full_name");
+$stmt->execute($employeeScopeParams);
 $employees = $stmt->fetchAll();
 
 $employeeMap = [];
@@ -81,7 +87,7 @@ if ($request->has('action') && $request->query('action') === 'attendance') {
     $empId = (int) ($request->query('employee_id') ?? 0);
     $start = $request->query('start') ?? '';
     $end = $request->query('end') ?? '';
-    if ($empId && $start && $end) {
+    if ($empId && $start && $end && isset($employeeMap[$empId])) {
         $empStmt = $pdo->prepare("SELECT daily_rate FROM employees WHERE id = ?");
         $empStmt->execute([$empId]);
         $emp = $empStmt->fetch();
@@ -108,6 +114,14 @@ if ($request->isMethod('post')) {
 
         if (!$employeeId || !isset($employeeMap[$employeeId])) {
             throw new Exception('Please select a valid employee.');
+        }
+        // Editing a record: it must already belong to an employee of this branch.
+        if ($payrollId) {
+            $ownedStmt = $pdo->prepare("SELECT COUNT(*) FROM payroll WHERE id = ?" . $payrollEmployeeScope);
+            $ownedStmt->execute([$payrollId, ...$payrollEmployeeScopeParams]);
+            if (!(int) $ownedStmt->fetchColumn()) {
+                throw new Exception('That payroll record does not belong to your branch.');
+            }
         }
         $dailyRate = (float) $employeeMap[$employeeId]['daily_rate'];
 
@@ -229,8 +243,8 @@ $showArchived = $view === 'archived';
 
 if ($request->has('delete') && $request->query('delete')) {
     try {
-        $stmt = $pdo->prepare("UPDATE payroll SET archived = 1 WHERE id = ?");
-        $stmt->execute([$request->query('delete')]);
+        $stmt = $pdo->prepare("UPDATE payroll SET archived = 1 WHERE id = ?" . $payrollEmployeeScope);
+        $stmt->execute([$request->query('delete'), ...$payrollEmployeeScopeParams]);
         $success = 'Payroll record archived successfully.';
     } catch (Exception $e) {
         $error = 'Error: ' . $e->getMessage();
@@ -239,8 +253,8 @@ if ($request->has('delete') && $request->query('delete')) {
 
 if ($request->has('restore') && $request->query('restore')) {
     try {
-        $stmt = $pdo->prepare("UPDATE payroll SET archived = 0 WHERE id = ?");
-        $stmt->execute([$request->query('restore')]);
+        $stmt = $pdo->prepare("UPDATE payroll SET archived = 0 WHERE id = ?" . $payrollEmployeeScope);
+        $stmt->execute([$request->query('restore'), ...$payrollEmployeeScopeParams]);
         $success = 'Payroll record restored successfully.';
     } catch (Exception $e) {
         $error = 'Error: ' . $e->getMessage();
@@ -249,8 +263,8 @@ if ($request->has('restore') && $request->query('restore')) {
 
 if ($request->has('purge') && $request->query('purge')) {
     try {
-        $stmt = $pdo->prepare("DELETE FROM payroll WHERE id = ? AND archived = 1");
-        $stmt->execute([$request->query('purge')]);
+        $stmt = $pdo->prepare("DELETE FROM payroll WHERE id = ? AND archived = 1" . $payrollEmployeeScope);
+        $stmt->execute([$request->query('purge'), ...$payrollEmployeeScopeParams]);
         $success = 'Payroll record permanently deleted.';
     } catch (Exception $e) {
         $error = 'Error: ' . $e->getMessage();
@@ -259,6 +273,11 @@ if ($request->has('purge') && $request->query('purge')) {
 
 $where = [];
 $params = [];
+
+if ($employeeScope !== '') {
+    $where[] = substr($employeeScope, strlen(' AND '));
+    array_push($params, ...$employeeScopeParams);
+}
 
 if ($selectedEmployee !== '') {
     $where[] = 'p.employee_id = ?';
@@ -302,17 +321,19 @@ $stmt = $pdo->prepare($payrollSql);
 $stmt->execute($params);
 $payrollRecords = $stmt->fetchAll();
 
-$statStmt = $pdo->query("
+$statStmt = $pdo->prepare("
     SELECT
         COUNT(*) AS total,
         COALESCE(SUM(net_pay), 0) AS net,
         SUM(CASE WHEN status = 'processed' THEN 1 ELSE 0 END) AS processed,
         SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END) AS paid
     FROM payroll
-    WHERE archived = 0 OR archived IS NULL
-");
+    WHERE (archived = 0 OR archived IS NULL)" . $payrollEmployeeScope);
+$statStmt->execute($payrollEmployeeScopeParams);
 $stats = $statStmt->fetch();
-$archivedCount = (int) $pdo->query("SELECT COUNT(*) FROM payroll WHERE archived = 1")->fetchColumn();
+$archivedStmt = $pdo->prepare("SELECT COUNT(*) FROM payroll WHERE archived = 1" . $payrollEmployeeScope);
+$archivedStmt->execute($payrollEmployeeScopeParams);
+$archivedCount = (int) $archivedStmt->fetchColumn();
 
 $totalRecords = (int) $stats['total'];
 $totalNetPay = (float) $stats['net'];

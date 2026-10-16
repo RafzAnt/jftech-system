@@ -81,12 +81,27 @@ $employeePositionRates = [
     'Admin' => 600.00,
 ];
 $employeePositions = array_keys($employeePositionRates);
+// The super admin only adds Admin employees (who then get a branch admin account in User Accounts);
+// the branch admins add the technicians of their own branch.
+$canAssignAdminPosition = ! \App\Support\BranchScope::isRestricted();
+$selectablePositions = $canAssignAdminPosition ? ['Admin'] : array_values(array_diff($employeePositions, ['Admin']));
 
 // Branches come from the same list the Clients module uses.
 $employeeBranches = array_keys(config('bohol_branches', []));
 
+// A branch admin only works with their own branch's employees. The QR code is shared by every branch,
+// so only the super admin may generate a new one.
+$scopeBranch = \App\Support\BranchScope::current();
+if ($scopeBranch !== null) {
+    $employeeBranches = array_values(array_filter($employeeBranches, static fn (string $name): bool => strcasecmp($name, $scopeBranch) === 0));
+}
+[$employeeScope, $employeeScopeParams] = \App\Support\BranchScope::employees($scopeBranch, 'e');
+$canGenerateQr = auth()->user()?->isSuperAdmin() ?? false;
+
 // Get all employees
-$stmt = $pdo->query("SELECT e.*, u.username, u.status as user_status FROM employees e LEFT JOIN users u ON e.user_id = u.id ORDER BY e.full_name");
+$employeeListSql = "SELECT e.*, u.username, u.status as user_status FROM employees e LEFT JOIN users u ON e.user_id = u.id WHERE 1 = 1" . $employeeScope . " ORDER BY e.full_name";
+$stmt = $pdo->prepare($employeeListSql);
+$stmt->execute($employeeScopeParams);
 $employees = $stmt->fetchAll();
 
 // Get the selected date or month attendance view.
@@ -120,10 +135,10 @@ function updateAttendanceStatuses($pdo, $selectedDate) {
         ['in' => 'afternoon_time_in', 'out' => 'afternoon_time_out', 'status' => 'status_afternoon', 'start' => $settings['qr_afternoon_start'] ?? '13:00:00', 'end' => $settings['qr_afternoon_end'] ?? '17:00:00'],
     ];
 
-    $stmt = $pdo->query("SELECT id FROM employees WHERE status = 'active'");
-    $employeeIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    $stmt = $pdo->query("SELECT id, branch_name FROM employees WHERE status = 'active'");
+    $employeeBranchesById = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 
-    foreach ($employeeIds as $employeeId) {
+    foreach ($employeeBranchesById as $employeeId => $employeeBranchName) {
         $recordStmt = $pdo->prepare("SELECT * FROM attendance WHERE employee_id = ? AND attendance_date = ?");
         $recordStmt->execute([$employeeId, $today]);
         $attendance = $recordStmt->fetch();
@@ -151,8 +166,8 @@ function updateAttendanceStatuses($pdo, $selectedDate) {
             }
 
             if (!$attendance) {
-                $insert = $pdo->prepare("INSERT INTO attendance (employee_id, attendance_date, {$session['status']}) VALUES (?, ?, ?)");
-                $insert->execute([$employeeId, $today, $newStatus]);
+                $insert = $pdo->prepare("INSERT INTO attendance (employee_id, attendance_date, branch_name, {$session['status']}) VALUES (?, ?, ?, ?)");
+                $insert->execute([$employeeId, $today, $employeeBranchName, $newStatus]);
                 $recordStmt->execute([$employeeId, $today]);
                 $attendance = $recordStmt->fetch();
                 continue;
@@ -177,7 +192,7 @@ if ($request->isMethod('post') && $request->has('manual_attendance')) {
         $employeeStmt = $pdo->prepare("SELECT id, full_name, branch_name FROM employees WHERE id = ? AND status = 'active'");
         $employeeStmt->execute([$manualEmployeeId]);
         $manualEmployee = $employeeStmt->fetch();
-        if (!$manualEmployee) {
+        if (!$manualEmployee || !\App\Support\BranchScope::canAccessBranch($manualEmployee['branch_name'])) {
             throw new Exception('Choose an active employee.');
         }
         if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $manualDate) || !checkdate((int) substr($manualDate, 5, 2), (int) substr($manualDate, 8, 2), (int) substr($manualDate, 0, 4))) {
@@ -289,9 +304,18 @@ if (($attendanceView === 'date' && $selectedDate === date('Y-m-d')) || ($attenda
     updateAttendanceStatuses($pdo, $selectedDate);
 }
 
+// Only attendance recorded in the admin's branch is joined in, so a scan stays with the branch it was made in.
+[$attendanceRowScope, $attendanceRowScopeParams] = \App\Support\BranchScope::attendance($scopeBranch, 'a');
 // Include active employees without a scan so their status remains blank until it is due.
-$attendanceQuery = "SELECT e.id as employee_id, e.full_name as employee_name, e.position, a.id as attendance_id, a.attendance_date, a.morning_time_in, a.morning_time_out, a.afternoon_time_in, a.afternoon_time_out, a.status_morning, a.status_afternoon, a.total_hours, a.qr_code_used, a.notes, COALESCE(a.branch_name, e.branch_name) AS branch_name FROM employees e LEFT JOIN attendance a ON e.id = a.employee_id AND a.attendance_date BETWEEN ? AND ? WHERE e.status = 'active'";
-$attendanceParams = [$monthStart, $monthEnd];
+$attendanceQuery = "SELECT e.id as employee_id, e.full_name as employee_name, e.position, a.id as attendance_id, a.attendance_date, a.morning_time_in, a.morning_time_out, a.afternoon_time_in, a.afternoon_time_out, a.status_morning, a.status_afternoon, a.total_hours, a.qr_code_used, a.notes, COALESCE(a.branch_name, e.branch_name) AS branch_name FROM employees e LEFT JOIN attendance a ON e.id = a.employee_id AND a.attendance_date BETWEEN ? AND ?" . $attendanceRowScope . " WHERE e.status = 'active'";
+$attendanceParams = [$monthStart, $monthEnd, ...$attendanceRowScopeParams];
+if ($scopeBranch === '') {
+    $attendanceQuery .= ' AND 1 = 0';
+} elseif ($scopeBranch !== null) {
+    // The branch's own employees, plus anyone with attendance recorded here (for example an employee who has since moved).
+    $attendanceQuery .= " AND (LOWER(COALESCE(e.branch_name, '')) = LOWER(?) OR a.id IS NOT NULL)";
+    $attendanceParams[] = $scopeBranch;
+}
 if ($selectedEmployeeId !== '') {
     $attendanceQuery .= " AND e.id = ?";
     $attendanceParams[] = $selectedEmployeeId;
@@ -310,8 +334,9 @@ $stmt->execute($attendanceParams);
 $attendanceRecords = $stmt->fetchAll();
 
 // Get today's attendance count
-$stmt = $pdo->prepare("SELECT COUNT(*) as total FROM attendance WHERE attendance_date = CURRENT_DATE");
-$stmt->execute();
+[$attendanceScope, $attendanceScopeParams] = \App\Support\BranchScope::attendance($scopeBranch, 'a');
+$stmt = $pdo->prepare("SELECT COUNT(*) as total FROM attendance a WHERE a.attendance_date = CURRENT_DATE" . $attendanceScope);
+$stmt->execute($attendanceScopeParams);
 $todayAttendanceCount = $stmt->fetch()['total'];
 
 // Get late threshold for late minutes calculation
@@ -363,6 +388,7 @@ $qrCodes = $stmt->fetchAll();
 
 // Generate QR Code if requested
 if ($request->isMethod('post') && $request->has('generate_qr')) {
+    abort_unless($canGenerateQr, 403);
     try {
         $qrType = $request->input('qr_type');
         $validDate = date('Y-m-d');
@@ -408,6 +434,16 @@ if ($request->isMethod('post') && $request->has('save_employee')) {
         $dateHired = $request->input('date_hired');
         $dailyRate = $employeePositionRates[$position] ?? null;
         $branchName = trim((string) $request->input('branch_name'));
+        // The branch is typed, so accept any capitalisation of a real branch name.
+        foreach ($employeeBranches as $branchOption) {
+            if (strcasecmp($branchOption, $branchName) === 0) {
+                $branchName = $branchOption;
+                break;
+            }
+        }
+        if ($employeeId && !\App\Support\BranchScope::canAccessEmployee($employeeId)) {
+            throw new Exception('That employee does not belong to your branch.');
+        }
 
         if ($firstName === '' || $lastName === '') {
             throw new Exception('First name and last name are required. Middle name is optional.');
@@ -417,6 +453,20 @@ if ($request->isMethod('post') && $request->has('save_employee')) {
         }
         if ($dailyRate === null) {
             throw new Exception('The selected position does not have a configured daily rate.');
+        }
+        if (!in_array($position, $selectablePositions, true)) {
+            // Editing may keep the position the employee already has; only a new position is restricted.
+            $currentPosition = null;
+            if ($employeeId) {
+                $currentPositionStmt = $pdo->prepare('SELECT position FROM employees WHERE id = ?');
+                $currentPositionStmt->execute([$employeeId]);
+                $currentPosition = $currentPositionStmt->fetchColumn();
+            }
+            if ($currentPosition !== $position) {
+                throw new Exception($canAssignAdminPosition
+                    ? 'The super admin only adds Admin employees. Branch admins add the technicians.'
+                    : 'Only the super admin can give an employee the Admin position.');
+            }
         }
         if (! in_array($branchName, $employeeBranches, true)) {
             throw new Exception('Select the branch this employee belongs to.');
@@ -442,7 +492,8 @@ if ($request->isMethod('post') && $request->has('save_employee')) {
         }
 
         // Refresh employees list
-        $stmt = $pdo->query("SELECT e.*, u.username, u.status as user_status FROM employees e LEFT JOIN users u ON e.user_id = u.id ORDER BY e.full_name");
+        $stmt = $pdo->prepare($employeeListSql);
+        $stmt->execute($employeeScopeParams);
         $employees = $stmt->fetchAll();
     } catch (Exception $e) {
         if ($pdo->inTransaction()) {
@@ -456,6 +507,9 @@ if ($request->isMethod('post') && $request->has('save_employee')) {
 if ($request->isMethod('post') && $request->has('mark_absent')) {
     try {
         $employeeId = $request->input('employee_id');
+        if (!\App\Support\BranchScope::canAccessEmployee($employeeId)) {
+            throw new Exception('That employee does not belong to your branch.');
+        }
         $session = $request->input('session'); // 'morning' or 'afternoon'
         $markDate = $request->input('attendance_date') ?? date('Y-m-d');
 
@@ -473,13 +527,16 @@ if ($request->isMethod('post') && $request->has('mark_absent')) {
             }
             $stmt->execute([$attendance['id']]);
         } else {
-            // Create new record with absent status
+            // Create new record with absent status, in the employee's branch
+            $absentBranchStmt = $pdo->prepare('SELECT branch_name FROM employees WHERE id = ?');
+            $absentBranchStmt->execute([$employeeId]);
+            $absentBranch = $absentBranchStmt->fetchColumn() ?: null;
             if ($session === 'morning') {
-                $stmt = $pdo->prepare("INSERT INTO attendance (employee_id, attendance_date, status_morning) VALUES (?, ?, 'absent')");
+                $stmt = $pdo->prepare("INSERT INTO attendance (employee_id, attendance_date, branch_name, status_morning) VALUES (?, ?, ?, 'absent')");
             } else {
-                $stmt = $pdo->prepare("INSERT INTO attendance (employee_id, attendance_date, status_afternoon) VALUES (?, ?, 'absent')");
+                $stmt = $pdo->prepare("INSERT INTO attendance (employee_id, attendance_date, branch_name, status_afternoon) VALUES (?, ?, ?, 'absent')");
             }
-            $stmt->execute([$employeeId, $markDate]);
+            $stmt->execute([$employeeId, $markDate, $absentBranch]);
         }
 
         $success = 'Employee marked as absent for ' . $session . ' session!';
@@ -494,7 +551,8 @@ if ($request->isMethod('post') && $request->has('mark_absent')) {
 }
 
 // Payroll data
-$stmt = $pdo->query("SELECT p.*, e.full_name as employee_name, e.position FROM payroll p JOIN employees e ON p.employee_id = e.id ORDER BY p.created_at DESC LIMIT 20");
+$stmt = $pdo->prepare("SELECT p.*, e.full_name as employee_name, e.position FROM payroll p JOIN employees e ON p.employee_id = e.id WHERE 1 = 1" . $employeeScope . " ORDER BY p.created_at DESC LIMIT 20");
+$stmt->execute($employeeScopeParams);
 $payrollRecords = $stmt->fetchAll();
     return get_defined_vars();
 };

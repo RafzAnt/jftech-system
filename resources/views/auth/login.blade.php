@@ -2,7 +2,7 @@
 @php($loginCssVersion = @filemtime(public_path('css/login.css')) ?: 1)
 @php($mainJsVersion = @filemtime(public_path('js/jftech-main.js')) ?: 1)
 <!DOCTYPE html>
-<html lang="en-PH">
+<html lang="en-PH" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,9 +11,9 @@
     <script>
         try {
             var savedTheme = localStorage.getItem('jftech-theme');
-            document.documentElement.setAttribute('data-theme', savedTheme === 'dark' ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', savedTheme === 'light' ? 'light' : 'dark');
         } catch (error) {
-            document.documentElement.setAttribute('data-theme', 'light');
+            document.documentElement.setAttribute('data-theme', 'dark');
         }
     </script>
     <link rel="stylesheet" href="{{ asset('css/jftech-theme.css') }}?{{ $themeCssVersion }}">

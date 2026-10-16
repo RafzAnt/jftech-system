@@ -13,6 +13,9 @@
             <div class="sidebar-brand__text">
                 <h1>JFTECH</h1>
                 <p>Business Management System</p>
+                @if (!empty($sessionScopeLabel))
+                <p class="sidebar-scope">{{ $sessionScopeLabel }}</p>
+                @endif
             </div>
         </div>
     </div>

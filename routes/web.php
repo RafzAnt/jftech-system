@@ -74,40 +74,43 @@ Route::prefix('backend/api')->middleware('throttle:api')->group(function () {
 Route::post('/logout', [AuthController::class, 'destroy'])->middleware('auth')->name('logout');
 Route::post('/pages/logout.php', [AuthController::class, 'destroy'])->middleware('auth');
 
-Route::middleware(['auth', 'inactivity', 'role:admin'])->group(function () use ($cleanPages, $redirectWithQuery) {
+Route::middleware(['auth', 'inactivity', 'role:super_admin,admin'])->group(function () use ($cleanPages, $redirectWithQuery) {
     Route::get('/locations/balilihan-search', [LocationController::class, 'searchBalilihan'])->middleware('throttle:10,1')->name('locations.balilihan-search');
     Route::post('/billing/generate', [BillingController::class, 'generate'])->name('billing.generate');
-    Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');
-    Route::post('/inventory', [InventoryController::class, 'store'])->name('inventory.store');
-    Route::get('/pages/inventory.php', fn (Request $request) => $redirectWithQuery($request, route('inventory.index')));
-    Route::post('/pages/inventory.php', [InventoryController::class, 'store']);
-    Route::get('/inventory.php', fn (Request $request) => $redirectWithQuery($request, route('inventory.index')));
-    Route::post('/inventory.php', [InventoryController::class, 'store']);
-    Route::post('/inventory/{inventory}/movement', [InventoryController::class, 'recordStockMovement'])->name('inventory.movement');
-    Route::post('/inventory/{inventory}/archive', [InventoryController::class, 'archive'])->name('inventory.archive');
-    Route::post('/inventory/{inventory}/restore', [InventoryController::class, 'restore'])->name('inventory.restore');
-    Route::delete('/inventory/{inventory}', [InventoryController::class, 'destroy'])->name('inventory.destroy');
-    Route::post('/inventory-requests/{inventoryRequest}/{decision}', [InventoryRequestController::class, 'decide'])
-        ->whereIn('decision', ['approve', 'deny'])
-        ->name('inventory-requests.decide');
+    // Stock, pricing and the company-wide report exports are not split by branch yet, so only the super admin reaches them.
+    Route::middleware('role:super_admin')->group(function () use ($redirectWithQuery) {
+        Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');
+        Route::post('/inventory', [InventoryController::class, 'store'])->name('inventory.store');
+        Route::get('/pages/inventory.php', fn (Request $request) => $redirectWithQuery($request, route('inventory.index')));
+        Route::post('/pages/inventory.php', [InventoryController::class, 'store']);
+        Route::get('/inventory.php', fn (Request $request) => $redirectWithQuery($request, route('inventory.index')));
+        Route::post('/inventory.php', [InventoryController::class, 'store']);
+        Route::post('/inventory/{inventory}/movement', [InventoryController::class, 'recordStockMovement'])->name('inventory.movement');
+        Route::post('/inventory/{inventory}/archive', [InventoryController::class, 'archive'])->name('inventory.archive');
+        Route::post('/inventory/{inventory}/restore', [InventoryController::class, 'restore'])->name('inventory.restore');
+        Route::delete('/inventory/{inventory}', [InventoryController::class, 'destroy'])->name('inventory.destroy');
+        Route::post('/inventory-requests/{inventoryRequest}/{decision}', [InventoryRequestController::class, 'decide'])
+            ->whereIn('decision', ['approve', 'deny'])
+            ->name('inventory-requests.decide');
 
-    // Price Management module — admin-only Internet Plan pricing.
-    Route::get('/price-management', [PriceManagementController::class, 'index'])->name('price.management');
-    Route::post('/price-management', [PriceManagementController::class, 'handlePost'])->name('price.management.store');
-    Route::get('/pages/price_management.php', fn (Request $request) => $redirectWithQuery($request, route('price.management')));
-    Route::post('/pages/price_management.php', [PriceManagementController::class, 'handlePost']);
-    Route::get('/price_management.php', fn (Request $request) => $redirectWithQuery($request, route('price.management')));
-    Route::post('/price_management.php', [PriceManagementController::class, 'handlePost']);
+        // Price Management module — admin-only Internet Plan pricing.
+        Route::get('/price-management', [PriceManagementController::class, 'index'])->name('price.management');
+        Route::post('/price-management', [PriceManagementController::class, 'handlePost'])->name('price.management.store');
+        Route::get('/pages/price_management.php', fn (Request $request) => $redirectWithQuery($request, route('price.management')));
+        Route::post('/pages/price_management.php', [PriceManagementController::class, 'handlePost']);
+        Route::get('/price_management.php', fn (Request $request) => $redirectWithQuery($request, route('price.management')));
+        Route::post('/price_management.php', [PriceManagementController::class, 'handlePost']);
 
-    // Reports module — export, print and history actions.
-    Route::get('/reports/export/csv', [ReportController::class, 'exportCsv'])->name('reports.export.csv');
-    Route::get('/reports/export/excel', [ReportController::class, 'exportExcel'])->name('reports.export.excel');
-    Route::get('/report-history', [ReportController::class, 'history'])->name('reports.history');
-    Route::delete('/report-history/{report}', [ReportController::class, 'destroyHistory'])->name('reports.history.delete');
-    Route::get('/pages/reports_export.php', fn (Request $request) => $redirectWithQuery($request, route('reports.export.csv')));
-    Route::get('/pages/reports_excel.php', fn (Request $request) => $redirectWithQuery($request, route('reports.export.excel')));
-    Route::get('/pages/report_history.php', fn (Request $request) => $redirectWithQuery($request, route('reports.history')));
-    Route::delete('/pages/report_history/{report}', [ReportController::class, 'destroyHistory']);
+        // Reports module — export, print and history actions.
+        Route::get('/reports/export/csv', [ReportController::class, 'exportCsv'])->name('reports.export.csv');
+        Route::get('/reports/export/excel', [ReportController::class, 'exportExcel'])->name('reports.export.excel');
+        Route::get('/report-history', [ReportController::class, 'history'])->name('reports.history');
+        Route::delete('/report-history/{report}', [ReportController::class, 'destroyHistory'])->name('reports.history.delete');
+        Route::get('/pages/reports_export.php', fn (Request $request) => $redirectWithQuery($request, route('reports.export.csv')));
+        Route::get('/pages/reports_excel.php', fn (Request $request) => $redirectWithQuery($request, route('reports.export.excel')));
+        Route::get('/pages/report_history.php', fn (Request $request) => $redirectWithQuery($request, route('reports.history')));
+        Route::delete('/pages/report_history/{report}', [ReportController::class, 'destroyHistory']);
+    });
 
     Route::match(['get', 'post'], '/{page}', function (Request $request, string $page) use ($cleanPages) {
         $legacyPage = array_search($page, $cleanPages, true);

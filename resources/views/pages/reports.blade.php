@@ -1,14 +1,14 @@
 <!DOCTYPE html>
-<html lang="en-PH">
+<html lang="en-PH" data-theme="dark">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JFTECH - Reports</title>
     <script>
         try {
             var savedTheme = localStorage.getItem('jftech-theme');
-            document.documentElement.setAttribute('data-theme', savedTheme === 'dark' ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', savedTheme === 'light' ? 'light' : 'dark');
         } catch (error) {
-            document.documentElement.setAttribute('data-theme', 'light');
+            document.documentElement.setAttribute('data-theme', 'dark');
         }
     </script>
     <link rel="stylesheet" href="{{ asset('css/jftech-theme.css') }}?{{ $themeCssVersion }}">
@@ -19,14 +19,24 @@
     @include('layouts.sidebar')
     <main class="main-content">
         <div class="top-bar report-heading">
-            <div><p class="report-eyebrow">Summary report</p><h1 class="page-title">Business Report</h1><p>Totals for the selected period only.</p></div>
+            <div><p class="report-eyebrow">Summary report</p><h1 class="page-title">Business Report</h1><p>Totals for the selected period only. Showing: <strong>{{ $branchLabel }}</strong></p></div>
             <form method="GET" action="{{ url('/pages/reports.php') }}" class="report-filter no-print" id="reportFilter">
                 <div><label for="month">Report Month</label><input id="month" type="month" name="month" value="{{ $month }}"></div>
                 <span class="filter-or">or</span>
                 <div><label for="from">Start Date</label><input id="from" type="date" name="from" value="{{ $periodStart }}"></div>
                 <div><label for="to">End Date</label><input id="to" type="date" name="to" value="{{ $periodEnd }}"></div>
+                @if (auth()->user()?->isSuperAdmin())
+                <div><label for="branch">Branch</label>
+                    <select id="branch" name="branch">
+                        <option value="">All branches</option>
+                        @foreach ($reportBranches as $reportBranch)
+                        <option value="{{ $reportBranch }}" {{ $branch === $reportBranch ? 'selected' : '' }}>{{ $reportBranch }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                @endif
                 <button class="btn btn-primary" type="submit">View report</button>
-                <a class="btn btn-secondary" target="_blank" rel="noopener" href="{{ url('/pages/print_monthly_reports.php?from=' . $periodStart . '&to=' . $periodEnd) }}">Print</a>
+                <a class="btn btn-secondary" target="_blank" rel="noopener" href="{{ url('/pages/print_monthly_reports.php?from=' . $periodStart . '&to=' . $periodEnd . ($branch !== null ? '&branch=' . urlencode($branch) : '')) }}">Print</a>
             </form>
         </div>
 
@@ -105,6 +115,7 @@
                     <div><dt>Net pay released</dt><dd>₱{{ number_format($report['payroll']['net'], 2) }}</dd></div>
                 </dl>
             </article>
+            @if ($report['requests'] !== null)
             <article class="card report-card">
                 <div class="card-header"><span class="card-title">Inventory requests</span></div>
                 <dl class="report-list">
@@ -114,6 +125,7 @@
                     <div><dt>Denied</dt><dd>{{ number_format($report['requests']['denied']) }}</dd></div>
                 </dl>
             </article>
+            @endif
         </section>
     </main>
     <script>

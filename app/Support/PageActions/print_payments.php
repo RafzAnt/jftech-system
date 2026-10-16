@@ -11,7 +11,11 @@ $from = $request->query('from') ?? '';
 $to = $request->query('to') ?? '';
 
 $where = [];
-$params = [];
+// A branch admin only prints payments of their own branch's clients.
+[$branchScope, $params] = \App\Support\BranchScope::clients(\App\Support\BranchScope::current(), 'c');
+if ($branchScope !== '') {
+    $where[] = ltrim(substr($branchScope, strlen(' AND ')));
+}
 if ($from) {
     $where[] = 'p.payment_date >= ?';
     $params[] = $from;

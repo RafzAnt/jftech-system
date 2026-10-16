@@ -1,13 +1,16 @@
 <?php
 
+use App\Support\BranchScope;
 use App\Support\PeriodReport;
 
 return function (\Illuminate\Http\Request $request): array {
     [$from, $to] = PeriodReport::periodFromRequest($request);
+    $branch = BranchScope::resolve($request->query('branch'));
 
     return [
         'from' => $from,
         'to' => $to,
-        'report' => PeriodReport::build($from, $to),
+        'branchLabel' => $branch ?? 'All branches',
+        'report' => PeriodReport::build($from, $to, $branch),
     ];
 };

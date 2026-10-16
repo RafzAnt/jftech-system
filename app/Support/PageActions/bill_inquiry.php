@@ -9,6 +9,7 @@ return function (\Illuminate\Http\Request $request): array {
 
 $themeCssVersion = filemtime(public_path('css/jftech-theme.css'));
 $billInquiryCssVersion = filemtime(public_path('css/bill_inquiry.css'));
+$clientFilterCssVersion = filemtime(public_path('css/client_filter.css'));
 $mainJsVersion = @filemtime(public_path('js/jftech-main.js')) ?: 1;
 $paymentToken = session('client_record_payment_token') ?? (string) \Illuminate\Support\Str::uuid();
 session(['client_record_payment_token' => $paymentToken]);
@@ -23,17 +24,62 @@ $totalDue = 0;
 $totalPaid = 0;
 $openBillsCount = 0;
 $incomingBillsCount = 0;
-$selectedBarangay = trim((string) $request->query('barangay', ''));
 $showArchived = $request->query('view') === 'archived';
 $showOverdue = $request->boolean('overdue');
 $clientActionSuccess = '';
 $clientActionError = '';
 
-// Barangays for the client-records filter.
-$stmt = $pdo->query('SELECT id, barangay_name FROM barangays ORDER BY barangay_name');
-$barangays = $stmt->fetchAll();
+// Branch, barangay, and search filters (same behavior as Browse Clients).
+$branches = config('bohol_branches', []);
+$branchBarangays = config('bohol_barangays', []);
+$searchTerm = trim((string) $request->query('search', ''));
+// A branch admin only works with their own branch: it is the only option and is always selected.
+$scopeBranch = \App\Support\BranchScope::current();
+if ($scopeBranch !== null) {
+    $ownBranches = array_filter(array_keys($branches), static fn (string $name): bool => strcasecmp($name, $scopeBranch) === 0);
+    $branches = array_intersect_key($branches, array_flip($ownBranches));
+}
+$selectedBranch = $scopeBranch !== null ? array_key_first($branches) ?? '' : trim((string) $request->query('branch', ''));
+if (! array_key_exists($selectedBranch, $branches)) {
+    $selectedBranch = '';
+}
+$requestedBarangays = $request->query('barangays', []);
+$selectedBarangays = is_array($requestedBarangays) ? $requestedBarangays : [];
+$validBarangaysForBranch = $selectedBranch ? ($branchBarangays[$selectedBranch] ?? []) : [];
+$selectedBarangays = array_values(array_unique(array_filter(array_map('trim', $selectedBarangays), static function ($name) use ($validBarangaysForBranch) {
+    return in_array($name, $validBarangaysForBranch, true);
+})));
+[$locationSql, $locationParams] = \App\Support\BranchScope::clients($scopeBranch, 'c');
+if ($selectedBranch) {
+    $locationSql .= ' AND LOWER(COALESCE(c.branch_name, \'\')) = LOWER(?)';
+    $locationParams[] = $selectedBranch;
+}
+if ($selectedBarangays) {
+    $placeholders = implode(', ', array_fill(0, count($selectedBarangays), '?'));
+    $locationSql .= " AND LOWER(COALESCE(c.registered_barangay_name, b.barangay_name, '')) IN ($placeholders)";
+    array_push($locationParams, ...array_map('strtolower', $selectedBarangays));
+}
+$searchSql = '';
+$searchParams = [];
+if ($searchTerm !== '') {
+    $searchSql = " AND (
+        LOWER(COALESCE(c.full_name, '')) LIKE LOWER(?)
+        OR LOWER(COALESCE(c.client_code, '')) LIKE LOWER(?)
+        OR LOWER(COALESCE(c.contact_number, '')) LIKE LOWER(?)
+        OR LOWER(COALESCE(c.branch_name, '')) LIKE LOWER(?)
+        OR LOWER(COALESCE(c.registered_barangay_name, b.barangay_name, '')) LIKE LOWER(?)
+    )";
+    for ($i = 0; $i < 5; $i++) {
+        $searchParams[] = '%' . $searchTerm . '%';
+    }
+}
+$archivedSql = $showArchived ? 'c.archived = 1' : '(c.archived IS NULL OR c.archived = 0)';
+$overdueSql = $showOverdue
+    ? " AND EXISTS (SELECT 1 FROM bills overdue_bills WHERE overdue_bills.client_id = c.id AND overdue_bills.status = 'overdue')"
+    : '';
 
 if ($request->isMethod('post') && $request->has('client_action') && $request->has('client_id')) {
+    \App\Support\BranchScope::abortUnlessClient($request->input('client_id'));
     try {
         $clientId = (int) $request->input('client_id');
         if ($request->input('client_action') === 'archive') {
@@ -68,6 +114,10 @@ if ($request->isMethod('post') && $request->has('record_payment')) {
             'notes' => ['nullable', 'string', 'max:2000'],
             'submission_token' => ['required', 'uuid'],
         ]);
+
+        if (! \App\Support\BranchScope::canAccessClient($data['client_id'])) {
+            throw new \RuntimeException('That client does not belong to your branch.');
+        }
 
         \Illuminate\Support\Facades\DB::transaction(function () use ($pdo, $data): void {
             $billStmt = $pdo->prepare("SELECT id, amount FROM bills WHERE id = ? AND client_id = ? AND status IN ('pending', 'overdue') FOR UPDATE");
@@ -107,6 +157,7 @@ if ($request->isMethod('post') && $request->has('record_payment')) {
 
 // Search and select client
 if ($request->has('client_id') && $request->query('client_id')) {
+    \App\Support\BranchScope::abortUnlessClient($request->query('client_id'));
     $stmt = $pdo->prepare("SELECT c.*, COALESCE(c.registered_barangay_name, b.barangay_name) AS barangay_name FROM clients c LEFT JOIN barangays b ON c.barangay_id = b.id WHERE c.id = ?");
     $stmt->execute([$request->query('client_id')]);
     $selectedClient = $stmt->fetch();
@@ -152,44 +203,21 @@ if ($request->has('client_id') && $request->query('client_id')) {
     }
 }
 
-// Search clients. Barangay and search terms can be used together.
+// Search clients. Branch, barangay, and search terms can be used together.
 $searchResults = [];
-if ($request->filled('search')) {
-    $search = '%' . trim((string) $request->query('search')) . '%';
-    $query = 'SELECT c.*, COALESCE(c.registered_barangay_name, b.barangay_name) AS barangay_name FROM clients c LEFT JOIN barangays b ON c.barangay_id = b.id WHERE c.full_name LIKE ?';
-    $params = [$search];
-
-    $query .= $showArchived ? ' AND c.archived = 1' : ' AND (c.archived IS NULL OR c.archived = 0)';
-
-    if ($selectedBarangay !== '') {
-        $query .= ' AND c.barangay_id = ?';
-        $params[] = $selectedBarangay;
-    }
-
-    if ($showOverdue) {
-        $query .= " AND EXISTS (SELECT 1 FROM bills overdue_bills WHERE overdue_bills.client_id = c.id AND overdue_bills.status = 'overdue')";
-    }
-
-    $query .= ' ORDER BY c.full_name LIMIT 20';
-    $stmt = $pdo->prepare($query);
-    $stmt->execute($params);
+if ($searchTerm !== '') {
+    $stmt = $pdo->prepare('SELECT c.*, COALESCE(c.registered_barangay_name, b.barangay_name) AS barangay_name FROM clients c LEFT JOIN barangays b ON c.barangay_id = b.id WHERE ' . $archivedSql . $locationSql . $searchSql . $overdueSql . ' ORDER BY c.full_name LIMIT 20');
+    $stmt->execute([...$locationParams, ...$searchParams]);
     $searchResults = $stmt->fetchAll();
 }
 
-// Get clients for quick select, optionally limited to one barangay.
-$quickSelectQuery = 'SELECT id, full_name, contact_number, email, wifi_plan, status, barangay_id FROM clients WHERE ' . ($showArchived ? 'archived = 1' : '(archived IS NULL OR archived = 0)');
-$quickSelectParams = [];
-if ($selectedBarangay !== '') {
-    $quickSelectQuery .= ' AND barangay_id = ?';
-    $quickSelectParams[] = $selectedBarangay;
-}
-if ($showOverdue) {
-    $quickSelectQuery .= " AND EXISTS (SELECT 1 FROM bills overdue_bills WHERE overdue_bills.client_id = clients.id AND overdue_bills.status = 'overdue')";
-}
-$quickSelectQuery .= ' ORDER BY full_name';
-$stmt = $pdo->prepare($quickSelectQuery);
-$stmt->execute($quickSelectParams);
+// Get clients for quick select, optionally limited to a branch and barangays.
+$stmt = $pdo->prepare('SELECT c.id, c.full_name, c.contact_number, c.email, c.wifi_plan, c.status, c.branch_name, COALESCE(c.registered_barangay_name, b.barangay_name) AS barangay_name FROM clients c LEFT JOIN barangays b ON c.barangay_id = b.id WHERE ' . $archivedSql . $locationSql . $overdueSql . ' ORDER BY c.full_name');
+$stmt->execute($locationParams);
 $allClients = $stmt->fetchAll();
-$archivedCount = (int) $pdo->query('SELECT COUNT(*) FROM clients WHERE archived = 1')->fetchColumn();
+[$archivedScope, $archivedScopeParams] = \App\Support\BranchScope::clients($scopeBranch, 'c');
+$stmt = $pdo->prepare('SELECT COUNT(*) FROM clients c WHERE c.archived = 1' . $archivedScope);
+$stmt->execute($archivedScopeParams);
+$archivedCount = (int) $stmt->fetchColumn();
     return get_defined_vars();
 };

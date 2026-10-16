@@ -20,11 +20,15 @@ class AuthController extends Controller
             'password' => ['required', 'string', 'max:255'],
         ]);
         $user = User::where('username', $data['username'])->where('status', 'active')->first();
-        $ok = $user && str_starts_with($user->password, '$2y$') && Hash::check($data['password'], $user->password);
+        $passwordOk = $user && str_starts_with($user->password, '$2y$') && Hash::check($data['password'], $user->password);
+        // A branch admin without a branch would see nothing, so say why instead of showing empty pages.
+        $noBranch = $passwordOk && $user->isBranchAdmin() && trim((string) $user->branch_name) === '';
+        $ok = $passwordOk && ! $noBranch;
+        $failure = $noBranch ? 'This admin account has no branch assigned. Ask the super admin to assign one.' : 'Invalid username or password.';
         $history = ['user_id' => $ok ? $user->id : null, 'username' => $data['username'], 'full_name' => $ok ? $user->full_name : '', 'role' => $ok ? $user->role : '', 'ip_address' => $request->ip(), 'user_agent' => (string) $request->userAgent(), 'status' => $ok ? 'success' : 'failed'];
-        if (\Illuminate\Support\Facades\Schema::hasColumn('login_history', 'error_message')) $history['error_message'] = $ok ? null : 'Invalid username or password.';
+        if (\Illuminate\Support\Facades\Schema::hasColumn('login_history', 'error_message')) $history['error_message'] = $ok ? null : $failure;
         $historyRecord = LoginHistory::create($history);
-        if (! $ok) return back()->withInput()->withErrors(['username' => 'Invalid username or password.']);
+        if (! $ok) return back()->withInput()->withErrors(['username' => $failure]);
         Auth::login($user); $request->session()->regenerate();
         $request->session()->put(['user_id' => $user->id, 'username' => $user->username, 'full_name' => $user->full_name, 'role' => $user->role, 'login_history_id' => $historyRecord->id, 'last_activity_at' => time()]);
         return redirect('/pages/dashboard.php');

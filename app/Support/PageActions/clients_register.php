@@ -23,6 +23,7 @@ $stmt = $pdo->query("SELECT * FROM internet_plans WHERE status = 'active' AND ar
 $plans = $stmt->fetchAll();
 
 if ($request->isMethod('post')) {
+    abort_unless(auth()->user()?->canRegisterClients(), 403);
     try {
         $clientCode = 'JFT-' . date('Y') . '-' . strtoupper(uniqid());
         $firstName = trim((string) $request->input('first_name'));
@@ -64,8 +65,11 @@ if ($request->isMethod('post')) {
         $wifiPlan = $plan['plan_name'];
         $monthlyRate = $plan['monthly_price'];
         $installationFee = $plan['installation_fee'];
-        $stmt = $pdo->prepare("INSERT INTO clients (client_code, full_name, contact_number, email, barangay_id, exact_address, wifi_plan, internet_plan_id, monthly_rate, installation_fee, installation_date, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')");
-        $stmt->execute([$clientCode, $fullName, $contactNumber, $email, $barangayId, $exactAddress, $wifiPlan, $planId, $monthlyRate, $installationFee, $installationDate]);
+        // A branch admin can only register clients for their own branch. This legacy form has no branch
+        // field, so everyone else gets the column default, the main office.
+        $registerBranch = \App\Support\BranchScope::current() ?: 'Balilihan';
+        $stmt = $pdo->prepare("INSERT INTO clients (client_code, full_name, contact_number, email, branch_name, barangay_id, exact_address, wifi_plan, internet_plan_id, monthly_rate, installation_fee, installation_date, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')");
+        $stmt->execute([$clientCode, $fullName, $contactNumber, $email, $registerBranch, $barangayId, $exactAddress, $wifiPlan, $planId, $monthlyRate, $installationFee, $installationDate]);
 
         // Create initial bill
         $clientId = $pdo->lastInsertId();

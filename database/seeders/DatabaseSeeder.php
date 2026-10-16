@@ -25,7 +25,7 @@ class DatabaseSeeder extends Seeder
                 'full_name' => 'System Administrator',
                 'email' => 'admin@jftech.com',
                 'phone' => '09123456789',
-                'role' => 'admin',
+                'role' => 'super_admin',
                 'status' => 'active',
                 'archived' => false,
             ],

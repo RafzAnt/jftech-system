@@ -28,9 +28,8 @@ function applyTheme(theme) {
 }
 
 function initializeTheme() {
-    // The operations workspace defaults to a bright business layout. The
-    // sidebar remains dark for clear navigation and visual anchoring.
-    const savedTheme = localStorage.getItem('jftech-theme') || 'light';
+    // Dark is the default; a theme the user picked with the toggle is kept.
+    const savedTheme = localStorage.getItem('jftech-theme') || 'dark';
     applyTheme(savedTheme);
 }
 
@@ -270,3 +269,131 @@ function startQRTimer(duration, display) {
         }
     }, 1000);
 }
+
+// Suggestion list: a text box with a dropdown of matches. Type to filter, then click
+// or use the arrow keys + Enter to pick. Styles: .location-suggestions in jftech-theme.css.
+// With acceptExactOnEnter, Enter on a fully typed option picks it instead of submitting the form.
+function createSuggestionList(input, list, getOptions, onPick, { acceptExactOnEnter = true } = {}) {
+    let active = -1;
+
+    function close() {
+        list.hidden = true;
+        input.setAttribute('aria-expanded', 'false');
+        input.removeAttribute('aria-activedescendant');
+        active = -1;
+    }
+
+    function open() {
+        if (input.disabled) return;
+        const query = input.value.trim().toLocaleLowerCase();
+        const options = getOptions()
+            .filter(name => !query || name.toLocaleLowerCase().includes(query))
+            .slice(0, 30);
+        list.replaceChildren();
+        active = -1;
+        options.forEach((name, index) => {
+            const option = document.createElement('button');
+            option.type = 'button';
+            option.className = 'location-suggestion-option';
+            option.id = `${list.id}Option${index}`;
+            option.setAttribute('role', 'option');
+            option.textContent = name;
+            option.addEventListener('mousedown', event => event.preventDefault());
+            option.addEventListener('click', () => {
+                close();
+                onPick(name);
+            });
+            list.appendChild(option);
+        });
+        list.hidden = options.length === 0;
+        input.setAttribute('aria-expanded', String(options.length > 0));
+        if (!list.hidden) fitToContainer(list);
+    }
+
+    // A scrolling parent (a modal body) clips the list; shrink it to the room left below the input.
+    function fitToContainer(menu) {
+        menu.style.maxHeight = '';
+        let limit = window.innerHeight;
+        for (let parent = menu.parentElement; parent && parent !== document.body; parent = parent.parentElement) {
+            if (getComputedStyle(parent).overflowY !== 'visible') {
+                limit = Math.min(limit, parent.getBoundingClientRect().bottom);
+                break;
+            }
+        }
+        const room = limit - menu.getBoundingClientRect().top - 8;
+        if (room < menu.offsetHeight) menu.style.maxHeight = Math.max(120, room) + 'px';
+    }
+
+    input.addEventListener('input', open);
+    input.addEventListener('focus', open);
+    input.addEventListener('blur', () => setTimeout(close, 120));
+    input.addEventListener('keydown', event => {
+        const options = list.querySelectorAll('.location-suggestion-option');
+        if (event.key === 'Escape') {
+            close();
+        } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+            if (list.hidden) open();
+            if (!options.length) return;
+            event.preventDefault();
+            active = active === -1
+                ? (event.key === 'ArrowDown' ? 0 : options.length - 1)
+                : (active + (event.key === 'ArrowDown' ? 1 : -1) + options.length) % options.length;
+            options.forEach((option, index) => option.setAttribute('aria-selected', String(index === active)));
+            input.setAttribute('aria-activedescendant', options[active].id);
+        } else if (event.key === 'Enter') {
+            if (!list.hidden && active >= 0) {
+                event.preventDefault();
+                options[active].click();
+            } else if (acceptExactOnEnter) {
+                const typed = input.value.trim().toLocaleLowerCase();
+                const exact = getOptions().find(name => name.toLocaleLowerCase() === typed);
+                if (exact) {
+                    event.preventDefault();
+                    close();
+                    onPick(exact);
+                }
+            }
+        }
+    });
+    return { close, open };
+}
+
+// Replace the browser's native <datalist> popup with the same suggestion list the
+// client filters use, so every autocomplete looks and behaves alike.
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('input[list]').forEach(input => {
+        const datalist = document.getElementById(input.getAttribute('list'));
+        if (!datalist) return;
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'location-field';
+        input.parentNode.insertBefore(wrapper, input);
+        wrapper.appendChild(input);
+
+        const list = document.createElement('div');
+        list.id = `${datalist.id}Menu`;
+        list.className = 'location-suggestions';
+        list.setAttribute('role', 'listbox');
+        list.hidden = true;
+        wrapper.appendChild(list);
+
+        input.removeAttribute('list');
+        input.setAttribute('role', 'combobox');
+        input.setAttribute('aria-autocomplete', 'list');
+        input.setAttribute('aria-controls', list.id);
+        input.setAttribute('aria-expanded', 'false');
+
+        const suggestions = createSuggestionList(
+            input,
+            list,
+            () => Array.from(datalist.options, option => option.value),
+            name => {
+                input.value = name;
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+                suggestions.close();
+            },
+            { acceptExactOnEnter: false }
+        );
+    });
+});

@@ -8,10 +8,20 @@ use Illuminate\View\View;
 
 class PageController extends Controller
 {
+    /** Pages that are not split by branch, so only the super admin may open them. */
+    private const SUPER_ADMIN_PAGES = [
+        'user_management', 'settings', 'login_history',
+        'inventory_requests', 'print_inventory', 'print_reports',
+    ];
+
     public function show(Request $request, string $page): View|RedirectResponse
     {
+        abort_if(in_array($page, self::SUPER_ADMIN_PAGES, true) && ! $request->user()?->isSuperAdmin(), 403);
+
         if ($page === 'clients_register' && $request->isMethod('get')) {
-            return redirect()->route('pages.show', ['page' => 'clients'])->with('open_register_modal', true);
+            $redirect = redirect()->route('pages.show', ['page' => 'clients']);
+
+            return $request->user()?->canRegisterClients() ? $redirect->with('open_register_modal', true) : $redirect;
         }
 
         abort_unless(view()->exists("pages.$page"), 404);

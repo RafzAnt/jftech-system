@@ -13,6 +13,7 @@ class ApiController extends Controller
     public function pendingBills(Request $request): JsonResponse
     {
         $data = $request->validate(['client_id' => ['required', 'integer']]);
+        \App\Support\BranchScope::abortUnlessClient($data['client_id']);
         return response()->json(['success' => true, 'bills' => DB::table('bills')
             ->select('id', 'bill_number', 'amount', 'due_date')
             ->selectRaw('GREATEST(COALESCE(amount, 0) - COALESCE((SELECT SUM(p.amount) FROM payments p WHERE p.bill_id = bills.id), 0), 0) AS balance')
@@ -24,6 +25,7 @@ class ApiController extends Controller
     public function clientBilling(Request $request): JsonResponse
     {
         $data = $request->validate(['client_id' => ['required', 'integer']]);
+        \App\Support\BranchScope::abortUnlessClient($data['client_id']);
         return response()->json(['success' => true, 'bills' => DB::table('bills')->where('client_id', $data['client_id'])->orderByDesc('billing_period_start')->get(), 'payments' => DB::table('payments')->leftJoin('bills', 'payments.bill_id', '=', 'bills.id')->where('payments.client_id', $data['client_id'])->orderByDesc('payment_date')->get(['payments.*', 'bills.bill_number', 'bills.amount as bill_amount', DB::raw('(COALESCE(bills.amount, 0) - COALESCE((SELECT SUM(amount) FROM payments WHERE bill_id = payments.bill_id), 0)) AS balance')])]);
     }
     public function inventoryItems(): JsonResponse

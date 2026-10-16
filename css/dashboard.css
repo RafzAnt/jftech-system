@@ -310,3 +310,37 @@ html[data-theme="light"] .dashboard-date { background: #f5f7f9; border-color: #c
 html[data-theme="light"] .dashboard-chart-card,
 html[data-theme="light"] .main-content .stat-card { background: #dfe6ed; border-color: #c3ceda; }
 html[data-theme="light"] .dashboard-chart-header { background: #d5dee8; }
+
+/* ===== "VIEW ALL" CARD BUTTONS ===== */
+.btn-view-all {
+    background: #ffffff;
+    border-color: #000000;
+    color: #000000;
+    box-shadow: none;
+}
+
+.btn-view-all:hover {
+    background: #f1f5f9;
+    border-color: #000000;
+    color: #000000;
+    box-shadow: none;
+}
+
+/* Dark mode: inverse of the light button (dark fill, white border, white text). */
+html[data-theme="dark"] .btn-view-all {
+    background: transparent;
+    border-color: #ffffff;
+    color: #ffffff;
+}
+
+html[data-theme="dark"] .btn-view-all:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: #ffffff;
+    color: #ffffff;
+}
+
+.dashboard-branch-form {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}

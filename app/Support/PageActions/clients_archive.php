@@ -12,6 +12,7 @@ return function (\Illuminate\Http\Request $request): array {
     if ($request->isMethod('post') && $request->has('action') && $request->has('client_id')) {
         $action = $request->input('action');
         $cid = (int) $request->input('client_id');
+        \App\Support\BranchScope::abortUnlessClient($cid);
         try {
             if ($action === 'restore') {
                 $pdo->prepare("UPDATE clients SET archived = 0, status = 'active' WHERE id = ?")->execute([$cid]);
@@ -30,7 +31,9 @@ return function (\Illuminate\Http\Request $request): array {
         }
     }
 
-    $stmt = $pdo->query("SELECT c.*, COALESCE(c.registered_barangay_name, b.barangay_name) AS barangay_name FROM clients c LEFT JOIN barangays b ON c.barangay_id = b.id WHERE c.archived = 1 ORDER BY c.updated_at DESC");
+    [$branchScope, $branchScopeParams] = \App\Support\BranchScope::clients(\App\Support\BranchScope::current(), 'c');
+    $stmt = $pdo->prepare("SELECT c.*, COALESCE(c.registered_barangay_name, b.barangay_name) AS barangay_name FROM clients c LEFT JOIN barangays b ON c.barangay_id = b.id WHERE c.archived = 1" . $branchScope . " ORDER BY c.updated_at DESC");
+    $stmt->execute($branchScopeParams);
     $archivedClients = $stmt->fetchAll();
 
     return get_defined_vars();

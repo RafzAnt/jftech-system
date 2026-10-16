@@ -50,10 +50,22 @@ class PeriodReport
         return date('M d, Y', strtotime($start)) . ' – ' . date('M d, Y', strtotime($end));
     }
 
-    public static function build(string $start, string $end): array
+    /** Limit a query to one branch (null = every branch), using a BranchScope fragment. */
+    private static function inBranch($query, array $fragment)
+    {
+        [$sql, $params] = $fragment;
+        if ($sql !== '') {
+            $query->whereRaw(substr($sql, strlen(' AND ')), $params);
+        }
+
+        return $query;
+    }
+
+    /** $branch: null = every branch, otherwise only that branch's clients and employees. */
+    public static function build(string $start, string $end, ?string $branch = null): array
     {
         // Cancelled bills were never owed, so they stay out of the billed totals.
-        $bills = DB::table('bills')->whereBetween('billing_period_start', [$start, $end])
+        $bills = self::inBranch(DB::table('bills')->whereBetween('billing_period_start', [$start, $end]), BranchScope::viaClient($branch, 'bills.client_id'))
             ->selectRaw("
                 COALESCE(SUM(CASE WHEN status <> 'cancelled' THEN 1 ELSE 0 END), 0) AS total_count,
                 COALESCE(SUM(CASE WHEN status <> 'cancelled' THEN amount ELSE 0 END), 0) AS total_amount,
@@ -69,15 +81,16 @@ class PeriodReport
                 COUNT(DISTINCT CASE WHEN status = 'overdue' THEN client_id END) AS overdue_clients
             ")->first();
 
-        $payments = DB::table('payments')->whereBetween('payment_date', [$start, $end])
+        $paymentScope = BranchScope::viaClient($branch, 'payments.client_id');
+        $payments = self::inBranch(DB::table('payments')->whereBetween('payment_date', [$start, $end]), $paymentScope)
             ->selectRaw('COUNT(*) AS payment_count, COALESCE(SUM(amount), 0) AS collected')->first();
-        $paymentMethods = DB::table('payments')->whereBetween('payment_date', [$start, $end])
+        $paymentMethods = self::inBranch(DB::table('payments')->whereBetween('payment_date', [$start, $end]), $paymentScope)
             ->select('payment_method', DB::raw('COUNT(*) AS payment_count'), DB::raw('SUM(amount) AS total'))
             ->groupBy('payment_method')->orderByDesc('total')->get();
 
-        $newClients = DB::table('clients')->whereBetween('installation_date', [$start, $end])->count();
+        $newClients = self::inBranch(DB::table('clients')->whereBetween('installation_date', [$start, $end]), BranchScope::clients($branch, 'clients'))->count();
 
-        $attendance = DB::table('attendance')->whereBetween('attendance_date', [$start, $end])
+        $attendance = self::inBranch(DB::table('attendance')->whereBetween('attendance_date', [$start, $end]), BranchScope::attendance($branch, 'attendance'))
             ->selectRaw("
                 COUNT(*) AS records,
                 COUNT(DISTINCT employee_id) AS employees,
@@ -86,12 +99,15 @@ class PeriodReport
                 COALESCE(SUM(CASE WHEN status_morning = 'absent' AND status_afternoon = 'absent' THEN 1 ELSE 0 END), 0) AS absent
             ")->first();
 
-        $payroll = DB::table('payroll')->where('archived', 0)->whereBetween('payroll_period_end', [$start, $end])
+        $payroll = self::inBranch(DB::table('payroll')->where('archived', 0)->whereBetween('payroll_period_end', [$start, $end]), BranchScope::viaEmployee($branch, 'payroll.employee_id'))
             ->selectRaw('COUNT(*) AS entries, COALESCE(SUM(gross_pay), 0) AS gross, COALESCE(SUM(deductions), 0) AS deductions, COALESCE(SUM(net_pay), 0) AS net')->first();
 
-        $requestStatus = DB::table('inventory_requests')
-            ->whereDate('created_at', '>=', $start)->whereDate('created_at', '<=', $end)
-            ->select('status', DB::raw('COUNT(*) AS total'))->groupBy('status')->pluck('total', 'status');
+        // Stock requests are not split by branch, so they only appear in the all-branches report.
+        $requestStatus = $branch === null
+            ? DB::table('inventory_requests')
+                ->whereDate('created_at', '>=', $start)->whereDate('created_at', '<=', $end)
+                ->select('status', DB::raw('COUNT(*) AS total'))->groupBy('status')->pluck('total', 'status')
+            : null;
 
         $totalAmount = (float) $bills->total_amount;
 
@@ -133,7 +149,7 @@ class PeriodReport
                 'deductions' => (float) $payroll->deductions,
                 'net' => (float) $payroll->net,
             ],
-            'requests' => [
+            'requests' => $requestStatus === null ? null : [
                 'total' => (int) $requestStatus->sum(),
                 'approved' => (int) ($requestStatus['approved'] ?? 0),
                 'pending' => (int) ($requestStatus['pending'] ?? 0),

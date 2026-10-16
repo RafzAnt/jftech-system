@@ -15,6 +15,9 @@ $success = '';
 $error = '';
 $client = null;
 $searchResults = [];
+// Only clients of the admin's branch can be found or edited.
+$scopeBranch = \App\Support\BranchScope::current();
+[$branchScope, $branchScopeParams] = \App\Support\BranchScope::clients($scopeBranch, 'c');
 
 // Get barangays for dropdown
 $stmt = $pdo->query("SELECT * FROM barangays ORDER BY barangay_name");
@@ -30,13 +33,14 @@ $plans = $stmt->fetchAll();
 // Search clients
 if ($request->has('search') && $request->query('search')) {
     $search = '%' . $request->query('search') . '%';
-    $stmt = $pdo->prepare("SELECT c.*, COALESCE(c.registered_barangay_name, b.barangay_name) AS barangay_name FROM clients c LEFT JOIN barangays b ON c.barangay_id = b.id WHERE c.full_name LIKE ? OR c.client_code LIKE ? OR c.contact_number LIKE ? ORDER BY c.full_name");
-    $stmt->execute([$search, $search, $search]);
+    $stmt = $pdo->prepare("SELECT c.*, COALESCE(c.registered_barangay_name, b.barangay_name) AS barangay_name FROM clients c LEFT JOIN barangays b ON c.barangay_id = b.id WHERE (c.full_name LIKE ? OR c.client_code LIKE ? OR c.contact_number LIKE ?)" . $branchScope . " ORDER BY c.full_name");
+    $stmt->execute([$search, $search, $search, ...$branchScopeParams]);
     $searchResults = $stmt->fetchAll();
 }
 
 // Get client by ID
 if ($request->has('id') && $request->query('id')) {
+    \App\Support\BranchScope::abortUnlessClient($request->query('id'));
     $stmt = $pdo->prepare("SELECT c.*, COALESCE(c.registered_barangay_name, b.barangay_name) AS barangay_name FROM clients c LEFT JOIN barangays b ON c.barangay_id = b.id WHERE c.id = ?");
     $stmt->execute([$request->query('id')]);
     $client = $stmt->fetch();
@@ -44,6 +48,7 @@ if ($request->has('id') && $request->query('id')) {
 
 // Update client
 if ($request->isMethod('post') && $request->has('update_client')) {
+    \App\Support\BranchScope::abortUnlessClient($request->input('client_id'));
     try {
         $clientId = $request->input('client_id');
         $firstName = trim((string) $request->input('first_name'));

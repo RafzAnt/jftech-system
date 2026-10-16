@@ -138,7 +138,7 @@ class ReportController extends Controller
     protected function authorizeReportAction(): void
     {
         $user = request()->user();
-        abort_unless($user && in_array((string) $user->role, ['admin'], true) && $user->status === 'active', 403);
+        abort_unless($user && in_array((string) $user->role, ['super_admin'], true) && $user->status === 'active', 403);
     }
 
     /** Keep user-provided report names safe for use in HTTP download headers. */

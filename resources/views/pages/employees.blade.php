@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en-PH">
+<html lang="en-PH" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,9 +7,9 @@
     <script>
         try {
             var savedTheme = localStorage.getItem('jftech-theme');
-            document.documentElement.setAttribute('data-theme', savedTheme === 'dark' ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', savedTheme === 'light' ? 'light' : 'dark');
         } catch (error) {
-            document.documentElement.setAttribute('data-theme', 'light');
+            document.documentElement.setAttribute('data-theme', 'dark');
         }
     </script>
     <link rel="stylesheet" href="{{ asset('css/jftech-theme.css') }}?{{ $themeCssVersion }}">
@@ -27,7 +27,8 @@
                 <h1 class="page-title">Employees</h1>
                 <p style="color: var(--text-muted); font-size: 0.85rem;">Manage employees and attendance</p>
             </div>
-            <button class="btn btn-success" onclick="openEmployeeModal()">+ Add Employee</button>
+            <button type="button" class="btn btn-success" id="addEmployeeAction" data-tab-action="detailsTab" onclick="openEmployeeModal()" @if ($activeTab !== 'details') style="display: none;" @endif>+ Add Employee</button>
+            <button type="button" class="btn btn-success" id="manualAttendanceAction" data-tab-action="attendanceTab" onclick="openManualAttendance()" @if ($activeTab !== 'attendance') style="display: none;" @endif>+ Manual Attendance</button>
         </div>
 
         @if ($success)
@@ -130,11 +131,14 @@ $morningQR = null;
                                 @else
                                 <p style="color: var(--warning);">No active QR code</p>
                                 @endif
+                                {{-- One QR code serves every branch, so only the super admin can replace it. --}}
+                                @if ($canGenerateQr)
                                 <form method="POST" action="?tab=attendance" style="margin-top: 0.75rem;">
             @csrf
                                     <input type="hidden" name="qr_type" value="morning">
                                     <button type="submit" name="generate_qr" class="btn btn-primary btn-sm">Generate Morning QR</button>
                                 </form>
+                                @endif
                             </div>
                             <!-- Afternoon QR -->
                             <div class="qr-section">
@@ -156,11 +160,14 @@ $afternoonQR = null;
                                 @else
                                 <p style="color: var(--warning);">No active QR code</p>
                                 @endif
+                                {{-- One QR code serves every branch, so only the super admin can replace it. --}}
+                                @if ($canGenerateQr)
                                 <form method="POST" action="?tab=attendance" style="margin-top: 0.75rem;">
             @csrf
                                     <input type="hidden" name="qr_type" value="afternoon">
                                     <button type="submit" name="generate_qr" class="btn btn-primary btn-sm">Generate Afternoon QR</button>
                                 </form>
+                                @endif
                 </div>
             </div>
 
@@ -208,7 +215,6 @@ $afternoonQR = null;
                                 <input type="date" name="attendance_date" class="form-input" value="{{ $selectedDate }}" style="width: auto; padding: 0.5rem;">
                                 <button type="submit" class="btn btn-sm btn-primary">View</button>
                             </form>
-                            <button type="button" class="btn btn-sm btn-success" onclick="openManualAttendance()">+ Manual Attendance</button>
                             <a class="btn btn-sm btn-secondary" href="{{ url('/pages/print_attendance.php?start=' . urlencode($monthStart) . '&end=' . urlencode($monthEnd) . ($selectedEmployeeId !== '' ? '&employee_id=' . urlencode($selectedEmployeeId) : '') . ($selectedAttendanceBranch !== '' ? '&branch=' . urlencode($selectedAttendanceBranch) : '')) }}" target="_blank" rel="noopener">Print / Export</a>
                         </div>
                     </div>
@@ -374,19 +380,21 @@ $afternoonQR = null;
                     <div class="form-group">
                         <label class="form-label">Position *</label>
                         <select name="position" class="form-select" id="empPosition" required onchange="syncPositionRate()">
-                            @foreach ($employeePositions as $position)
+                            @foreach ($selectablePositions as $position)
                             <option value="{{ $position }}">{{ $position }}</option>
                             @endforeach
                         </select>
+                        <small style="color: var(--text-muted);">{{ $canAssignAdminPosition ? 'The super admin adds Admin employees only. Branch admins add the technicians of their branch.' : 'You add the technicians of your branch. The super admin adds Admin employees.' }}</small>
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="empBranch">Branch *</label>
-                        <select name="branch_name" class="form-select" id="empBranch" required>
-                            <option value="">Select branch</option>
+                        {{-- Type the branch and pick from the suggestions (the list comes from the datalist). --}}
+                        <input type="text" name="branch_name" class="form-input" id="empBranch" list="empBranchSuggestions" placeholder="Type a branch name" autocomplete="off" required>
+                        <datalist id="empBranchSuggestions">
                             @foreach ($employeeBranches as $branch)
-                            <option value="{{ $branch }}">{{ $branch }}</option>
+                            <option value="{{ $branch }}"></option>
                             @endforeach
-                        </select>
+                        </datalist>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Mobile Number</label>
@@ -442,6 +450,13 @@ $afternoonQR = null;
     });
     @endif
 
+    // The header button follows the active tab: Add Employee on Details, Manual Attendance on Attendance.
+    document.querySelectorAll('.tab-btn').forEach(tab => tab.addEventListener('click', () => {
+        document.querySelectorAll('[data-tab-action]').forEach(action => {
+            action.style.display = action.dataset.tabAction === tab.dataset.tab ? '' : 'none';
+        });
+    }));
+
     function openManualAttendance() {
         syncManualSessions();
         openModal('manualAttendanceModal');
@@ -468,8 +483,11 @@ $afternoonQR = null;
         document.getElementById('empFirstName').value = '';
         document.getElementById('empMiddleName').value = '';
         document.getElementById('empLastName').value = '';
-        document.getElementById('empPosition').value = 'Technician I';
-        document.getElementById('empBranch').value = '';
+        // Drop a position that an earlier edit added just to show an existing employee, then start from the first choice.
+        const addPositionSelect = document.getElementById('empPosition');
+        addPositionSelect.querySelectorAll('option[data-temporary]').forEach(option => option.remove());
+        addPositionSelect.selectedIndex = 0;
+        setEmployeeBranch('');
         document.getElementById('empContact').value = '';
         document.getElementById('empEmail').value = '';
         syncPositionRate();
@@ -496,8 +514,17 @@ $afternoonQR = null;
         document.getElementById('empFirstName').value = nameParts.shift() || '';
         document.getElementById('empLastName').value = nameParts.length ? nameParts.pop() : '';
         document.getElementById('empMiddleName').value = nameParts.join(' ');
-        document.getElementById('empPosition').value = payrollPositionRates[emp.position] ? emp.position : 'Technician I';
-        document.getElementById('empBranch').value = emp.branch_name || '';
+        const positionSelect = document.getElementById('empPosition');
+        positionSelect.querySelectorAll('option[data-temporary]').forEach(option => option.remove());
+        // Each role is only offered some positions, but an employee keeps showing the position they already have.
+        if (emp.position && payrollPositionRates[emp.position] && ![...positionSelect.options].some(option => option.value === emp.position)) {
+            const kept = new Option(emp.position, emp.position);
+            kept.dataset.temporary = '1';
+            positionSelect.add(kept);
+        }
+        positionSelect.value = payrollPositionRates[emp.position] ? emp.position : '';
+        if (positionSelect.selectedIndex < 0) positionSelect.selectedIndex = 0;
+        setEmployeeBranch(emp.branch_name || '');
         document.getElementById('empContact').value = emp.contact_number;
         document.getElementById('empEmail').value = emp.email;
         syncPositionRate();
@@ -507,6 +534,24 @@ $afternoonQR = null;
     }
 
     const payrollPositionRates = @json($employeePositionRates);
+
+    // A branch admin only has their own branch, so it is filled in and locked; the super admin types one.
+    const employeeBranchNames = @json($employeeBranches);
+    const lockedEmployeeBranch = @json($scopeBranch !== null ? ($employeeBranches[0] ?? '') : '');
+    function setEmployeeBranch(name) {
+        const input = document.getElementById('empBranch');
+        input.value = lockedEmployeeBranch || name;
+        input.readOnly = lockedEmployeeBranch !== '';
+        validateEmployeeBranch();
+    }
+    function validateEmployeeBranch() {
+        const input = document.getElementById('empBranch');
+        const typed = input.value.trim().toLocaleLowerCase();
+        const known = employeeBranchNames.some(name => name.toLocaleLowerCase() === typed);
+        input.setCustomValidity(typed === '' || known ? '' : 'Choose a branch from the suggestions.');
+    }
+    document.getElementById('empBranch').addEventListener('input', validateEmployeeBranch);
+    document.getElementById('empBranch').addEventListener('change', validateEmployeeBranch);
 
     function syncPositionRate() {
         const position = document.getElementById('empPosition').value;

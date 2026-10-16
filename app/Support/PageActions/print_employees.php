@@ -14,7 +14,9 @@ $query = "SELECT e.*, u.username, u.status as user_status
           FROM employees e 
           LEFT JOIN users u ON e.user_id = u.id 
           WHERE TRUE";
-$params = [];
+// A branch admin only prints their own branch's employees.
+[$employeeScope, $params] = \App\Support\BranchScope::employees(\App\Support\BranchScope::current(), 'e');
+$query .= $employeeScope;
 
 if ($selectedDepartment) {
     $query .= " AND e.department = ?";
