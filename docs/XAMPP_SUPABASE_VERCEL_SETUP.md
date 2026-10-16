@@ -27,6 +27,9 @@ Use one database connection at a time: MySQL from XAMPP locally, then Supabase P
 
 1. Create a Supabase project.
 2. Open **SQL Editor**, paste the complete contents of `database/supabase/schema.sql`, then run it.
+   An existing project created before the super admin / branch admin update needs
+   `database/supabase/migrations/2026_10_15_super_admin_and_branch_admins.sql`
+   run once in the same SQL Editor (safe to rerun).
 3. Open **Connect** and copy the **Transaction pooler** host, user, port, and password. Do not guess these values.
 
 ## 3. Deploy to Vercel

@@ -18,6 +18,14 @@ Vercel build command or output directory for this app.
    `database/supabase/migrations/2026_10_10_client_branch_columns.sql` in SQL
    Editor. It is safe to rerun, preserves existing plan prices, and adds the
    approved plans only when their names are not already present.
+   For an existing project receiving the **super admin and branch admins**
+   update, also run
+   `database/supabase/migrations/2026_10_15_super_admin_and_branch_admins.sql`
+   in SQL Editor. It adds `users.branch_name`, lets `users.role` be
+   `super_admin`, and turns the existing admin accounts into super admins. It is
+   safe to rerun (it never promotes a branch admin) and deletes nothing. Run it
+   before logging in to the updated app: an `admin` account that has no branch
+   is refused at login.
 4. Continue using the normal Laravel migrations only for local XAMPP/MySQL:
 
    ```bash

@@ -1619,25 +1619,33 @@ html:not([data-theme]) .btn-primary {
 }
 
 /* ===== THEME POLISH (colour, depth, finish — no type-size changes) ===== */
-/* Page backdrop: a faint, different hue in each corner of the viewport. */
+/* Business look: calm backdrop, crisp surfaces, soft layered shadows, one brand blue.
+   Nothing in this block sets a font size, family or weight. */
+
+/* Page backdrop: one soft blue wash from the top, otherwise quiet neutral. */
 body:not(.login-page) {
     background:
-        radial-gradient(38rem 26rem at 0% 0%, rgba(37, 99, 235, 0.07), transparent 70%),
-        radial-gradient(38rem 26rem at 100% 0%, rgba(124, 58, 237, 0.05), transparent 70%),
-        radial-gradient(38rem 26rem at 100% 100%, rgba(8, 145, 178, 0.07), transparent 70%),
-        radial-gradient(38rem 26rem at 0% 100%, rgba(22, 163, 74, 0.05), transparent 70%),
-        var(--primary);
+        radial-gradient(64rem 26rem at 72% -9rem, rgba(37, 99, 235, 0.08), transparent 70%),
+        linear-gradient(180deg, #f8fafd 0%, var(--primary) 24rem);
     background-attachment: fixed;
 }
 
 html[data-theme="dark"] body:not(.login-page) {
     background:
-        radial-gradient(38rem 26rem at 0% 0%, rgba(59, 130, 246, 0.1), transparent 70%),
-        radial-gradient(38rem 26rem at 100% 0%, rgba(139, 92, 246, 0.07), transparent 70%),
-        radial-gradient(38rem 26rem at 100% 100%, rgba(6, 182, 212, 0.08), transparent 70%),
-        radial-gradient(38rem 26rem at 0% 100%, rgba(34, 197, 94, 0.05), transparent 70%),
-        var(--primary);
+        radial-gradient(64rem 26rem at 72% -9rem, rgba(59, 130, 246, 0.13), transparent 70%),
+        linear-gradient(180deg, #0d1627 0%, var(--primary) 24rem);
     background-attachment: fixed;
+}
+
+/* Surfaces share one edge highlight (dark mode only) and one soft shadow. */
+:root {
+    --card-edge: 0 0 0 0 transparent;
+    --header-tint: color-mix(in srgb, var(--accent) 2.5%, var(--card-bg));
+}
+
+html[data-theme="dark"] {
+    --card-edge: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+    --header-tint: color-mix(in srgb, var(--accent) 5%, var(--card-bg));
 }
 
 /* Page header: short accent rule that fades into the divider. */
@@ -1649,36 +1657,110 @@ html[data-theme="dark"] body:not(.login-page) {
 /* Cards */
 .card {
     border-color: var(--border-color);
-    box-shadow: var(--shadow-sm);
+    box-shadow: var(--card-edge), var(--shadow-sm);
     transition: box-shadow 0.18s ease, border-color 0.18s ease;
 }
 
 .card:hover {
-    box-shadow: var(--shadow-md);
+    box-shadow: var(--card-edge), var(--shadow-md);
 }
 
 .card-header {
-    background: var(--card-bg);
+    background: linear-gradient(180deg, var(--header-tint) 0%, var(--card-bg) 100%);
 }
 
-/* Buttons */
+/* Small brand tick in front of every card title. */
+.card-title::before {
+    content: '';
+    display: inline-block;
+    width: 3px;
+    height: 0.95em;
+    margin-right: 0.6rem;
+    border-radius: 3px;
+    background: linear-gradient(180deg, var(--accent), var(--accent-secondary));
+    vertical-align: -0.12em;
+}
+
+.stat-card {
+    background: linear-gradient(180deg, var(--card-bg) 0%, var(--header-tint) 100%);
+    box-shadow: var(--card-edge), var(--shadow-sm);
+}
+
+.stat-card-link:hover {
+    box-shadow: var(--card-edge), var(--shadow-md);
+}
+
+/* Buttons: a soft top-light and a tinted shadow on every solid colour. */
 .btn-primary,
 html[data-theme="light"] .btn-primary,
 html:not([data-theme]) .btn-primary {
-    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    background: linear-gradient(180deg, #3b74ee 0%, #1d4ed8 100%);
     border-color: #1d4ed8;
-    box-shadow: 0 6px 14px -6px rgba(37, 99, 235, 0.55);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 6px 14px -6px rgba(37, 99, 235, 0.55);
 }
 
 .btn-primary:hover {
-    background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+    background: linear-gradient(180deg, #2f66e0 0%, #1e40af 100%);
     border-color: #1e40af;
-    box-shadow: 0 10px 20px -8px rgba(37, 99, 235, 0.6);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 10px 20px -8px rgba(37, 99, 235, 0.6);
+}
+
+.btn-success {
+    background: linear-gradient(180deg, #22a85b 0%, #15803d 100%);
+    border-color: #15803d;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 6px 14px -6px rgba(21, 128, 61, 0.5);
+}
+
+.btn-success:hover {
+    background: linear-gradient(180deg, #1c9a50 0%, #116c33 100%);
+    border-color: #116c33;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 10px 20px -8px rgba(21, 128, 61, 0.55);
+}
+
+.btn-danger {
+    background: linear-gradient(180deg, #ea4545 0%, #dc2626 100%);
+    border-color: #c81e1e;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 6px 14px -6px rgba(220, 38, 38, 0.5);
+}
+
+.btn-danger:hover {
+    background: linear-gradient(180deg, #dc2f2f 0%, #b91c1c 100%);
+    border-color: #a51818;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 10px 20px -8px rgba(220, 38, 38, 0.55);
+}
+
+.btn-warning {
+    background: linear-gradient(180deg, #ee8a1a 0%, #d97706 100%);
+    border-color: #c26a05;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 6px 14px -6px rgba(217, 119, 6, 0.5);
+}
+
+.btn-warning:hover {
+    background: linear-gradient(180deg, #df7d0d 0%, #b45309 100%);
+    border-color: #9a4607;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 10px 20px -8px rgba(217, 119, 6, 0.55);
+}
+
+.btn-info {
+    background: linear-gradient(180deg, #0f9bdc 0%, #0284c7 100%);
+    border-color: #0273ad;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 6px 14px -6px rgba(2, 132, 199, 0.5);
+}
+
+.btn-info:hover {
+    background: linear-gradient(180deg, #0a8ac6 0%, #0369a1 100%);
+    border-color: #025d8f;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 10px 20px -8px rgba(2, 132, 199, 0.55);
 }
 
 .btn-secondary:hover {
     border-color: var(--accent);
     color: var(--accent);
+}
+
+.btn:disabled,
+.btn[disabled] {
+    box-shadow: none;
 }
 
 .btn:hover:not(:disabled) {
@@ -1689,29 +1771,73 @@ html:not([data-theme]) .btn-primary {
     transform: translateY(0);
 }
 
-/* Tables */
+/* Tables: tinted header, whisper-light row banding, clear hover. */
 .data-table thead {
-    background: color-mix(in srgb, var(--accent) 5%, var(--bg-muted));
+    background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 3%, var(--bg-muted)) 0%, color-mix(in srgb, var(--accent) 8%, var(--bg-muted)) 100%);
 }
 
 .data-table th {
+    color: var(--text-secondary);
     border-bottom: 1px solid var(--border-strong);
 }
 
-.data-table tbody tr:hover {
-    background: color-mix(in srgb, var(--accent) 6%, transparent);
+.data-table td {
+    border-bottom-color: color-mix(in srgb, var(--border-color) 75%, transparent);
 }
 
-/* Sidebar: a hint of colour in the corners, brighter active state. */
+.data-table tbody tr:nth-child(even) {
+    background: color-mix(in srgb, var(--text-primary) 1.6%, transparent);
+}
+
+.data-table tbody tr:hover {
+    background: color-mix(in srgb, var(--accent) 7%, transparent);
+}
+
+/* Form fields and filter panels */
+.form-input,
+.form-select {
+    box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04), var(--shadow-xs);
+}
+
+html[data-theme="dark"] .form-input,
+html[data-theme="dark"] .form-select {
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.28);
+}
+
+.form-input:focus,
+.form-select:focus {
+    box-shadow: var(--ui-focus);
+}
+
+/* Dialogs: a brand-coloured top edge, a deeper shadow. */
+.modal-content {
+    border-top: 3px solid var(--accent);
+}
+
+/* Sidebar: depth against the page, softly lit active item. */
 .sidebar {
     background:
         radial-gradient(14rem 10rem at 0% 0%, rgba(59, 130, 246, 0.22), transparent 70%),
-        radial-gradient(14rem 10rem at 100% 100%, rgba(6, 182, 212, 0.14), transparent 70%),
+        radial-gradient(14rem 10rem at 100% 100%, rgba(6, 182, 212, 0.12), transparent 70%),
         linear-gradient(180deg, var(--sidebar-bg-2) 0%, var(--sidebar-bg) 100%);
+    box-shadow: 1px 0 0 rgba(255, 255, 255, 0.04), 14px 0 32px -20px rgba(2, 6, 23, 0.55);
+}
+
+.sidebar-header {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent);
+}
+
+.nav-item:hover {
+    background: rgba(255, 255, 255, 0.07);
 }
 
 .nav-item.active {
-    background: linear-gradient(90deg, rgba(59, 130, 246, 0.3) 0%, rgba(59, 130, 246, 0.08) 100%);
+    background: linear-gradient(90deg, rgba(59, 130, 246, 0.3) 0%, rgba(59, 130, 246, 0.07) 100%);
+    box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.16);
+}
+
+.nav-item.active::before {
+    box-shadow: 0 0 10px rgba(96, 165, 250, 0.65);
 }
 
 /* The flat-colour scroll shadows would cut through the corner glow, so drop them. */
@@ -1719,16 +1845,29 @@ html:not([data-theme]) .btn-primary {
     background: none;
 }
 
+/* Client Accounts "⋮" trigger: same white box as Browse Clients (the black dots stay). */
+html[data-theme="light"] body .client-record-actions summary {
+    background: var(--card-bg);
+    border-color: var(--border-strong);
+}
+
+html[data-theme="light"] body .client-record-actions[open] summary,
+html[data-theme="light"] body .client-record-actions summary:hover {
+    background: var(--bg-muted);
+    border-color: var(--accent);
+}
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 1024px) {
     .sidebar {
         transform: translateX(-100%);
         z-index: 120;
-        box-shadow: var(--shadow-lg);
+        box-shadow: none; /* a closed drawer must not leave a shadow band on the page edge */
     }
 
     .sidebar.open {
         transform: translateX(0);
+        box-shadow: var(--shadow-lg);
     }
 
     .menu-toggle {
