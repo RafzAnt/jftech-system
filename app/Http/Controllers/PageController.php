@@ -9,10 +9,8 @@ use Illuminate\View\View;
 class PageController extends Controller
 {
     /** Pages that are not split by branch, so only the super admin may open them. */
-    private const SUPER_ADMIN_PAGES = [
-        'user_management', 'settings', 'login_history',
-        'inventory_requests', 'print_inventory', 'print_reports',
-    ];
+    // The company-wide report print. Every other page works for a branch admin on their own branch's data.
+    private const SUPER_ADMIN_PAGES = ['print_reports'];
 
     public function show(Request $request, string $page): View|RedirectResponse
     {

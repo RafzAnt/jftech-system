@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ApiController;
+use App\Http\Controllers\EmployeeApiController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\ReportController;
@@ -30,6 +31,8 @@ $cleanPages = [
     'settings' => 'settings',
     'print_clients' => 'print-clients',
     'inventory_requests' => 'inventory-requests',
+    'work_requests' => 'work-requests',
+    'nap_boxes' => 'nap-boxes',
     'reports' => 'reports',
     'print_monthly_reports' => 'print-monthly-reports',
     'print_employees' => 'print-employees',
@@ -63,13 +66,30 @@ Route::prefix('backend/api')->middleware('throttle:api')->group(function () {
         Route::get('get_pending_bills.php', [ApiController::class, 'pendingBills']);
         Route::get('get_client_billing.php', [ApiController::class, 'clientBilling']);
     });
-    Route::get('inventory_items.php', [ApiController::class, 'inventoryItems']);
-    Route::get('attendance_history.php', [ApiController::class, 'attendanceHistory']);
+    Route::get('ping.php', [EmployeeApiController::class, 'ping']);
     Route::post('employee_login.php', [ApiController::class, 'employeeLogin'])->middleware('throttle:login');
-        Route::post('employee_logout.php', [ApiController::class, 'employeeLogout'])->middleware('throttle:api');
-    Route::post('inventory_request_create.php', [ApiController::class, 'inventoryRequestCreate']);
-    Route::get('inventory_requests_list.php', [ApiController::class, 'inventoryRequestsList']);
-    Route::post('scan_attendance.php', [ApiController::class, 'scanAttendance']);
+    Route::post('employee_logout.php', [ApiController::class, 'employeeLogout'])->middleware('throttle:api');
+
+    // Everything else of the employee app needs the token that employee_login.php hands out.
+    Route::middleware('employee.token')->group(function () {
+        Route::get('me.php', [EmployeeApiController::class, 'me']);
+        Route::post('scan_attendance.php', [ApiController::class, 'scanAttendance']);
+        Route::get('attendance_history.php', [ApiController::class, 'attendanceHistory']);
+        Route::get('inventory_items.php', [ApiController::class, 'inventoryItems']);
+        Route::post('inventory_request_create.php', [ApiController::class, 'inventoryRequestCreate']);
+        Route::get('inventory_requests_list.php', [ApiController::class, 'inventoryRequestsList']);
+        Route::get('barangays.php', [EmployeeApiController::class, 'barangays']);
+        Route::get('clients_search.php', [EmployeeApiController::class, 'clientsSearch']);
+        Route::get('nap_boxes.php', [EmployeeApiController::class, 'napBoxes']);
+        Route::get('nap_box.php', [EmployeeApiController::class, 'napBox']);
+        Route::get('work_requests.php', [EmployeeApiController::class, 'workRequests']);
+        Route::get('work_request.php', [EmployeeApiController::class, 'workRequest']);
+        Route::post('work_request_create.php', [EmployeeApiController::class, 'workRequestCreate']);
+        Route::post('work_request_update.php', [EmployeeApiController::class, 'workRequestUpdate']);
+        Route::post('work_request_cancel.php', [EmployeeApiController::class, 'workRequestCancel']);
+        Route::post('work_request_complete.php', [EmployeeApiController::class, 'workRequestComplete']);
+        Route::get('transactions.php', [EmployeeApiController::class, 'transactions']);
+    });
 });
 Route::post('/logout', [AuthController::class, 'destroy'])->middleware('auth')->name('logout');
 Route::post('/pages/logout.php', [AuthController::class, 'destroy'])->middleware('auth');
@@ -77,28 +97,31 @@ Route::post('/pages/logout.php', [AuthController::class, 'destroy'])->middleware
 Route::middleware(['auth', 'inactivity', 'role:super_admin,admin'])->group(function () use ($cleanPages, $redirectWithQuery) {
     Route::get('/locations/balilihan-search', [LocationController::class, 'searchBalilihan'])->middleware('throttle:10,1')->name('locations.balilihan-search');
     Route::post('/billing/generate', [BillingController::class, 'generate'])->name('billing.generate');
-    // Stock, pricing and the company-wide report exports are not split by branch yet, so only the super admin reaches them.
-    Route::middleware('role:super_admin')->group(function () use ($redirectWithQuery) {
-        Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');
-        Route::post('/inventory', [InventoryController::class, 'store'])->name('inventory.store');
-        Route::get('/pages/inventory.php', fn (Request $request) => $redirectWithQuery($request, route('inventory.index')));
-        Route::post('/pages/inventory.php', [InventoryController::class, 'store']);
-        Route::get('/inventory.php', fn (Request $request) => $redirectWithQuery($request, route('inventory.index')));
-        Route::post('/inventory.php', [InventoryController::class, 'store']);
-        Route::post('/inventory/{inventory}/movement', [InventoryController::class, 'recordStockMovement'])->name('inventory.movement');
-        Route::post('/inventory/{inventory}/archive', [InventoryController::class, 'archive'])->name('inventory.archive');
-        Route::post('/inventory/{inventory}/restore', [InventoryController::class, 'restore'])->name('inventory.restore');
-        Route::delete('/inventory/{inventory}', [InventoryController::class, 'destroy'])->name('inventory.destroy');
-        Route::post('/inventory-requests/{inventoryRequest}/{decision}', [InventoryRequestController::class, 'decide'])
-            ->whereIn('decision', ['approve', 'deny'])
-            ->name('inventory-requests.decide');
+    // Stock is kept per branch: the branch admin keeps their own branch's stock and the super admin looks at every
+    // branch (the controllers enforce which branch and who may change what).
+    Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');
+    Route::post('/inventory', [InventoryController::class, 'store'])->name('inventory.store');
+    Route::get('/pages/inventory.php', fn (Request $request) => $redirectWithQuery($request, route('inventory.index')));
+    Route::post('/pages/inventory.php', [InventoryController::class, 'store']);
+    Route::get('/inventory.php', fn (Request $request) => $redirectWithQuery($request, route('inventory.index')));
+    Route::post('/inventory.php', [InventoryController::class, 'store']);
+    Route::post('/inventory/{inventory}/movement', [InventoryController::class, 'recordStockMovement'])->name('inventory.movement');
+    Route::post('/inventory/{inventory}/archive', [InventoryController::class, 'archive'])->name('inventory.archive');
+    Route::post('/inventory/{inventory}/restore', [InventoryController::class, 'restore'])->name('inventory.restore');
+    Route::delete('/inventory/{inventory}', [InventoryController::class, 'destroy'])->name('inventory.destroy');
+    Route::post('/inventory-requests/{inventoryRequest}/{decision}', [InventoryRequestController::class, 'decide'])
+        ->whereIn('decision', ['approve', 'deny'])
+        ->name('inventory-requests.decide');
 
-        // Price Management module — admin-only Internet Plan pricing.
-        Route::get('/price-management', [PriceManagementController::class, 'index'])->name('price.management');
+    // Price Management: every branch sees the plans, only the super admin changes them.
+    Route::get('/price-management', [PriceManagementController::class, 'index'])->name('price.management');
+    Route::get('/pages/price_management.php', fn (Request $request) => $redirectWithQuery($request, route('price.management')));
+    Route::get('/price_management.php', fn (Request $request) => $redirectWithQuery($request, route('price.management')));
+
+    // The company-wide report exports and history are not split by branch yet, so only the super admin reaches them.
+    Route::middleware('role:super_admin')->group(function () use ($redirectWithQuery) {
         Route::post('/price-management', [PriceManagementController::class, 'handlePost'])->name('price.management.store');
-        Route::get('/pages/price_management.php', fn (Request $request) => $redirectWithQuery($request, route('price.management')));
         Route::post('/pages/price_management.php', [PriceManagementController::class, 'handlePost']);
-        Route::get('/price_management.php', fn (Request $request) => $redirectWithQuery($request, route('price.management')));
         Route::post('/price_management.php', [PriceManagementController::class, 'handlePost']);
 
         // Reports module — export, print and history actions.

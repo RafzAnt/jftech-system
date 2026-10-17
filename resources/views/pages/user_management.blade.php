@@ -24,7 +24,7 @@
         <div class="top-bar">
             <div>
                 <h1 class="page-title">User Accounts</h1>
-                <p style="color: var(--text-muted); font-size: 0.85rem;">Manage system user accounts</p>
+                <p style="color: var(--text-muted); font-size: 0.85rem;">{{ $isBranchAdminView ? 'Manage the technician accounts of your branch' : 'Manage system user accounts' }}</p>
             </div>
             @if ($verified)
             <button class="btn btn-sm btn-success" type="button" onclick="openModal('createUserModal')">+ Add User</button>
@@ -68,6 +68,14 @@
         <!-- Actions -->
         <div style="display: flex; justify-content: flex-end; margin-bottom: 1.5rem;">
             <form method="GET" action="" style="display: flex; gap: 0.5rem; width: min(100%, 400px); align-items: center;">
+                @if (! $isBranchAdminView)
+                <select name="branch" class="form-select" onchange="this.form.submit()" style="width:auto; min-width:150px;" aria-label="Branch">
+                    <option value="">All branches</option>
+                    @foreach ($branches as $branchOption)
+                    <option value="{{ $branchOption }}" {{ $scopeBranch === $branchOption ? 'selected' : '' }}>{{ $branchOption }}</option>
+                    @endforeach
+                </select>
+                @endif
                 <input type="text" name="search" class="form-input" placeholder="Search users..." value="{{ htmlspecialchars(request()->query('search') ?? '') }}" style="flex:1; min-width:0;">
                 <button type="submit" class="btn btn-sm btn-primary" style="white-space:nowrap;">Search</button>
             </form>
@@ -263,6 +271,7 @@
                     <label class="form-label">Mobile Number</label>
                     <input type="text" name="phone" id="editPhone" class="form-input" inputmode="numeric" pattern="[0-9]{11}" minlength="11" maxlength="11">
                 </div>
+                @if ($canChangeRoles)
                 <div class="form-group">
                     <label class="form-label">Role</label>
                     <select name="role" id="editRole" class="form-select">
@@ -271,6 +280,10 @@
                         <option value="super_admin">Super Admin</option>
                     </select>
                 </div>
+                @else
+                {{-- A branch admin only manages technician accounts, so the role is fixed. --}}
+                <input type="hidden" name="role" id="editRole" value="employee">
+                @endif
                 <div class="form-group" id="editBranchGroup" style="display:none;">
                     <label class="form-label">Branch *</label>
                     {{-- Type the branch and pick from the suggestions (the list comes from the datalist). --}}

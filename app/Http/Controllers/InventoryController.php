@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Inventory;
+use App\Support\BranchScope;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -14,10 +15,12 @@ class InventoryController extends Controller
     public function index(Request $request): View
     {
         $showArchived = $request->query('view') === 'archived';
-        $items = Inventory::query()
+        // A branch admin sees the stock of their own branch; the super admin sees every branch or picks one.
+        $branch = BranchScope::resolve($request->query('branch'));
+        $items = $this->inBranch(Inventory::query(), $branch)
             ->select('inventory.*')
-            ->selectRaw("COALESCE((SELECT SUM(requests.quantity) FROM inventory_requests AS requests WHERE requests.inventory_id = inventory.id AND requests.status = 'pending'), 0) AS reserved_quantity")
-            ->selectRaw("GREATEST(inventory.quantity - COALESCE((SELECT SUM(requests.quantity) FROM inventory_requests AS requests WHERE requests.inventory_id = inventory.id AND requests.status = 'pending'), 0), 0) AS available_quantity")
+            ->selectRaw("COALESCE((SELECT SUM(requests.quantity) FROM inventory_requests AS requests WHERE requests.inventory_id = inventory.id AND requests.status = 'pending' AND requests.request_type = 'out'), 0) AS reserved_quantity")
+            ->selectRaw("GREATEST(inventory.quantity - COALESCE((SELECT SUM(requests.quantity) FROM inventory_requests AS requests WHERE requests.inventory_id = inventory.id AND requests.status = 'pending' AND requests.request_type = 'out'), 0), 0) AS available_quantity")
             ->where('archived', (int) $showArchived)
             ->orderBy('category')
             ->orderBy('item_name')
@@ -28,10 +31,10 @@ class InventoryController extends Controller
         $filterCategory = (string) $request->query('category', '');
         $filteredItems = $filterCategory ? array_values(array_filter($items, fn ($item) => $item['category'] === $filterCategory)) : $items;
         $tab = $request->query('tab') === 'movements' ? 'movements' : 'stock';
-        $movements = DB::table('inventory_stock_movements as movement')
+        $movements = $this->inBranch(DB::table('inventory_stock_movements as movement')
             ->join('inventory as item', 'movement.inventory_id', '=', 'item.id')
-            ->leftJoin('users as user', 'movement.performed_by', '=', 'user.id')
-            ->select('movement.*', 'item.item_name', 'item.category', 'user.full_name as performed_by_name')
+            ->leftJoin('users as user', 'movement.performed_by', '=', 'user.id'), $branch, 'item')
+            ->select('movement.*', 'item.item_name', 'item.category', 'item.branch_name', 'user.full_name as performed_by_name')
             ->when($filterCategory, fn ($query) => $query->where('item.category', $filterCategory))
             ->latest('movement.created_at')
             ->limit(100)
@@ -44,13 +47,14 @@ class InventoryController extends Controller
         }
 
         $commonItemNames = ['Access Point', 'Cable Clamp', 'Cable Tie', 'Ethernet Cable', 'Fiber Cable', 'LAN Connector', 'ONU', 'Patch Cord', 'Pigtail', 'Router', 'Splitter', 'UPS'];
-        $existingInventoryNames = Inventory::query()->orderBy('item_name')->pluck('item_name')->all();
+        $existingInventoryNames = $this->inBranch(Inventory::query(), $branch)->orderBy('item_name')->pluck('item_name')->all();
         $inventoryNameSuggestions = array_values(array_unique(array_merge($commonItemNames, $existingInventoryNames)));
 
-        return view('pages.inventory', ['currentPage' => 'inventory', 'themeCssVersion' => @filemtime(public_path('css/jftech-theme.css')) ?: 1, 'inventoryCssVersion' => @filemtime(public_path('css/inventory.css')) ?: 1, 'showArchived' => $showArchived, 'success' => session('success', ''), 'error' => session('error', ''), 'inventoryItems' => $items, 'categories' => $categories, 'archivedCount' => Inventory::where('archived', 1)->count(), 'filterCategory' => $filterCategory, 'filteredItems' => $filteredItems, 'totalItems' => count($filteredItems), 'totalValue' => array_sum(array_map(fn ($item) => $item['quantity'] * $item['unit_price'], $filteredItems)), 'lowStock' => count(array_filter($filteredItems, fn ($item) => $item['available_quantity'] <= $item['reorder_level'])), 'tab' => $tab, 'movements' => $movements, 'submissionToken' => $submissionToken, 'inventoryNameSuggestions' => $inventoryNameSuggestions, 'existingInventoryNames' => $existingInventoryNames]);
+        return view('pages.inventory', ['currentPage' => 'inventory', 'themeCssVersion' => @filemtime(public_path('css/jftech-theme.css')) ?: 1, 'inventoryCssVersion' => @filemtime(public_path('css/inventory.css')) ?: 1, 'showArchived' => $showArchived, 'success' => session('success', ''), 'error' => session('error', ''), 'inventoryItems' => $items, 'categories' => $categories, 'archivedCount' => $this->inBranch(Inventory::query(), $branch)->where('archived', 1)->count(), 'branch' => $branch, 'inventoryBranches' => array_keys(config('bohol_branches', [])), 'canManageInventory' => (bool) auth()->user()?->isBranchAdmin(), 'filterCategory' => $filterCategory, 'filteredItems' => $filteredItems, 'totalItems' => count($filteredItems), 'totalValue' => array_sum(array_map(fn ($item) => $item['quantity'] * $item['unit_price'], $filteredItems)), 'lowStock' => count(array_filter($filteredItems, fn ($item) => $item['available_quantity'] <= $item['reorder_level'])), 'tab' => $tab, 'movements' => $movements, 'submissionToken' => $submissionToken, 'inventoryNameSuggestions' => $inventoryNameSuggestions, 'existingInventoryNames' => $existingInventoryNames]);
     }
     public function store(Request $request): RedirectResponse
     {
+        $this->authorizeStockKeeper();
         if (! hash_equals((string) $request->session()->pull('inventory_submission_token', ''), (string) $request->input('submission_token', ''))) {
             return back()->with('error', 'This stock form was already submitted or has expired. Please try again.');
         }
@@ -62,8 +66,14 @@ class InventoryController extends Controller
         unset($data['add_quantity']);
         $data['item_name'] = trim($data['item_name']);
         $data['category'] = trim($data['category']);
-        DB::transaction(function () use ($id, $data, $addQuantity) {
+        $branch = BranchScope::current();
+        if ($id) {
+            abort_unless(BranchScope::canAccessInventory($id), 404);
+        }
+        DB::transaction(function () use ($id, $data, $addQuantity, $branch) {
+            // The same item may be stocked by another branch; the name only has to be unique within this one.
             $duplicate = Inventory::query()
+                ->whereRaw('LOWER(branch_name) = LOWER(?)', [$branch])
                 ->whereRaw('LOWER(TRIM(item_name)) = ?', [strtolower($data['item_name'])])
                 ->when($id, fn ($query) => $query->where('id', '!=', $id))
                 ->lockForUpdate()
@@ -73,7 +83,7 @@ class InventoryController extends Controller
             }
 
             if (! $id) {
-                $item = Inventory::create($data + ['status' => 'active', 'archived' => 0]);
+                $item = Inventory::create($data + ['branch_name' => $branch, 'sku' => 'SKU-' . strtoupper(Str::random(8)), 'status' => 'active', 'archived' => 0]);
                 $this->recordMovement($item, $item->quantity, 'opening_balance', 'Opening stock when item was added.');
                 return;
             }
@@ -88,12 +98,13 @@ class InventoryController extends Controller
         });
         return back()->with('success', $id ? 'Item updated successfully!' : 'Item added successfully!');
     }
-    public function archive(Request $request, Inventory $inventory): RedirectResponse { $inventory->update(['archived' => 1]); return back()->with('success', 'Item archived successfully!'); }
-    public function restore(Request $request, Inventory $inventory): RedirectResponse { $inventory->update(['archived' => 0]); return back()->with('success', 'Item restored successfully!'); }
-    public function destroy(Request $request, Inventory $inventory): RedirectResponse { abort_unless($inventory->archived, 422); $inventory->delete(); return back()->with('success', 'Item deleted permanently!'); }
+    public function archive(Request $request, Inventory $inventory): RedirectResponse { $this->authorizeItem($inventory); $inventory->update(['archived' => 1]); return back()->with('success', 'Item archived successfully!'); }
+    public function restore(Request $request, Inventory $inventory): RedirectResponse { $this->authorizeItem($inventory); $inventory->update(['archived' => 0]); return back()->with('success', 'Item restored successfully!'); }
+    public function destroy(Request $request, Inventory $inventory): RedirectResponse { $this->authorizeItem($inventory); abort_unless($inventory->archived, 422); $inventory->delete(); return back()->with('success', 'Item deleted permanently!'); }
 
     public function recordStockMovement(Request $request, Inventory $inventory): RedirectResponse
     {
+        $this->authorizeItem($inventory);
         $data = $request->validate([
             'movement_type' => ['required', 'in:stock_received,stock_issued,stock_returned,damaged,stock_count'],
             'quantity' => ['required', 'integer', 'min:0'],
@@ -120,6 +131,7 @@ class InventoryController extends Controller
                 $reserved = (int) DB::table('inventory_requests')
                     ->where('inventory_id', $item->id)
                     ->where('status', 'pending')
+                    ->where('request_type', 'out')
                     ->sum('quantity');
                 if ($newBalance < $reserved) {
                     throw new \DomainException("This stock change would leave {$item->item_name} below its {$reserved} unit(s) set aside for pending employee requests.");
@@ -133,6 +145,26 @@ class InventoryController extends Controller
         }
 
         return back()->with('success', 'Stock updated successfully.');
+    }
+
+    /** Stock is kept by the branch admin of the branch that holds it; the super admin only looks. */
+    private function authorizeStockKeeper(): void
+    {
+        abort_unless(auth()->user()?->isBranchAdmin(), 403);
+    }
+
+    private function authorizeItem(Inventory $inventory): void
+    {
+        $this->authorizeStockKeeper();
+        abort_unless(BranchScope::canAccessInventory($inventory->id), 404);
+    }
+
+    /** Limit a query on the inventory table (or an alias of it) to one branch; null means every branch. */
+    private function inBranch($query, ?string $branch, string $alias = 'inventory')
+    {
+        [$sql, $params] = BranchScope::inventory($branch, $alias);
+
+        return $sql === '' ? $query : $query->whereRaw(substr($sql, strlen(' AND ')), $params);
     }
 
     private function recordMovement(Inventory $item, int $quantityChange, string $type, string $remarks): void

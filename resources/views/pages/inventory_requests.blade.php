@@ -24,11 +24,27 @@
         <div class="top-bar">
             <div>
                 <h1 class="page-title">Stock Requests</h1>
-                <p style="color: var(--text-muted); font-size: 0.85rem;">Approve technician inventory requests</p>
+                <p style="color: var(--text-muted); font-size: 0.85rem;">{{ $canDecideRequests ? 'Approve the inventory requests of your technicians' : 'Inventory requests of the technicians, by branch' }}</p>
             </div>
-            @if ($pendingCount > 0)
-            <span class="badge badge-warning">{{ $pendingCount }} Pending</span>
-            @endif
+            <div style="display:flex;gap:.65rem;flex-wrap:wrap;align-items:center;">
+                @if (! \App\Support\BranchScope::isRestricted())
+                <form method="GET" action="" class="dashboard-branch-form">
+                    <input type="hidden" name="status" value="{{ $filterStatus }}">
+                    <label class="form-label" for="requestBranch" style="margin:0;">Branch</label>
+                    <select name="branch" id="requestBranch" class="form-select" onchange="this.form.submit()" style="width:auto;min-width:170px;">
+                        <option value="">All branches</option>
+                        @foreach ($inventoryBranches as $requestBranch)
+                        <option value="{{ $requestBranch }}" {{ $branch === $requestBranch ? 'selected' : '' }}>{{ $requestBranch }}</option>
+                        @endforeach
+                    </select>
+                </form>
+                @else
+                <span class="badge badge-info">{{ $branch ?: 'No branch assigned' }} branch</span>
+                @endif
+                @if ($pendingCount > 0)
+                <span class="badge badge-warning">{{ $pendingCount }} Pending</span>
+                @endif
+            </div>
         </div>
 
         @if ($success)
@@ -39,12 +55,12 @@
         @endif
 
         <div class="filter-tabs">
-            <a href="inventory_requests.php?status=all" class="filter-tab {{ $filterStatus === 'all' ? 'active' : '' }}">All</a>
-            <a href="inventory_requests.php?status=pending" class="filter-tab {{ $filterStatus === 'pending' ? 'active' : '' }}">
+            <a href="inventory_requests.php?status=all{{ !\App\Support\BranchScope::isRestricted() && $branch ? '&branch=' . urlencode($branch) : '' }}" class="filter-tab {{ $filterStatus === 'all' ? 'active' : '' }}">All</a>
+            <a href="inventory_requests.php?status=pending{{ !\App\Support\BranchScope::isRestricted() && $branch ? '&branch=' . urlencode($branch) : '' }}" class="filter-tab {{ $filterStatus === 'pending' ? 'active' : '' }}">
                 Pending @if ($pendingCount > 0)({{ $pendingCount }})@endif
             </a>
-            <a href="inventory_requests.php?status=approved" class="filter-tab {{ $filterStatus === 'approved' ? 'active' : '' }}">Approved</a>
-            <a href="inventory_requests.php?status=denied" class="filter-tab {{ $filterStatus === 'denied' ? 'active' : '' }}">Denied</a>
+            <a href="inventory_requests.php?status=approved{{ !\App\Support\BranchScope::isRestricted() && $branch ? '&branch=' . urlencode($branch) : '' }}" class="filter-tab {{ $filterStatus === 'approved' ? 'active' : '' }}">Approved</a>
+            <a href="inventory_requests.php?status=denied{{ !\App\Support\BranchScope::isRestricted() && $branch ? '&branch=' . urlencode($branch) : '' }}" class="filter-tab {{ $filterStatus === 'denied' ? 'active' : '' }}">Denied</a>
         </div>
 
         <div class="card">
@@ -55,6 +71,7 @@
                             <tr>
                                 <th>Request No.</th>
                                 <th>Employee</th>
+                                @if (! \App\Support\BranchScope::isRestricted())<th>Branch</th>@endif
                                 <th>Item</th>
                                 <th>Quantity</th>
                                 <th>Request Details</th>
@@ -77,12 +94,26 @@ $statusClass = 'status-' . $req['status'];
                             <tr>
                                 <td>#{{ $req['id'] }}</td>
                                 <td><strong>{{ htmlspecialchars($req['employee_name']) }}</strong></td>
-                                <td>{{ htmlspecialchars($req['item_name']) }}</td>
+                                @if (! \App\Support\BranchScope::isRestricted())<td>{{ $req['employee_branch'] ?: '—' }}</td>@endif
+                                <td>
+                                    {{ htmlspecialchars($req['item_name']) }}
+                                    <br><span class="badge {{ ($req['request_type'] ?? 'out') === 'return' ? 'badge-warning' : 'badge-info' }}">{{ ($req['request_type'] ?? 'out') === 'return' ? 'Item Return' : 'Item Out' }}</span>
+                                </td>
                                 <td>{{ $req['quantity'] }}</td>
                                 <td style="max-width: 250px; padding: 1rem;">
+                                    @php
+                                        $requestDetails = array_filter([
+                                            !empty($req['item_condition']) ? 'Condition: ' . $req['item_condition'] : null,
+                                            !empty($req['area_used']) ? 'Used for: ' . $req['area_used'] : null,
+                                            !empty($req['person_in_charge']) ? 'In charge: ' . $req['person_in_charge'] : null,
+                                        ]);
+                                    @endphp
+                                    @foreach ($requestDetails as $requestDetail)
+                                        <span style="display:block; color: var(--text-secondary); font-size: 0.9rem;">{{ $requestDetail }}</span>
+                                    @endforeach
                                     @if ($req['comments'])
                                         <span style="color: var(--text-secondary); font-size: 0.9rem;">{{ nl2br(htmlspecialchars($req['comments'])) }}</span>
-                                    @else
+                                    @elseif (empty($requestDetails))
                                         <span style="color: var(--text-muted);">-</span>
                                     @endif
                                 </td>
@@ -90,13 +121,13 @@ $statusClass = 'status-' . $req['status'];
                                 <td>{{ date('M d, Y h:i A', strtotime($req['created_at'])) }}</td>
                                 <td style="font-size: 0.85rem; color: var(--text-secondary);">{{ $processedBy ?: '-' }}</td>
                                 <td class="actions-column">
-                                    @if ($req['status'] === 'pending')
+                                    @if ($req['status'] === 'pending' && $canDecideRequests)
                                     <div class="request-action-menu">
                                         <button class="request-action-menu-btn" type="button" aria-label="Actions for request #{{ $req['id'] }}" aria-expanded="false" onclick="toggleRequestActionMenu(this)">&#8942;</button>
                                         <div class="request-action-menu-dropdown">
-                                        <form method="POST" action="{{ route('inventory-requests.decide', ['inventoryRequest' => $req['id'], 'decision' => 'approve']) }}" onsubmit="return confirm('Approve this request and release stock?');">
+                                        <form method="POST" action="{{ route('inventory-requests.decide', ['inventoryRequest' => $req['id'], 'decision' => 'approve']) }}" onsubmit="return confirm('{{ ($req['request_type'] ?? 'out') === 'return' ? 'Accept this return and put the items back in stock?' : 'Approve this request and release stock?' }}');">
             @csrf
-                                            <button type="submit" class="request-menu-item">Approve</button>
+                                            <button type="submit" class="request-menu-item">{{ ($req['request_type'] ?? 'out') === 'return' ? 'Accept Return' : 'Approve' }}</button>
                                         </form>
                                         <form method="POST" action="{{ route('inventory-requests.decide', ['inventoryRequest' => $req['id'], 'decision' => 'deny']) }}" onsubmit="return confirm('Deny this request?');">
             @csrf
@@ -104,6 +135,8 @@ $statusClass = 'status-' . $req['status'];
                                         </form>
                                         </div>
                                     </div>
+                                    @elseif ($req['status'] === 'pending')
+                                    <span style="color: var(--text-muted); font-size: 0.85rem;">Pending</span>
                                     @else
                                     <span style="color: var(--text-muted); font-size: 0.85rem;">Processed</span>
                                     @endif
@@ -111,7 +144,7 @@ $statusClass = 'status-' . $req['status'];
                             </tr>
                             @endforeach
                             @if (empty($requests))
-                            <tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 2rem;">No requests found</td></tr>
+                            <tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 2rem;">No requests found</td></tr>
                             @endif
                         </tbody>
                     </table>

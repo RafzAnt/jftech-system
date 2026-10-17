@@ -28,41 +28,53 @@ class ApiController extends Controller
         \App\Support\BranchScope::abortUnlessClient($data['client_id']);
         return response()->json(['success' => true, 'bills' => DB::table('bills')->where('client_id', $data['client_id'])->orderByDesc('billing_period_start')->get(), 'payments' => DB::table('payments')->leftJoin('bills', 'payments.bill_id', '=', 'bills.id')->where('payments.client_id', $data['client_id'])->orderByDesc('payment_date')->get(['payments.*', 'bills.bill_number', 'bills.amount as bill_amount', DB::raw('(COALESCE(bills.amount, 0) - COALESCE((SELECT SUM(amount) FROM payments WHERE bill_id = payments.bill_id), 0)) AS balance')])]);
     }
-    public function inventoryItems(): JsonResponse
+    public function inventoryItems(Request $request): JsonResponse
     {
-        // Pending employee requests reserve stock immediately. The mobile app
+        // Every branch keeps its own stock; the app is only offered the stock of the signed-in employee's branch.
+        $employee = $request->attributes->get('employee');
+
+        // Pending item-out requests reserve stock immediately. The mobile app
         // must only offer quantity that can still be released by the admin.
+        $reserved = "COALESCE((SELECT SUM(requests.quantity) FROM inventory_requests AS requests WHERE requests.inventory_id = inventory.id AND requests.status = 'pending' AND requests.request_type = 'out'), 0)";
         $items = DB::table('inventory')
+            ->whereRaw("LOWER(COALESCE(inventory.branch_name, '')) = LOWER(?)", [(string) $employee->branch_name])
             ->select('inventory.*')
-            ->selectRaw("GREATEST(inventory.quantity - COALESCE((SELECT SUM(requests.quantity) FROM inventory_requests AS requests WHERE requests.inventory_id = inventory.id AND requests.status = 'pending'), 0), 0) AS available_quantity")
+            ->selectRaw("GREATEST(inventory.quantity - {$reserved}, 0) AS available_quantity")
             ->where('inventory.status', 'active')
             ->where('inventory.archived', 0)
-            ->whereRaw("GREATEST(inventory.quantity - COALESCE((SELECT SUM(requests.quantity) FROM inventory_requests AS requests WHERE requests.inventory_id = inventory.id AND requests.status = 'pending'), 0), 0) > 0")
             ->orderBy('inventory.item_name')
             ->get();
 
-        return response()->json(['success' => true, 'data' => $items]);
+        // For an item-out request only stock that is left is offered; a return can be of any item of the branch.
+        $out = $items->filter(fn ($item) => (int) $item->available_quantity > 0)->values();
+
+        return response()->json(['success' => true, 'data' => $out, 'all_items' => $items->values()]);
     }
     public function attendanceHistory(Request $request): JsonResponse
     {
-        $data = $request->validate(['employee_id' => ['required', 'integer']]);
-        return response()->json(['success' => true, 'data' => DB::table('attendance as a')->join('employees as e', 'e.id', '=', 'a.employee_id')->where('a.employee_id', $data['employee_id'])->orderByDesc('a.attendance_date')->limit(30)->get(['a.*', 'e.position', DB::raw('COALESCE(a.branch_name, e.branch_name) AS branch_name')])]);
+        $employee = $request->attributes->get('employee');
+        return response()->json(['success' => true, 'data' => DB::table('attendance as a')->join('employees as e', 'e.id', '=', 'a.employee_id')->where('a.employee_id', $employee->id)->orderByDesc('a.attendance_date')->limit(30)->get(['a.*', 'e.position', DB::raw('COALESCE(a.branch_name, e.branch_name) AS branch_name')])]);
     }
     public function employeeLogin(Request $request): JsonResponse
     {
         $data = $request->validate(['username' => ['required', 'string'], 'password' => ['required', 'string']]);
-        $user = DB::table('users')->join('employees', 'employees.user_id', '=', 'users.id')->where('users.username', $data['username'])->where('users.status', 'active')->select('users.*', 'employees.id as employee_id', 'employees.position as employee_position', 'employees.full_name as employee_name', 'employees.branch_name as employee_branch')->first();
+        $user = DB::table('users')->join('employees', 'employees.user_id', '=', 'users.id')->where('users.username', $data['username'])->where('users.status', 'active')->where('employees.status', 'active')->select('users.*', 'employees.id as employee_id', 'employees.position as employee_position', 'employees.full_name as employee_name', 'employees.branch_name as employee_branch')->first();
         if (! $user || ! Hash::check($data['password'], $user->password)) {
             DB::table('login_history')->insert(['username' => $data['username'], 'full_name' => '', 'role' => 'employee', 'ip_address' => $request->ip(), 'user_agent' => (string) $request->userAgent(), 'status' => 'failed', 'error_message' => 'Invalid username or password.']);
             return response()->json(['success' => false, 'message' => 'Invalid username or password.'], 401);
         }
         $historyId = DB::table('login_history')->insertGetId(['user_id' => $user->id, 'username' => $user->username, 'full_name' => $user->full_name, 'role' => $user->role, 'ip_address' => $request->ip(), 'user_agent' => (string) $request->userAgent(), 'status' => 'success']);
-        return response()->json(['success' => true, 'user' => ['id' => $user->id, 'employee_id' => $user->employee_id, 'full_name' => $user->employee_name ?: $user->full_name, 'username' => $user->username, 'position' => $user->employee_position, 'branch_name' => $user->employee_branch, 'login_history_id' => $historyId]]);
+        // Every later request of the app carries this token; it is what proves who is signed in.
+        $token = \App\Support\EmployeeTokens::issue((int) $user->employee_id, (int) $historyId);
+        return response()->json(['success' => true, 'token' => $token, 'user' => ['id' => $user->id, 'employee_id' => $user->employee_id, 'full_name' => $user->employee_name ?: $user->full_name, 'username' => $user->username, 'position' => $user->employee_position, 'branch_name' => $user->employee_branch, 'login_history_id' => $historyId]]);
     }
-
     public function employeeLogout(Request $request): JsonResponse
     {
         $data = $request->validate(['login_history_id' => ['required', 'integer']]);
+        // Signing out ends the token that was used, so it cannot be used again.
+        if ($bearer = $request->bearerToken()) {
+            \App\Support\EmployeeTokens::revoke($bearer);
+        }
         $history = DB::table('login_history')
             ->select('id', 'status', 'logout_time')
             ->where('id', $data['login_history_id'])
@@ -91,50 +103,64 @@ class ApiController extends Controller
 
     public function inventoryRequestCreate(Request $request): JsonResponse
     {
+        $employee = $request->attributes->get('employee');
         $data = $request->validate([
-            'employee_id' => ['required', 'integer', 'exists:employees,id'],
+            'request_type' => ['nullable', 'in:out,return'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.inventory_id' => ['required', 'integer', 'exists:inventory,id'],
             'items.*.quantity' => ['required', 'integer', 'min:1'],
             'items.*.comments' => ['nullable', 'string'],
+            'item_condition' => ['nullable', 'string', 'max:30'],
+            'area_used' => ['nullable', 'string', 'max:150'],
+            'person_in_charge' => ['nullable', 'string', 'max:100'],
         ]);
-
-        $employee = DB::table('employees')->where('id', $data['employee_id'])->where('status', 'active')->first();
-        if (! $employee) return response()->json(['success' => false, 'message' => 'Employee account is inactive.'], 422);
+        $type = $data['request_type'] ?? 'out';
+        $details = [
+            'request_type' => $type,
+            'item_condition' => isset($data['item_condition']) ? trim($data['item_condition']) ?: null : null,
+            'area_used' => isset($data['area_used']) ? trim($data['area_used']) ?: null : null,
+            'person_in_charge' => isset($data['person_in_charge']) ? trim($data['person_in_charge']) ?: null : null,
+        ];
 
         $createdIds = [];
         try {
-            DB::transaction(function () use (&$createdIds, $employee, $data) {
+            DB::transaction(function () use (&$createdIds, $employee, $data, $type, $details) {
             foreach ($data['items'] as $item) {
+                // A return can be of any item of the branch; an item out must still be active and in stock.
                 $inv = DB::table('inventory')
                     ->where('id', $item['inventory_id'])
-                    ->where('status', 'active')
-                    ->where('archived', 0)
+                    ->when($type === 'out', fn ($query) => $query->where('status', 'active')->where('archived', 0))
                     ->lockForUpdate()
                     ->first();
                 if (! $inv) {
                     throw new \DomainException('One or more requested items are no longer available. Please refresh the inventory list.');
                 }
+                if (strcasecmp(trim((string) $inv->branch_name), trim((string) $employee->branch_name)) !== 0) {
+                    throw new \DomainException("{$inv->item_name} is stocked by another branch. Please refresh the inventory list.");
+                }
 
-                $reserved = (int) DB::table('inventory_requests')
-                    ->where('inventory_id', $inv->id)
-                    ->where('status', 'pending')
-                    ->sum('quantity');
-                $available = max(0, (int) $inv->quantity - $reserved);
-                if ((int) $item['quantity'] > $available) {
-                    throw new \DomainException("{$inv->item_name} only has {$available} unit(s) available for request.");
+                if ($type === 'out') {
+                    $reserved = (int) DB::table('inventory_requests')
+                        ->where('inventory_id', $inv->id)
+                        ->where('status', 'pending')
+                        ->where('request_type', 'out')
+                        ->sum('quantity');
+                    $available = max(0, (int) $inv->quantity - $reserved);
+                    if ((int) $item['quantity'] > $available) {
+                        throw new \DomainException("{$inv->item_name} only has {$available} unit(s) available for request.");
+                    }
                 }
                 $id = DB::table('inventory_requests')->insertGetId([
                     'employee_id' => $employee->id,
                     'employee_name' => $employee->full_name,
-                    'inventory_id' => $inv?->id,
+                    'inventory_id' => $inv->id,
                     'item_name' => $inv->item_name,
                     'quantity' => $item['quantity'],
                     'comments' => $item['comments'] ?? null,
                     'status' => 'pending',
                     'created_at' => now(),
                     'updated_at' => now(),
-                ]);
+                ] + $details);
                 $createdIds[] = $id;
             }
             });
@@ -146,19 +172,17 @@ class ApiController extends Controller
             return response()->json(['success' => false, 'message' => 'No valid inventory items to request.'], 422);
         }
 
-        return response()->json(['success' => true, 'message' => count($createdIds) . ' request(s) submitted.', 'request_ids' => $createdIds], 201);
+        return response()->json(['success' => true, 'message' => count($createdIds) . ($type === 'return' ? ' return(s) submitted.' : ' request(s) submitted.'), 'request_ids' => $createdIds], 201);
     }
-
     public function inventoryRequestsList(Request $request): JsonResponse
     {
-        $data = $request->validate(['employee_id' => ['required', 'integer', 'exists:employees,id']]);
-        return response()->json(['success' => true, 'data' => DB::table('inventory_requests')->where('employee_id', $data['employee_id'])->orderByDesc('created_at')->limit(50)->get()]);
+        $employee = $request->attributes->get('employee');
+        return response()->json(['success' => true, 'data' => DB::table('inventory_requests')->where('employee_id', $employee->id)->orderByDesc('created_at')->limit(50)->get()]);
     }
-
     public function scanAttendance(Request $request): JsonResponse
     {
-        $data = $request->validate(['employee_id' => ['required', 'integer', 'exists:employees,id'], 'qr_code' => ['required', 'string', 'max:255']]);
-        $employee = DB::table('employees')->where('id', $data['employee_id'])->where('status', 'active')->first();
+        $data = $request->validate(['qr_code' => ['required', 'string', 'max:255']]);
+        $employee = $request->attributes->get('employee');
         $qr = DB::table('qr_codes')->where('qr_code', $data['qr_code'])->where('status', 'active')->whereDate('valid_date', today())->first();
         if (! $employee || ! $qr) return response()->json(['success' => false, 'message' => 'Invalid or expired QR code.'], 422);
         $now = now();

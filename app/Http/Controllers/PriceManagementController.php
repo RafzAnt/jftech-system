@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\InternetPlan;
 use App\Models\InternetPlanPriceHistory;
+use App\Support\BranchScope;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -14,9 +15,14 @@ class PriceManagementController extends Controller
         $this->applyDueScheduledPrices();
         $search = trim((string) $request->query('search', ''));
         $showArchived = $request->boolean('archived');
+        // Prices are the same for every branch and set by the super admin; a branch admin only looks, and only
+        // sees how many of their own branch's clients are on each plan.
+        $branch = BranchScope::current();
+        [$clientSql, $clientParams] = BranchScope::clients($branch, 'clients');
+        $inBranch = fn ($query) => $clientSql === '' ? $query : $query->whereRaw(substr($clientSql, strlen(' AND ')), $clientParams);
         $plans = InternetPlan::query()->where('archived', (int) $showArchived)
             ->when($search, fn ($query) => $query->where('plan_name', 'like', "%{$search}%"))
-            ->withCount(['clients as active_clients_count' => fn ($query) => $query->where('status', 'active')])
+            ->withCount(['clients as active_clients_count' => fn ($query) => $inBranch($query->where('status', 'active'))])
             ->orderBy('monthly_price')->get();
         $history = InternetPlanPriceHistory::query()->whereIn('internet_plan_id', $plans->pluck('id'))
             ->leftJoin('internet_plans', 'internet_plan_price_histories.internet_plan_id', '=', 'internet_plans.id')
@@ -25,11 +31,11 @@ class PriceManagementController extends Controller
             ->latest('internet_plan_price_histories.created_at')->limit(15)->get();
 
         return view('pages.price_management', [
-            'currentPage' => 'price_management', 'plans' => $plans, 'history' => $history, 'search' => $search, 'showArchived' => $showArchived,
+            'currentPage' => 'price_management', 'canManagePrices' => (bool) auth()->user()?->isSuperAdmin(), 'plans' => $plans, 'history' => $history, 'search' => $search, 'showArchived' => $showArchived,
             'stats' => [
                 'active' => InternetPlan::active()->count(),
                 'scheduled' => InternetPlan::whereNotNull('price_effective_on')->where('archived', 0)->count(),
-                'clients' => DB::table('clients')->where('status', 'active')->count(),
+                'clients' => $inBranch(DB::table('clients')->where('status', 'active'))->count(),
             ],
             'themeCssVersion' => @filemtime(public_path('css/jftech-theme.css')) ?: 1,
             'priceCssVersion' => @filemtime(public_path('css/price_management.css')) ?: 1,
@@ -39,6 +45,7 @@ class PriceManagementController extends Controller
 
     public function handlePost(Request $request)
     {
+        abort_unless(auth()->user()?->isSuperAdmin(), 403);
         $action = $request->string('action')->toString();
         if (in_array($action, ['archive', 'restore', 'toggle'], true)) return $this->availability($request, $action);
         if ($action === 'schedule') return $this->schedule($request);
@@ -107,6 +114,6 @@ class PriceManagementController extends Controller
 
     private function history(InternetPlan $plan, mixed $oldMonthly, mixed $oldFee, string $type, ?string $effectiveOn, ?string $reason): void
     {
-        InternetPlanPriceHistory::create(['internet_plan_id' => $plan->id, 'previous_monthly_price' => $oldMonthly, 'new_monthly_price' => $type === 'scheduled' ? $plan->scheduled_monthly_price : $plan->monthly_price, 'previous_installation_fee' => $oldFee, 'new_installation_fee' => $type === 'scheduled' ? $plan->scheduled_installation_fee : $plan->installation_fee, 'change_type' => $type, 'effective_on' => $effectiveOn, 'reason' => $reason, 'changed_by' => auth()->id()]);
+        InternetPlanPriceHistory::create(['internet_plan_id' => $plan->id, 'previous_monthly_price' => $oldMonthly, 'new_monthly_price' => $type === 'scheduled' ? $plan->scheduled_monthly_price : $plan->monthly_price, 'previous_installation_fee' => $oldFee, 'new_installation_fee' => $type === 'scheduled' ? $plan->scheduled_installation_fee : $plan->installation_fee, 'change_type' => $type, 'effective_on' => $effectiveOn, 'reason' => $reason, 'changed_by' => $type === 'applied' ? null : auth()->id()]);
     }
 }

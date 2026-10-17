@@ -24,7 +24,7 @@
         <div class="top-bar">
             <div>
                 <h1 class="page-title">Business Settings</h1>
-                <p style="color: var(--text-muted); font-size: 0.85rem;">Configure system preferences</p>
+                <p style="color: var(--text-muted); font-size: 0.85rem;">{{ $canEditSettings ? 'Configure system preferences' : 'System preferences for every branch. Only the super admin can change them.' }}</p>
             </div>
         </div>
 
@@ -47,6 +47,7 @@
             </div>
             <div class="card-body">
                 <form method="POST" action="" class="settings-form">
+                    <fieldset{{ $canEditSettings ? '' : ' disabled' }} style="border:0;padding:0;margin:0;min-width:0;">
             @csrf
                     <input type="hidden" name="update_settings" value="1">
                     <div class="form-grid">
@@ -72,8 +73,8 @@
                             <small style="color:var(--text-muted);">Use PHP for the Philippine peso.</small>
                         </div>
                     </div>
-                    <div class="settings-form-actions"><button type="submit" class="btn btn-primary">Save Settings</button></div>
-                </form>
+                    @if($canEditSettings)<div class="settings-form-actions"><button type="submit" class="btn btn-primary">Save Settings</button></div>@endif
+                </fieldset></form>
             </div>
         </div>
 
@@ -84,6 +85,7 @@
             <div class="card-body">
                             <p style="margin:0 0 1rem;color:var(--text-muted);font-size:.85rem;">These amounts are filled in automatically using each employee’s saved daily rate. Payroll is prepared every Sunday at 11:55 PM (Philippine time) after the work week ends. The admin reviews it and marks it paid when the pay is released.</p>
                 <form method="POST" action="" class="settings-form">
+                    <fieldset{{ $canEditSettings ? '' : ' disabled' }} style="border:0;padding:0;margin:0;min-width:0;">
                     @csrf
                     <input type="hidden" name="update_settings" value="1">
                     <div class="form-grid">
@@ -94,8 +96,8 @@
                         <div class="form-group"><label class="form-label">PhilHealth</label><input type="number" name="settings[payroll_{{ $rate }}_philhealth]" class="form-input" step="0.01" min="0" value="{{ $settings['payroll_' . $rate . '_philhealth']['setting_value'] ?? '0.00' }}"></div>
                         @endforeach
                     </div>
-                    <div class="settings-form-actions"><button type="submit" class="btn btn-primary">Save Payroll Deductions</button></div>
-                </form>
+                    @if($canEditSettings)<div class="settings-form-actions"><button type="submit" class="btn btn-primary">Save Payroll Deductions</button></div>@endif
+                </fieldset></form>
             </div>
         </div>
 
@@ -106,6 +108,7 @@
             </div>
             <div class="card-body">
                 <form method="POST" action="" class="settings-form">
+                    <fieldset{{ $canEditSettings ? '' : ' disabled' }} style="border:0;padding:0;margin:0;min-width:0;">
             @csrf
                     <input type="hidden" name="update_settings" value="1">
                     <div class="form-grid">
@@ -143,8 +146,8 @@
                             <small style="color: var(--text-muted);">Status stays blank until this many minutes after the session starts. It becomes absent after the session ends when there is no time in or time out.</small>
                         </div>
                     </div>
-                    <div class="settings-form-actions"><button type="submit" class="btn btn-primary">Save Time Settings</button></div>
-                </form>
+                    @if($canEditSettings)<div class="settings-form-actions"><button type="submit" class="btn btn-primary">Save Time Settings</button></div>@endif
+                </fieldset></form>
             </div>
         </div>
 

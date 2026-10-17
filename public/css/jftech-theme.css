@@ -1809,6 +1809,28 @@ html[data-theme="dark"] .form-select {
     box-shadow: var(--ui-focus);
 }
 
+/* The number of requests waiting for the admin, at the end of a sidebar link. */
+.nav-badge {
+    margin-left: auto;
+    min-width: 20px;
+    padding: 0 0.4rem;
+    border-radius: 999px;
+    background: #f59e0b;
+    color: #1f1300;
+    font-size: 0.68rem;
+    font-weight: 700;
+    line-height: 20px;
+    text-align: center;
+}
+
+/* A read-only form (a branch admin looking at the shared settings) reads as locked. */
+fieldset:disabled .form-input,
+fieldset:disabled .form-select {
+    background: var(--bg-muted);
+    color: var(--text-secondary);
+    cursor: not-allowed;
+}
+
 /* Dialogs: a brand-coloured top edge, a deeper shadow. */
 .modal-content {
     border-top: 3px solid var(--accent);

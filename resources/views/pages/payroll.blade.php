@@ -25,8 +25,11 @@
             <div>
                 <h1 class="page-title">Payroll</h1>
                 <p style="color: var(--text-muted); font-size: 0.85rem;">Create, review, and print payroll records based on attendance</p>
+                <p style="color: var(--text-muted); font-size: 0.85rem;">{{ $payrollRoleHint }}</p>
             </div>
+            @if ($canGeneratePayroll)
             <button id="generatePayrollButton" type="button" class="btn btn-success" onclick="document.getElementById('payrollModal').classList.add('active'); if (typeof window.openPayrollModal === 'function') window.openPayrollModal();">+ Generate Payroll</button>
+            @endif
 
         </div>
 
@@ -234,12 +237,14 @@
                                 </div>
 
                                 <div class="payslip-actions">
-                                    @if ($showArchived)
-                                        <a href="?restore={{ $record['id'] }}" class="btn btn-sm btn-success">Restore</a>
-                                        <a href="?purge={{ $record['id'] }}" class="btn btn-sm btn-danger" onclick="return confirm('Permanently delete this archived payroll record? This cannot be undone.');">Delete Permanently</a>
-                                    @else
-                                        <button type="button" class="btn btn-sm btn-secondary" onclick="editPayroll({{ htmlspecialchars(json_encode($record), ENT_QUOTES, 'UTF-8') }})">Edit</button>
-                                        <a href="?delete={{ $record['id'] }}" class="btn btn-sm btn-danger" onclick="return confirm('Archive this payroll record?');">Archive</a>
+                                    @if ($record['can_manage'])
+                                        @if ($showArchived)
+                                            <a href="?restore={{ $record['id'] }}" class="btn btn-sm btn-success">Restore</a>
+                                            <a href="?purge={{ $record['id'] }}" class="btn btn-sm btn-danger" onclick="return confirm('Permanently delete this archived payroll record? This cannot be undone.');">Delete Permanently</a>
+                                        @else
+                                            <button type="button" class="btn btn-sm btn-secondary" onclick="editPayroll({{ htmlspecialchars(json_encode($record), ENT_QUOTES, 'UTF-8') }})">Edit</button>
+                                            <a href="?delete={{ $record['id'] }}" class="btn btn-sm btn-danger" onclick="return confirm('Archive this payroll record?');">Archive</a>
+                                        @endif
                                     @endif
                                     <a href="{{ url('/pages/print_payroll.php?id=' . $record['id']) }}" target="_blank" rel="noopener" class="btn btn-sm btn-success">Print</a>
                                 </div>
@@ -271,7 +276,7 @@
                             <label class="form-label">Employee *</label>
                             <select name="employee_id" id="employeeId" class="form-input" required onchange="syncDailyRate(); syncAttendance();">
                                 <option value="">Select employee</option>
-                                @foreach ($employees as $employee)
+                                @foreach ($payrollEmployees as $employee)
                                 <option
                                     value="{{ $employee['id'] }}"
                                     data-rate="{{ htmlspecialchars($employee['daily_rate']) }}"

@@ -146,6 +146,7 @@ trait BranchTestData
             $table->timestamp('created_at')->nullable();
         });
         Schema::create('system_settings', function ($table) {
+            $table->id();
             $table->string('setting_key');
             $table->string('setting_value')->nullable();
         });
@@ -158,6 +159,119 @@ trait BranchTestData
             $table->time('valid_until')->nullable();
             $table->string('status')->default('active');
             $table->unsignedBigInteger('created_by')->nullable();
+            $table->timestamp('created_at')->nullable();
+        });
+        Schema::create('inventory', function ($table) {
+            $table->id();
+            $table->string('item_name');
+            $table->string('sku')->nullable();
+            $table->string('category');
+            $table->integer('quantity')->default(0);
+            $table->decimal('unit_price', 10, 2)->default(0);
+            $table->text('description')->nullable();
+            $table->string('supplier')->nullable();
+            $table->integer('reorder_level')->default(5);
+            $table->string('status')->default('active');
+            $table->boolean('archived')->default(false);
+            $table->string('branch_name', 100)->default('Balilihan');
+            $table->timestamp('created_at')->nullable();
+            $table->unique(['branch_name', 'item_name', 'category']);
+        });
+        Schema::create('inventory_requests', function ($table) {
+            $table->id();
+            $table->unsignedBigInteger('employee_id');
+            $table->string('employee_name');
+            $table->unsignedBigInteger('inventory_id')->nullable();
+            $table->string('item_name');
+            $table->integer('quantity');
+            $table->text('comments')->nullable();
+            $table->string('status')->default('pending');
+            $table->string('request_type', 10)->default('out');
+            $table->string('item_condition', 30)->nullable();
+            $table->string('area_used', 150)->nullable();
+            $table->string('person_in_charge', 100)->nullable();
+            $table->unsignedBigInteger('approved_by')->nullable();
+            $table->timestamp('approved_at')->nullable();
+            $table->timestamp('created_at')->nullable();
+            $table->timestamp('updated_at')->nullable();
+        });
+        Schema::create('nap_boxes', function ($table) {
+            $table->id();
+            $table->string('name', 50);
+            $table->string('branch_name', 100);
+            $table->string('barangay_name', 100);
+            $table->string('location', 255)->nullable();
+            $table->unsignedSmallInteger('total_ports');
+            $table->string('status', 20)->default('active');
+            $table->boolean('archived')->default(false);
+            $table->timestamps();
+            $table->unique(['branch_name', 'name']);
+        });
+        Schema::create('nap_ports', function ($table) {
+            $table->id();
+            $table->unsignedBigInteger('nap_box_id');
+            $table->unsignedSmallInteger('port_number');
+            $table->string('status', 20)->default('available');
+            $table->unsignedBigInteger('client_id')->nullable();
+            $table->timestamp('occupied_at')->nullable();
+            $table->timestamps();
+            $table->unique(['nap_box_id', 'port_number']);
+        });
+        Schema::create('work_requests', function ($table) {
+            $table->id();
+            $table->string('request_code', 30)->unique();
+            $table->string('branch_name', 100);
+            $table->unsignedBigInteger('employee_id');
+            $table->string('work_type', 20);
+            $table->string('status', 30)->default('pending_approval');
+            $table->unsignedBigInteger('client_id')->nullable();
+            $table->string('new_client_name', 100)->nullable();
+            $table->string('new_client_phone', 20)->nullable();
+            $table->text('new_client_address')->nullable();
+            $table->string('barangay_name', 100)->nullable();
+            $table->text('location')->nullable();
+            $table->text('problem_details')->nullable();
+            $table->unsignedBigInteger('nap_box_id')->nullable();
+            $table->unsignedBigInteger('nap_port_id')->nullable();
+            $table->unsignedBigInteger('actual_nap_box_id')->nullable();
+            $table->unsignedBigInteger('actual_nap_port_id')->nullable();
+            $table->text('completion_notes')->nullable();
+            $table->text('admin_remarks')->nullable();
+            $table->timestamp('submitted_at')->nullable();
+            $table->unsignedBigInteger('reviewed_by')->nullable();
+            $table->timestamp('reviewed_at')->nullable();
+            $table->timestamp('completed_at')->nullable();
+            $table->unsignedBigInteger('confirmed_by')->nullable();
+            $table->timestamp('confirmed_at')->nullable();
+            $table->timestamps();
+        });
+        Schema::create('work_request_materials', function ($table) {
+            $table->id();
+            $table->unsignedBigInteger('work_request_id');
+            $table->unsignedBigInteger('inventory_id')->nullable();
+            $table->string('item_name', 100);
+            $table->unsignedInteger('used_quantity')->default(0);
+            $table->unsignedInteger('returned_quantity')->default(0);
+            $table->unsignedInteger('damaged_quantity')->default(0);
+            $table->timestamps();
+        });
+        Schema::create('employee_api_tokens', function ($table) {
+            $table->id();
+            $table->unsignedBigInteger('employee_id');
+            $table->unsignedBigInteger('login_history_id')->nullable();
+            $table->char('token_hash', 64)->unique();
+            $table->timestamp('expires_at')->nullable();
+            $table->timestamp('last_used_at')->nullable();
+            $table->timestamp('created_at')->nullable();
+        });
+        Schema::create('inventory_stock_movements', function ($table) {
+            $table->id();
+            $table->unsignedBigInteger('inventory_id');
+            $table->integer('quantity_change');
+            $table->integer('balance_after');
+            $table->string('movement_type');
+            $table->text('remarks')->nullable();
+            $table->unsignedBigInteger('performed_by')->nullable();
             $table->timestamp('created_at')->nullable();
         });
         Schema::create('login_history', function ($table) {
@@ -213,10 +327,35 @@ trait BranchTestData
             ['id' => 2, 'employee_id' => 2, 'attendance_date' => now()->toDateString(), 'morning_time_in' => '08:05:00', 'status_morning' => 'present', 'branch_name' => 'Loon'],
         ]);
 
+        DB::table('inventory')->insert([
+            ['id' => 1, 'item_name' => 'Router', 'sku' => 'SKU-1', 'category' => 'Network', 'quantity' => 10, 'unit_price' => 500, 'reorder_level' => 2, 'branch_name' => 'Balilihan'],
+            ['id' => 2, 'item_name' => 'Router', 'sku' => 'SKU-2', 'category' => 'Network', 'quantity' => 4, 'unit_price' => 500, 'reorder_level' => 2, 'branch_name' => 'Loon'],
+            ['id' => 3, 'item_name' => 'ONU', 'sku' => 'SKU-3', 'category' => 'Network', 'quantity' => 6, 'unit_price' => 800, 'reorder_level' => 2, 'branch_name' => 'Loon'],
+        ]);
+        DB::table('inventory_requests')->insert([
+            ['id' => 1, 'employee_id' => 1, 'employee_name' => 'Eli Santos', 'inventory_id' => 1, 'item_name' => 'Router', 'quantity' => 2, 'status' => 'pending', 'created_at' => now(), 'updated_at' => now()],
+            ['id' => 2, 'employee_id' => 2, 'employee_name' => 'Fay Garcia', 'inventory_id' => 2, 'item_name' => 'Router', 'quantity' => 1, 'status' => 'pending', 'created_at' => now(), 'updated_at' => now()],
+        ]);
+        DB::table('inventory_stock_movements')->insert([
+            ['id' => 1, 'inventory_id' => 1, 'quantity_change' => 10, 'balance_after' => 10, 'movement_type' => 'opening_balance', 'created_at' => now()],
+            ['id' => 2, 'inventory_id' => 2, 'quantity_change' => 4, 'balance_after' => 4, 'movement_type' => 'opening_balance', 'created_at' => now()],
+        ]);
         DB::table('payroll')->insert([
             ['id' => 1, 'employee_id' => 1, 'payroll_period_start' => now()->startOfMonth()->toDateString(), 'payroll_period_end' => now()->endOfMonth()->toDateString(), 'net_pay' => 3000, 'status' => 'processed'],
             ['id' => 2, 'employee_id' => 2, 'payroll_period_start' => now()->startOfMonth()->toDateString(), 'payroll_period_end' => now()->endOfMonth()->toDateString(), 'net_pay' => 4000, 'status' => 'processed'],
         ]);
+    }
+
+    /** A token of the employee app for an employee (what employee_login.php hands out). */
+    protected function appToken(int $employeeId): string
+    {
+        return \App\Support\EmployeeTokens::issue($employeeId);
+    }
+
+    /** Request headers of the employee app for an employee. */
+    protected function appHeaders(int $employeeId): array
+    {
+        return ['Authorization' => 'Bearer ' . $this->appToken($employeeId), 'Accept' => 'application/json'];
     }
 
     protected function signIn(int $userId): User

@@ -19,11 +19,12 @@ if (!session()->has('user_verified')) {
         $username = trim($request->input('verify_username'));
         $password = trim($request->input('verify_password'));
         
-        $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ? AND role = 'super_admin' AND status = 'active'");
+        // Every admin confirms their own password before managing accounts.
+        $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ? AND role IN ('super_admin', 'admin') AND status = 'active'");
         $stmt->execute([$username]);
         $admin = $stmt->fetch();
         
-        if ($admin && password_verify($password, $admin['password'])) {
+        if ($admin && (int) $admin['id'] === (int) auth()->id() && password_verify($password, $admin['password'])) {
             session()->put('user_verified', true);
             $verified = true;
         } else {
@@ -46,6 +47,26 @@ $canonicalBranch = static function (string $typed) use ($branches): string {
         if (strcasecmp($branch, $typed) === 0) return $branch;
     }
     return $typed;
+};
+
+// The super admin manages every account. A branch admin only manages the technician (employee) accounts of
+// their own branch, so Admin accounts and other branches stay out of reach.
+$scopeBranch = \App\Support\BranchScope::resolve($request->query('branch'));
+$isBranchAdminView = \App\Support\BranchScope::isRestricted();
+$canChangeRoles = ! $isBranchAdminView;
+[$accountScope, $accountScopeParams] = \App\Support\BranchScope::users($scopeBranch, 'users');
+$manageableAccount = static function ($userId) use ($pdo): ?array {
+    $stmt = $pdo->prepare('SELECT id, role, branch_name FROM users WHERE id = ?');
+    $stmt->execute([$userId]);
+    $account = $stmt->fetch();
+    if (! $account) {
+        return null;
+    }
+    if (! \App\Support\BranchScope::isRestricted()) {
+        return $account;
+    }
+
+    return $account['role'] === 'employee' && \App\Support\BranchScope::canAccessBranch($account['branch_name']) ? $account : null;
 };
 
 if (! function_exists('accountRoleForPosition')) {
@@ -75,7 +96,9 @@ if ($verified && $request->isMethod('post')) {
             $stmt = $pdo->prepare("SELECT * FROM employees WHERE id = ? AND status = 'active' AND user_id IS NULL");
             $stmt->execute([$employeeId]);
             $employee = $stmt->fetch();
+            if ($employee && $isBranchAdminView && !\App\Support\BranchScope::canAccessBranch($employee['branch_name'])) $employee = false;
             if (!$employee) throw new Exception('Select an active employee without an existing account.');
+            if (!\App\Support\BranchScope::canManageEmployee($employee['position'])) throw new Exception('Accounts for Admin employees are created by the super admin.');
 
             // The Admin position gets a branch admin account for that employee's branch; everyone else a mobile app account.
             $role = accountRoleForPosition((string) $employee['position']);
@@ -108,7 +131,7 @@ if ($verified && $request->isMethod('post')) {
             $fullName = accountFullName($firstName, $middleName, $lastName);
             $email = trim($request->input('email'));
             $phone = trim($request->input('phone'));
-            $role = $request->input('role');
+            $role = $isBranchAdminView ? 'employee' : $request->input('role');
             $status = $request->input('status');
             $employeePosition = trim((string) $request->input('employee_position'));
             $branchName = $canonicalBranch(trim((string) $request->input('branch_name')));
@@ -124,7 +147,7 @@ if ($verified && $request->isMethod('post')) {
             $current = $pdo->prepare("SELECT role, status, branch_name FROM users WHERE id = ?");
             $current->execute([$userId]);
             $existingUser = $current->fetch();
-            if (!$existingUser) throw new Exception('User not found.');
+            if (!$existingUser || !$manageableAccount($userId)) throw new Exception('User not found.');
             if ($userId == auth()->id() && ($role !== 'super_admin' || $status !== 'active')) {
                 throw new Exception('You cannot change your own Super Admin role or status.');
             }
@@ -142,6 +165,7 @@ if ($verified && $request->isMethod('post')) {
         
         if ($request->has('reset_password')) {
             $userId = $request->input('user_id');
+            if (!$manageableAccount($userId)) throw new Exception('User not found.');
             $newPassword = password_hash($request->input('new_password'), PASSWORD_DEFAULT);
             
             $stmt = $pdo->prepare("UPDATE users SET password = ? WHERE id = ?");
@@ -151,6 +175,7 @@ if ($verified && $request->isMethod('post')) {
         
         if ($request->has('delete_user')) {
             $userId = $request->input('user_id');
+            if (!$manageableAccount($userId)) throw new Exception('User not found.');
             // Prevent archiving own account
             if ($userId == auth()->id()) {
                 $error = 'You cannot archive your own account!';
@@ -163,6 +188,7 @@ if ($verified && $request->isMethod('post')) {
 
         if ($request->has('restore_user')) {
             $userId = $request->input('user_id');
+            if (!$manageableAccount($userId)) throw new Exception('User not found.');
             $stmt = $pdo->prepare("UPDATE users SET archived = 0 WHERE id = ?");
             $stmt->execute([$userId]);
             $success = 'User restored successfully!';
@@ -170,6 +196,7 @@ if ($verified && $request->isMethod('post')) {
 
         if ($request->has('purge_user')) {
             $userId = $request->input('user_id');
+            if (!$manageableAccount($userId)) throw new Exception('User not found.');
             // Prevent purging own account
             if ($userId == auth()->id()) {
                 $error = 'You cannot delete your own account!';
@@ -195,18 +222,31 @@ $employeeChoices = [];
 $showArchived = ($request->query('view') ?? '') === 'archived';
 if ($verified) {
     $search = $request->query('search') ?? '';
-    $archivedFilter = $showArchived ? 'AND archived = 1' : 'AND (archived = 0 OR archived IS NULL)';
+    $archivedFilter = $showArchived ? 'AND users.archived = 1' : 'AND (users.archived = 0 OR users.archived IS NULL)';
+    // A branch admin only lists the technician accounts of their branch.
+    $roleFilter = $isBranchAdminView ? " AND users.role = 'employee'" : '';
+    $scopeFilter = $accountScope . $roleFilter;
     if ($search) {
         $searchTerm = "%$search%";
-        $stmt = $pdo->prepare("SELECT users.*, employees.position AS employee_position FROM users LEFT JOIN employees ON employees.user_id = users.id WHERE (users.username LIKE ? OR users.full_name LIKE ? OR users.email LIKE ? OR employees.position LIKE ?) $archivedFilter ORDER BY users.created_at DESC");
-        $stmt->execute([$searchTerm, $searchTerm, $searchTerm, $searchTerm]);
+        $stmt = $pdo->prepare("SELECT users.*, employees.position AS employee_position FROM users LEFT JOIN employees ON employees.user_id = users.id WHERE (users.username LIKE ? OR users.full_name LIKE ? OR users.email LIKE ? OR employees.position LIKE ?) $archivedFilter $scopeFilter ORDER BY users.created_at DESC");
+        $stmt->execute([$searchTerm, $searchTerm, $searchTerm, $searchTerm, ...$accountScopeParams]);
     } else {
-        $stmt = $pdo->query("SELECT users.*, employees.position AS employee_position FROM users LEFT JOIN employees ON employees.user_id = users.id WHERE TRUE $archivedFilter ORDER BY users.created_at DESC");
+        $stmt = $pdo->prepare("SELECT users.*, employees.position AS employee_position FROM users LEFT JOIN employees ON employees.user_id = users.id WHERE TRUE $archivedFilter $scopeFilter ORDER BY users.created_at DESC");
+        $stmt->execute($accountScopeParams);
     }
     $users = $stmt->fetchAll();
-    $archivedCount = (int) $pdo->query("SELECT COUNT(*) FROM users WHERE archived = 1")->fetchColumn();
+    $archivedStmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE users.archived = 1 $scopeFilter");
+    $archivedStmt->execute($accountScopeParams);
+    $archivedCount = (int) $archivedStmt->fetchColumn();
 
-    $availableEmployees = $pdo->query("SELECT id, full_name, position, branch_name FROM employees WHERE status = 'active' AND user_id IS NULL ORDER BY position, full_name")->fetchAll();
+    [$employeeScope, $employeeScopeParams] = \App\Support\BranchScope::employees($scopeBranch, 'employees');
+    $availableStmt = $pdo->prepare("SELECT id, full_name, position, branch_name FROM employees WHERE status = 'active' AND user_id IS NULL $employeeScope ORDER BY position, full_name");
+    $availableStmt->execute($employeeScopeParams);
+    $availableEmployees = $availableStmt->fetchAll();
+    // A branch admin creates accounts for technicians only; the Admin employees get theirs from the super admin.
+    if ($isBranchAdminView) {
+        $availableEmployees = array_values(array_filter($availableEmployees, static fn (array $e): bool => \App\Support\BranchScope::canManageEmployee($e['position'])));
+    }
 
     // What the Create Account box suggests: "Name — Position · Branch", plus the role the account will get.
     $labelCounts = array_count_values(array_map(static fn (array $e): string => $e['full_name'] . '|' . $e['position'] . '|' . $e['branch_name'], $availableEmployees));

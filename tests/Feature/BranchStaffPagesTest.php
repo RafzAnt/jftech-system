@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use PHPUnit\Framework\Attributes\PreserveGlobalState;
 use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -45,6 +46,38 @@ class BranchStaffPagesTest extends TestCase
         sort($ids);
 
         return $ids;
+    }
+
+    /** The payroll table of the test schema only has the basics; saving a record needs the full set of columns. */
+    private function widenPayrollTable(): void
+    {
+        Schema::table('payroll', function ($table) {
+            foreach ([
+                'daily_rate', 'monthly_basic_salary', 'hourly_rate', 'overtime_hours', 'late', 'undertime', 'absent', 'basic_salary',
+                'overtime_pay', 'regular_holiday', 'special_holiday', 'night_differential', 'incentives', 'allowances', 'leave_pay',
+                'rest_day_pay', 'salary_adjustment', 'other_earnings', 'sss', 'philhealth', 'pagibig', 'withholding_tax', 'cash_advance',
+                'salary_loan', 'hdmf_loan', 'other_deductions',
+            ] as $column) {
+                $table->decimal($column, 12, 2)->default(0);
+            }
+        });
+    }
+
+    /** employee 3: an Admin employee of Balilihan with a payroll record (id 3). */
+    private function addBalilihanAdminEmployee(): void
+    {
+        DB::table('employees')->insert(['id' => 3, 'employee_code' => 'EMP-3', 'full_name' => 'Gus Admin', 'position' => 'Admin', 'branch_name' => 'Balilihan', 'daily_rate' => 600, 'status' => 'active']);
+        DB::table('payroll')->insert(['id' => 3, 'employee_id' => 3, 'payroll_period_start' => now()->startOfMonth()->toDateString(), 'payroll_period_end' => now()->endOfMonth()->toDateString(), 'net_pay' => 5000, 'status' => 'processed']);
+    }
+
+    private function payrollPost(int $employeeId, array $extra = []): array
+    {
+        return $extra + [
+            'employee_id' => $employeeId,
+            'payroll_period_start' => now()->startOfMonth()->toDateString(),
+            'payroll_period_end' => now()->endOfMonth()->toDateString(),
+            'status' => 'draft',
+        ];
     }
 
     // ---- employees --------------------------------------------------------------------------------
@@ -216,10 +249,23 @@ class BranchStaffPagesTest extends TestCase
         $this->assertSame('Technician I', DB::table('employees')->where('id', 1)->value('position'));
     }
 
-    public function test_an_employee_who_is_already_an_admin_can_still_be_edited_by_the_branch_admin(): void
+    public function test_a_branch_admin_cannot_edit_an_admin_employee(): void
     {
         DB::table('employees')->where('id', 1)->update(['position' => 'Admin']);
         $this->signIn(2);
+        $page = $this->page('employees', [], [
+            'save_employee' => 1, 'employee_id' => 1, 'first_name' => 'Eli', 'last_name' => 'Santos', 'position' => 'Admin',
+            'branch_name' => 'Balilihan', 'contact_number' => '09171112222',
+        ]);
+
+        $this->assertSame('Error: Admin employees are managed by the super admin.', $page['error']);
+        $this->assertNull(DB::table('employees')->where('id', 1)->value('contact_number'));
+    }
+
+    public function test_the_super_admin_can_edit_an_admin_employee(): void
+    {
+        DB::table('employees')->where('id', 1)->update(['position' => 'Admin']);
+        $this->signIn(1);
         $page = $this->page('employees', [], [
             'save_employee' => 1, 'employee_id' => 1, 'first_name' => 'Eli', 'last_name' => 'Santos', 'position' => 'Admin',
             'branch_name' => 'Balilihan', 'contact_number' => '09171112222',
@@ -248,7 +294,8 @@ class BranchStaffPagesTest extends TestCase
         DB::table('employees')->insert(['id' => 3, 'employee_code' => 'EMP-3', 'full_name' => 'Gus Tan', 'position' => 'Technician I', 'branch_name' => 'Loon', 'status' => 'active']);
         DB::table('qr_codes')->insert(['qr_code' => 'QR-MORNING', 'qr_type' => 'morning', 'valid_date' => now()->toDateString(), 'valid_from' => '00:00:00', 'valid_until' => '23:59:59', 'status' => 'active']);
 
-        $this->postJson('/backend/api/scan_attendance.php', ['employee_id' => 3, 'qr_code' => 'QR-MORNING'])
+        // The scan acts as the employee who signed in (their token), whatever the body says.
+        $this->postJson('/backend/api/scan_attendance.php', ['employee_id' => 1, 'qr_code' => 'QR-MORNING'], $this->appHeaders(3))
             ->assertOk()
             ->assertJson(['success' => true, 'branch_name' => 'Loon', 'employee_name' => 'Gus Tan']);
         $this->assertSame('Loon', DB::table('attendance')->where('employee_id', 3)->value('branch_name'), 'the scan is recorded under the employee branch');
@@ -335,6 +382,46 @@ class BranchStaffPagesTest extends TestCase
         $this->assertSame('present', DB::table('attendance')->where('employee_id', 2)->value('status_morning'));
     }
 
+    public function test_a_branch_admin_cannot_record_attendance_for_an_admin_employee(): void
+    {
+        DB::table('employees')->where('id', 1)->update(['position' => 'Admin']);
+        $yesterday = now()->subDay()->toDateString();
+        $this->signIn(2);
+        $page = $this->page('employees', [], [
+            'manual_attendance' => 1, 'manual_employee_id' => 1, 'manual_date' => $yesterday,
+            'manual_morning_in' => '08:00', 'manual_morning_status' => '',
+        ]);
+
+        $this->assertSame('Attendance for Admin employees is recorded by the super admin.', $page['error']);
+        $this->assertSame(0, DB::table('attendance')->where('employee_id', 1)->where('attendance_date', $yesterday)->count());
+    }
+
+    public function test_a_branch_admin_cannot_mark_an_admin_employee_absent(): void
+    {
+        DB::table('employees')->where('id', 1)->update(['position' => 'Admin']);
+        $day = now()->subDay()->toDateString();
+        $this->signIn(2);
+        $page = $this->page('employees', [], ['mark_absent' => 1, 'employee_id' => 1, 'session' => 'morning', 'attendance_date' => $day]);
+
+        $this->assertSame('Error: Attendance for Admin employees is recorded by the super admin.', $page['error']);
+        $this->assertSame(0, DB::table('attendance')->where('employee_id', 1)->where('attendance_date', $day)->count());
+    }
+
+    public function test_the_super_admin_can_record_attendance_for_an_admin_employee(): void
+    {
+        DB::table('employees')->where('id', 1)->update(['position' => 'Admin']);
+        $yesterday = now()->subDay()->toDateString();
+        $this->signIn(1);
+        $page = $this->page('employees', [], [
+            'manual_attendance' => 1, 'manual_employee_id' => 1, 'manual_date' => $yesterday,
+            'manual_morning_in' => '08:00', 'manual_morning_status' => '',
+        ]);
+
+        $this->assertSame('', $page['error'] ?? '');
+        $this->assertSame(1, DB::table('attendance')->where('employee_id', 1)->where('attendance_date', $yesterday)->count());
+        $this->assertSame('Balilihan', DB::table('attendance')->where('employee_id', 1)->where('attendance_date', $yesterday)->value('branch_name'));
+    }
+
     // ---- payroll ----------------------------------------------------------------------------------
 
     public function test_payroll_is_limited_to_the_branch(): void
@@ -386,5 +473,125 @@ class BranchStaffPagesTest extends TestCase
 
         $this->assertSame('Payroll record archived successfully.', $page['success']);
         $this->assertSame(1, (int) DB::table('payroll')->where('id', 1)->value('archived'));
+    }
+
+    public function test_a_branch_admin_generates_payroll_for_a_technician_of_their_branch(): void
+    {
+        $this->widenPayrollTable();
+        $this->signIn(2);
+        $page = $this->page('payroll', [], $this->payrollPost(1));
+
+        $this->assertSame('Payroll record created successfully.', $page['success']);
+        $this->assertSame(2, DB::table('payroll')->where('employee_id', 1)->count());
+    }
+
+    public function test_a_branch_admin_cannot_generate_payroll_for_an_admin_employee(): void
+    {
+        $this->widenPayrollTable();
+        $this->addBalilihanAdminEmployee();
+        $this->signIn(2);
+        $page = $this->page('payroll', [], $this->payrollPost(3));
+
+        $this->assertSame('Error: Payroll for the Admin employees is generated by the super admin.', $page['error']);
+        $this->assertSame(1, DB::table('payroll')->where('employee_id', 3)->count());
+    }
+
+    public function test_the_super_admin_cannot_generate_payroll_for_a_technician(): void
+    {
+        $this->widenPayrollTable();
+        $this->signIn(1);
+        $page = $this->page('payroll', [], $this->payrollPost(2));
+
+        $this->assertSame('Error: The super admin generates payroll for the Admin employees only; the branch admins generate it for their technicians.', $page['error']);
+        $this->assertSame(1, DB::table('payroll')->where('employee_id', 2)->count());
+    }
+
+    public function test_the_super_admin_generates_payroll_for_an_admin_employee_of_any_branch(): void
+    {
+        $this->widenPayrollTable();
+        $this->addBalilihanAdminEmployee();
+        $this->signIn(1);
+        $page = $this->page('payroll', [], $this->payrollPost(3));
+
+        $this->assertSame('Payroll record created successfully.', $page['success']);
+        $this->assertSame(2, DB::table('payroll')->where('employee_id', 3)->count());
+    }
+
+    public function test_the_payroll_form_only_offers_the_employees_the_account_may_pay(): void
+    {
+        $this->addBalilihanAdminEmployee();
+        $this->signIn(2);
+        $branchAdminPage = $this->page('payroll');
+        $this->assertSame([1], $this->ids($branchAdminPage['payrollEmployees']), 'a branch admin pays the technicians');
+        $this->assertSame([1, 3], $this->ids($branchAdminPage['employees']), 'but still sees every employee of the branch');
+        $this->assertTrue($branchAdminPage['canGeneratePayroll']);
+    }
+
+    public function test_the_super_admin_payroll_form_offers_only_admin_employees(): void
+    {
+        $this->signIn(1);
+        $noAdmins = $this->page('payroll');
+        $this->assertSame([], $noAdmins['payrollEmployees']);
+        $this->assertFalse($noAdmins['canGeneratePayroll'], 'no Admin employee yet, so there is nobody to pay');
+    }
+
+    public function test_payroll_records_say_whether_the_account_may_change_them(): void
+    {
+        $this->addBalilihanAdminEmployee();
+        $this->signIn(1);
+        $flags = [];
+        foreach ($this->page('payroll')['payrollRecords'] as $record) {
+            $flags[(int) $record['id']] = $record['can_manage'];
+        }
+
+        $this->assertSame([1 => false, 2 => false, 3 => true], $flags);
+    }
+
+    public function test_the_super_admin_cannot_edit_or_archive_a_technicians_payroll(): void
+    {
+        $this->widenPayrollTable();
+        $this->signIn(1);
+        $edit = $this->page('payroll', [], $this->payrollPost(2, ['payroll_id' => 2, 'status' => 'paid']));
+        $this->assertSame('Error: The super admin generates payroll for the Admin employees only; the branch admins generate it for their technicians.', $edit['error']);
+        $this->assertSame('processed', DB::table('payroll')->where('id', 2)->value('status'));
+    }
+
+    public function test_the_super_admin_cannot_archive_a_technicians_payroll(): void
+    {
+        $this->signIn(1);
+        $page = $this->page('payroll', ['delete' => 2]);
+
+        $this->assertStringContainsString('Admin employees only', $page['error']);
+        $this->assertSame(0, (int) DB::table('payroll')->where('id', 2)->value('archived'));
+    }
+
+    public function test_a_branch_admin_cannot_archive_restore_or_delete_an_admin_employees_payroll(): void
+    {
+        $this->addBalilihanAdminEmployee();
+        $this->signIn(2);
+        $page = $this->page('payroll', ['delete' => 3]);
+        $this->assertSame('Error: Payroll for the Admin employees is generated by the super admin.', $page['error']);
+        $this->assertSame(0, (int) DB::table('payroll')->where('id', 3)->value('archived'));
+    }
+
+    public function test_a_branch_admin_cannot_purge_an_admin_employees_archived_payroll(): void
+    {
+        $this->addBalilihanAdminEmployee();
+        DB::table('payroll')->where('id', 3)->update(['archived' => true]);
+        $this->signIn(2);
+        $page = $this->page('payroll', ['purge' => 3, 'view' => 'archived']);
+
+        $this->assertSame('Error: Payroll for the Admin employees is generated by the super admin.', $page['error']);
+        $this->assertSame(1, DB::table('payroll')->where('id', 3)->count());
+    }
+
+    public function test_the_super_admin_can_archive_an_admin_employees_payroll(): void
+    {
+        $this->addBalilihanAdminEmployee();
+        $this->signIn(1);
+        $page = $this->page('payroll', ['delete' => 3]);
+
+        $this->assertSame('Payroll record archived successfully.', $page['success']);
+        $this->assertSame(1, (int) DB::table('payroll')->where('id', 3)->value('archived'));
     }
 }

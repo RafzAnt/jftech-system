@@ -107,6 +107,9 @@
     </div>
 
     <div class="meta">
+        @if ($scopeBranch)
+        Branch: <strong>{{ htmlspecialchars($scopeBranch) }}</strong> &nbsp;|&nbsp;
+        @endif
         @if ($categoryLabel)
         Category: <strong>{{ htmlspecialchars($categoryLabel) }}</strong> &nbsp;|&nbsp;
         @endif

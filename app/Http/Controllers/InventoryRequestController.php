@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\BranchScope;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -12,6 +13,8 @@ class InventoryRequestController extends Controller
     public function decide(Request $request, int $inventoryRequest, string $decision): RedirectResponse
     {
         abort_unless(in_array($decision, ['approve', 'deny'], true), 404);
+        // Requests are decided by the branch admin of the technician's branch; the super admin only looks.
+        abort_unless(auth()->user()?->isBranchAdmin(), 403);
 
         try {
             $message = DB::transaction(function () use ($inventoryRequest, $decision): string {
@@ -23,6 +26,7 @@ class InventoryRequestController extends Controller
                 if (! $requestRecord || $requestRecord->status !== 'pending') {
                     throw new \DomainException('This request has already been processed or no longer exists.');
                 }
+                abort_unless(BranchScope::canAccessEmployee($requestRecord->employee_id), 404);
 
                 if ($decision === 'deny') {
                     DB::table('inventory_requests')->where('id', $requestRecord->id)->update([
@@ -32,15 +36,36 @@ class InventoryRequestController extends Controller
                     return 'Request denied successfully.';
                 }
 
+                $isReturn = ($requestRecord->request_type ?? 'out') === 'return';
                 $inventory = DB::table('inventory')
                     ->where('id', $requestRecord->inventory_id)
-                    ->where('status', 'active')
-                    ->where('archived', 0)
+                    ->when(! $isReturn, fn ($query) => $query->where('status', 'active')->where('archived', 0))
                     ->lockForUpdate()
                     ->first();
 
-                if (! $inventory) {
+                if (! $inventory || ! BranchScope::canAccessBranch($inventory->branch_name)) {
                     throw new \DomainException('The requested inventory item is unavailable.');
+                }
+
+                // An item brought back goes onto the shelf again (the admin has checked it and its condition).
+                if ($isReturn) {
+                    $balance = $inventory->quantity + $requestRecord->quantity;
+                    DB::table('inventory')->where('id', $inventory->id)->update(['quantity' => $balance]);
+                    $condition = $requestRecord->item_condition ? " Condition: {$requestRecord->item_condition}." : '';
+                    DB::table('inventory_stock_movements')->insert([
+                        'inventory_id' => $inventory->id,
+                        'quantity_change' => (int) $requestRecord->quantity,
+                        'balance_after' => $balance,
+                        'movement_type' => 'stock_returned',
+                        'remarks' => "Returned by {$requestRecord->employee_name} through request #{$requestRecord->id}.{$condition}",
+                        'performed_by' => auth()->id(),
+                        'created_at' => now(),
+                    ]);
+                    DB::table('inventory_requests')->where('id', $requestRecord->id)->update([
+                        'status' => 'approved', 'approved_by' => auth()->id(), 'approved_at' => now(), 'updated_at' => now(),
+                    ]);
+
+                    return 'Return accepted. The items are back in stock.';
                 }
                 if ($inventory->quantity < $requestRecord->quantity) {
                     throw new \DomainException("Insufficient stock for {$requestRecord->item_name}. Available: {$inventory->quantity}.");

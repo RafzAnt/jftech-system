@@ -26,12 +26,29 @@
                 <h1 class="page-title">{{ $tab === 'movements' ? 'Stock Update History' : 'Inventory' }}</h1>
                 <p style="color: var(--text-muted); font-size: 0.85rem;">{{ $tab === 'movements' ? 'List of all stock updates' : 'Manage equipment and supplies' }}</p>
             </div>
-            @if (!$showArchived && $tab === 'stock')
-            <div style="display:flex;gap:.65rem;flex-wrap:wrap;">
+            <div style="display:flex;gap:.65rem;flex-wrap:wrap;align-items:center;">
+                @if (! \App\Support\BranchScope::isRestricted())
+                <form method="GET" action="" class="dashboard-branch-form">
+                    <input type="hidden" name="tab" value="{{ $tab }}">
+                    @if ($showArchived)<input type="hidden" name="view" value="archived">@endif
+                    <label class="form-label" for="inventoryBranch" style="margin:0;">Branch</label>
+                    <select name="branch" id="inventoryBranch" class="form-select" onchange="this.form.submit()" style="width:auto;min-width:170px;">
+                        <option value="">All branches</option>
+                        @foreach ($inventoryBranches as $inventoryBranch)
+                        <option value="{{ $inventoryBranch }}" {{ $branch === $inventoryBranch ? 'selected' : '' }}>{{ $inventoryBranch }}</option>
+                        @endforeach
+                    </select>
+                </form>
+                @else
+                <span class="badge badge-info">{{ $branch ?: 'No branch assigned' }} branch</span>
+                @endif
+                @if (!$showArchived && $tab === 'stock')
                 <a class="btn btn-secondary" href="inventory.php?tab=movements">View Stock Updates</a>
+                @if ($canManageInventory)
                 <button class="btn btn-success" onclick="openNewItemModal()">+ Add Item</button>
+                @endif
+                @endif
             </div>
-            @endif
         </div>
 
         @if ($success)
@@ -87,7 +104,7 @@
                         <a href="inventory.php?view=archived" class="payslip-view-tab {{ $showArchived ? 'active' : '' }}">Archived ({{ $archivedCount }})</a>
                         @if (!$showArchived)<a href="inventory.php?tab=movements" class="payslip-view-tab">Stock Updates</a>@endif
                     </div>
-                    <a class="btn btn-sm btn-secondary" target="_blank" rel="noopener" href="{{ url('/pages/print_inventory.php?category=' . urlencode($filterCategory) . ($showArchived ? '&archived=1' : '')) }}">Print</a>
+                    <a class="btn btn-sm btn-secondary" target="_blank" rel="noopener" href="{{ url('/pages/print_inventory.php?category=' . urlencode($filterCategory) . ($showArchived ? '&archived=1' : '') . (! \App\Support\BranchScope::isRestricted() && $branch ? '&branch=' . urlencode($branch) : '')) }}">Print</a>
                 </div>
             </div>
             <div class="card-body" style="padding: 0;">
@@ -96,6 +113,7 @@
                         <thead>
                             <tr>
                                 <th>Item Name</th>
+                                @if (! \App\Support\BranchScope::isRestricted())<th>Branch</th>@endif
                                 <th>Category</th>
                                 <th>Stock</th>
                                 <th>Reserved</th>
@@ -113,6 +131,7 @@
 @endphp
                             <tr class="{{ $isLowStock ? 'row-warning' : '' }}">
                                 <td><strong>{{ htmlspecialchars($item['item_name']) }}</strong></td>
+                                @if (! \App\Support\BranchScope::isRestricted())<td><span class="badge badge-info">{{ $item['branch_name'] }}</span></td>@endif
                                 <td>{{ $item['category'] }}</td>
                                 <td>
                                     <span style="color: {{ $isLowStock ? 'var(--warning)' : 'inherit' }}; font-weight: 600;">
@@ -132,6 +151,7 @@
                                     </span>
                                 </td>
                                 <td class="inventory-menu-cell">
+                                    @if ($canManageInventory)
                                     <div class="inventory-action-menu">
                                         <button class="inventory-action-menu-btn" type="button" aria-label="Actions for {{ htmlspecialchars($item['item_name']) }}" aria-expanded="false" onclick="toggleInventoryActionMenu(this)">&#8942;</button>
                                         <div class="inventory-action-menu-dropdown">
@@ -155,11 +175,12 @@
                                         @endif
                                         </div>
                                     </div>
+                                    @endif
                                 </td>
                             </tr>
                             @endforeach
                             @if (empty($filteredItems))
-                            <tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 2rem;">{{ $showArchived ? 'No archived inventory items.' : 'No inventory items found.' }}</td></tr>
+                            <tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 2rem;">{{ $showArchived ? 'No archived inventory items.' : 'No inventory items found.' }}</td></tr>
                             @endif
                         </tbody>
                     </table>
@@ -175,12 +196,13 @@
             <div class="card-body" style="padding: 0;">
                 <div class="data-table-container">
                     <table class="data-table">
-                        <thead><tr><th>Date &amp; Time</th><th>Item</th><th>Update Type</th><th>Quantity Change</th><th>Stock After</th><th>Handled By</th><th>Notes</th></tr></thead>
+                        <thead><tr><th>Date &amp; Time</th><th>Item</th>@if (! \App\Support\BranchScope::isRestricted())<th>Branch</th>@endif<th>Update Type</th><th>Quantity Change</th><th>Stock After</th><th>Handled By</th><th>Notes</th></tr></thead>
                         <tbody>
                             @forelse ($movements as $movement)
                             <tr>
                                 <td>{{ \Carbon\Carbon::parse($movement->created_at)->format('M d, Y h:i A') }}</td>
                                 <td><strong>{{ $movement->item_name }}</strong><br><span style="color: var(--text-muted); font-size: .8rem;">{{ $movement->category }}</span></td>
+                                @if (! \App\Support\BranchScope::isRestricted())<td>{{ $movement->branch_name }}</td>@endif
                                 <td>{{ ['stock_received' => 'Stock Received', 'stock_issued' => 'Stock Released', 'stock_returned' => 'Stock Returned', 'damaged' => 'Damaged or Lost', 'stock_count' => 'Stock Counted'][$movement->movement_type] ?? ucwords(str_replace('_', ' ', $movement->movement_type)) }}</td>
                                 <td style="font-weight: 700; color: {{ $movement->quantity_change >= 0 ? 'var(--success)' : 'var(--danger)' }};">{{ $movement->quantity_change >= 0 ? '+' : '' }}{{ $movement->quantity_change }}</td>
                                 <td>{{ $movement->balance_after }}</td>
@@ -188,7 +210,7 @@
                                 <td style="max-width: 260px;">{{ $movement->remarks ?: '—' }}</td>
                             </tr>
                             @empty
-                            <tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">No stock updates recorded yet.</td></tr>
+                            <tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2rem;">No stock updates recorded yet.</td></tr>
                             @endforelse
                         </tbody>
                     </table>

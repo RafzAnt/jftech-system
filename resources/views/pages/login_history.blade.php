@@ -24,7 +24,7 @@
         <div class="top-bar">
             <div>
                 <h1 class="page-title">Login History</h1>
-                <p style="color: var(--text-muted); font-size: 0.85rem;">List of logins to user accounts</p>
+                <p style="color: var(--text-muted); font-size: 0.85rem;">{{ \App\Support\BranchScope::isRestricted() ? 'Logins to the accounts of your branch' : 'List of logins to user accounts' }}</p>
             </div>
             <a href="dashboard.php" class="btn btn-secondary">Back to Dashboard</a>
         </div>
@@ -53,6 +53,14 @@
         <div class="card" style="margin-bottom: 1.5rem;">
             <div class="card-body">
                 <form method="GET" action="" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    @if (! \App\Support\BranchScope::isRestricted())
+                    <select name="branch" class="form-select" onchange="this.form.submit()" style="width: auto; min-width: 150px;" aria-label="Branch">
+                        <option value="">All branches</option>
+                        @foreach ($historyBranches as $historyBranch)
+                        <option value="{{ $historyBranch }}" {{ $scopeBranch === $historyBranch ? 'selected' : '' }}>{{ $historyBranch }}</option>
+                        @endforeach
+                    </select>
+                    @endif
                     <input type="text" name="search_user" class="form-input" placeholder="Search by username or name..." value="{{ htmlspecialchars($searchUser) }}" style="max-width: 400px;">
                     <button type="submit" class="btn btn-primary">Search</button>
                     @if ($searchUser)

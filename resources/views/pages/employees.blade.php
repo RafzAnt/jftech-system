@@ -84,7 +84,9 @@
                                             </span>
                                         </td>
                                         <td>
+                                            @if (\App\Support\BranchScope::canManageEmployee($emp['position']))
                                             <button class="btn btn-sm btn-primary btn-icon" data-emp='@json($emp)' onclick="editEmployeeFromData(this)">Edit</button>
+                                            @endif
                                         </td>
                                     </tr>
                                     @endforeach
@@ -298,14 +300,14 @@ $afternoonQR = null;
             </div>
             <form method="POST" action="?tab=attendance">
                 @csrf
-                <p style="margin: 0 0 1rem; color: var(--text-muted); font-size: 0.85rem;">Record attendance by hand when an employee could not scan the QR code. Saving a day that already has a record updates the sessions you fill in. "Auto" sets Present or Late from the time in.</p>
+                <p style="margin: 0 0 1rem; color: var(--text-muted); font-size: 0.85rem;">Record attendance by hand when an employee could not scan the QR code. Saving a day that already has a record updates the sessions you fill in. "Auto" sets Present or Late from the time in.@if (\App\Support\BranchScope::isRestricted()) Attendance for Admin employees is recorded by the super admin.@endif</p>
                 <div class="form-grid">
                     <div class="form-group">
                         <label class="form-label" for="manualEmployee">Employee *</label>
                         <select name="manual_employee_id" id="manualEmployee" class="form-select" required>
                             <option value="">Select employee</option>
                             @foreach ($employees as $employee)
-                            @if ($employee['status'] === 'active')
+                            @if ($employee['status'] === 'active' && \App\Support\BranchScope::canManageEmployee($employee['position']))
                             <option value="{{ $employee['id'] }}" {{ $manualOld('manual_employee_id', (string) $selectedEmployeeId) === (string) $employee['id'] ? 'selected' : '' }}>{{ htmlspecialchars($employee['full_name']) }} — {{ $employee['branch_name'] }}</option>
                             @endif
                             @endforeach

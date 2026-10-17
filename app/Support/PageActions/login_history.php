@@ -12,8 +12,14 @@ $loginHistoryCssVersion = filemtime(public_path('css/login_history.css'));
 
 $searchUser = $request->query('search_user') ?? '';
 
-$query = "SELECT * FROM login_history WHERE TRUE";
-$params = [];
+// A branch admin sees the sign-ins of the accounts in their own branch; the super admin sees all or picks a branch.
+// A failed attempt with an unknown username belongs to no branch, so only the unfiltered super admin view lists it.
+$scopeBranch = \App\Support\BranchScope::resolve($request->query('branch'));
+[$historyScope, $historyScopeParams] = \App\Support\BranchScope::viaUser($scopeBranch, 'login_history.user_id');
+$historyBranches = array_keys(config('bohol_branches', []));
+
+$query = "SELECT * FROM login_history WHERE TRUE" . $historyScope;
+$params = $historyScopeParams;
 
 if ($searchUser) {
     $query .= " AND (username LIKE ? OR full_name LIKE ?)";
@@ -27,14 +33,15 @@ $stmt->execute($params);
 $loginHistory = $stmt->fetchAll();
 
 // Stats
-$stmt = $pdo->query("SELECT COUNT(*) as total FROM login_history");
-$totalLogins = $stmt->fetch()['total'];
+$countHistory = static function (string $extra = '', string $select = 'COUNT(*)') use ($pdo, $historyScope, $historyScopeParams): int {
+    $stmt = $pdo->prepare("SELECT {$select} as total FROM login_history WHERE TRUE" . $historyScope . $extra);
+    $stmt->execute($historyScopeParams);
 
-$stmt = $pdo->query("SELECT COUNT(*) as total FROM login_history WHERE status = 'success'");
-$successfulLogins = $stmt->fetch()['total'];
-
-$stmt = $pdo->query("SELECT COUNT(*) as total FROM login_history WHERE status = 'failed'");
-$failedLogins = $stmt->fetch()['total'];
+    return (int) $stmt->fetch()['total'];
+};
+$totalLogins = $countHistory();
+$successfulLogins = $countHistory(" AND status = 'success'");
+$failedLogins = $countHistory(" AND status = 'failed'");
 
 // login_time is set by the database, so compare against the database clock.
 $driver = $pdo->getAttribute(\PDO::ATTR_DRIVER_NAME);
@@ -43,7 +50,6 @@ $dayAgo = match ($driver) {
     'sqlite' => "datetime('now', '-1 day')",
     default => 'CURRENT_TIMESTAMP - INTERVAL 24 HOUR',
 };
-$stmt = $pdo->query("SELECT COUNT(DISTINCT user_id) as total FROM login_history WHERE login_time >= $dayAgo");
-$activeToday = $stmt->fetch()['total'];
+$activeToday = $countHistory(" AND login_time >= $dayAgo", 'COUNT(DISTINCT user_id)');
     return get_defined_vars();
 };

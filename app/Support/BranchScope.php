@@ -77,6 +77,12 @@ final class BranchScope
         return self::column($branch, "{$alias}.branch_name");
     }
 
+    /** Stock items of the branch: $alias.branch_name. */
+    public static function inventory(?string $branch, string $alias = 'i'): array
+    {
+        return self::column($branch, "{$alias}.branch_name");
+    }
+
     /** Rows that point at a client (bills, payments): the client must be in the branch. */
     public static function viaClient(?string $branch, string $clientIdColumn): array
     {
@@ -87,6 +93,18 @@ final class BranchScope
     public static function viaEmployee(?string $branch, string $employeeIdColumn): array
     {
         return self::via($branch, 'employees', $employeeIdColumn);
+    }
+
+    /** Rows that point at a stock item (stock movements): the item must be in the branch. */
+    public static function viaInventory(?string $branch, string $inventoryIdColumn): array
+    {
+        return self::via($branch, 'inventory', $inventoryIdColumn);
+    }
+
+    /** Rows that point at a user account (login history): the account must be in the branch. */
+    public static function viaUser(?string $branch, string $userIdColumn): array
+    {
+        return self::via($branch, 'users', $userIdColumn);
     }
 
     /**
@@ -115,11 +133,59 @@ final class BranchScope
         return self::canAccess('employees', $employeeId, $user);
     }
 
+    public static function canAccessInventory(int|string|null $inventoryId, ?User $user = null): bool
+    {
+        return self::canAccess('inventory', $inventoryId, $user);
+    }
+
+    public static function canAccessUser(int|string|null $userId, ?User $user = null): bool
+    {
+        return self::canAccess('users', $userId, $user);
+    }
+
     public static function canAccessBranch(?string $branchName, ?User $user = null): bool
     {
         $own = self::current($user);
 
         return $own === null || ($own !== '' && strcasecmp($own, trim((string) $branchName)) === 0);
+    }
+
+    /** The Admin position is the employee record of a branch admin. */
+    public static function isAdminPosition(?string $position): bool
+    {
+        return strcasecmp(trim((string) $position), 'Admin') === 0;
+    }
+
+    /**
+     * Who may generate, edit or archive payroll for an employee with this position. A branch admin runs
+     * the technicians of their branch; the super admin runs the Admin employees (the branch admins), so
+     * nobody generates their own pay. Branch access is checked separately.
+     */
+    public static function canManagePayrollFor(?string $position, ?User $user = null): bool
+    {
+        $user ??= Auth::user();
+
+        if ($user?->isSuperAdmin()) {
+            return self::isAdminPosition($position);
+        }
+
+        return $user?->isBranchAdmin() === true && ! self::isAdminPosition($position);
+    }
+
+    /**
+     * Who may record attendance by hand (or mark absent) and edit the employee record. The super admin
+     * can correct anyone; a branch admin cannot touch the Admin employees, so they cannot change their
+     * own attendance or daily rate. Branch access is checked separately.
+     */
+    public static function canManageEmployee(?string $position, ?User $user = null): bool
+    {
+        $user ??= Auth::user();
+
+        if ($user?->isSuperAdmin()) {
+            return true;
+        }
+
+        return $user?->isBranchAdmin() === true && ! self::isAdminPosition($position);
     }
 
     public static function abortUnlessClient(int|string|null $clientId): void

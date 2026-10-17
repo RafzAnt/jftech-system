@@ -20,9 +20,15 @@ foreach ($stmt->fetchAll() as $row) {
     $settings[$row['setting_key']] = $row;
 }
 
+// The settings are shared by every branch, so a branch admin can read them but only the super admin changes them.
+$canEditSettings = (bool) auth()->user()?->isSuperAdmin();
+
 // Update settings
 if ($request->isMethod('post')) {
     try {
+        if (! $canEditSettings) {
+            throw new Exception('Only the super admin can change the system settings.');
+        }
         if ($request->has('update_settings')) {
             $submittedSettings = $request->input('settings', []);
             if (isset($submittedSettings['company_contact']) && ! preg_match('/^\d{11}$/', trim((string) $submittedSettings['company_contact']))) {

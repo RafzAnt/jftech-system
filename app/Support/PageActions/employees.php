@@ -189,11 +189,14 @@ if ($request->isMethod('post') && $request->has('manual_attendance')) {
         $manualDate = (string) $request->input('manual_date');
         $manualRemarks = trim((string) $request->input('manual_remarks'));
 
-        $employeeStmt = $pdo->prepare("SELECT id, full_name, branch_name FROM employees WHERE id = ? AND status = 'active'");
+        $employeeStmt = $pdo->prepare("SELECT id, full_name, position, branch_name FROM employees WHERE id = ? AND status = 'active'");
         $employeeStmt->execute([$manualEmployeeId]);
         $manualEmployee = $employeeStmt->fetch();
         if (!$manualEmployee || !\App\Support\BranchScope::canAccessBranch($manualEmployee['branch_name'])) {
             throw new Exception('Choose an active employee.');
+        }
+        if (!\App\Support\BranchScope::canManageEmployee($manualEmployee['position'])) {
+            throw new Exception('Attendance for Admin employees is recorded by the super admin.');
         }
         if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $manualDate) || !checkdate((int) substr($manualDate, 5, 2), (int) substr($manualDate, 8, 2), (int) substr($manualDate, 0, 4))) {
             throw new Exception('Enter a valid attendance date.');
@@ -444,6 +447,14 @@ if ($request->isMethod('post') && $request->has('save_employee')) {
         if ($employeeId && !\App\Support\BranchScope::canAccessEmployee($employeeId)) {
             throw new Exception('That employee does not belong to your branch.');
         }
+        if ($employeeId) {
+            // The Admin employees (the branch admins) are managed by the super admin, so a branch admin cannot change their own rate.
+            $targetPositionStmt = $pdo->prepare('SELECT position FROM employees WHERE id = ?');
+            $targetPositionStmt->execute([$employeeId]);
+            if (!\App\Support\BranchScope::canManageEmployee($targetPositionStmt->fetchColumn() ?: null)) {
+                throw new Exception('Admin employees are managed by the super admin.');
+            }
+        }
 
         if ($firstName === '' || $lastName === '') {
             throw new Exception('First name and last name are required. Middle name is optional.');
@@ -509,6 +520,11 @@ if ($request->isMethod('post') && $request->has('mark_absent')) {
         $employeeId = $request->input('employee_id');
         if (!\App\Support\BranchScope::canAccessEmployee($employeeId)) {
             throw new Exception('That employee does not belong to your branch.');
+        }
+        $absentPositionStmt = $pdo->prepare('SELECT position FROM employees WHERE id = ?');
+        $absentPositionStmt->execute([$employeeId]);
+        if (!\App\Support\BranchScope::canManageEmployee($absentPositionStmt->fetchColumn() ?: null)) {
+            throw new Exception('Attendance for Admin employees is recorded by the super admin.');
         }
         $session = $request->input('session'); // 'morning' or 'afternoon'
         $markDate = $request->input('attendance_date') ?? date('Y-m-d');

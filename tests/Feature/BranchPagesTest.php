@@ -23,7 +23,6 @@ class BranchPagesTest extends TestCase
 
         // MySQL's GREATEST() is used by the billing queries.
         DB::connection()->getPdo()->sqliteCreateFunction('GREATEST', fn (...$values) => max($values), -1);
-        DB::statement('CREATE TABLE inventory_requests (id INTEGER PRIMARY KEY, status TEXT, created_at TEXT)');
         DB::table('internet_plans')->insert(['id' => 1, 'plan_name' => 'Starter', 'monthly_price' => 999]);
 
         // Reading plan prices applies scheduled changes; that needs tables this test does not have.
@@ -534,12 +533,21 @@ class BranchPagesTest extends TestCase
         $this->assertSame('User updated successfully!', $this->users($edit + ['role' => 'super_admin', 'status' => 'active'])['success']);
     }
 
-    public function test_only_a_super_admin_passes_the_account_page_check(): void
+    public function test_an_admin_confirms_their_own_password_for_the_account_page(): void
     {
         $this->signIn(2);
         $page = $this->page('user_management', [], ['verify_admin' => 1, 'verify_username' => 'bali', 'verify_password' => 'secret123']);
+        $this->assertSame('', $page['verifyError'], 'a branch admin confirms with their own password');
+
+        session()->forget('user_verified');
+        $page = $this->page('user_management', [], ['verify_admin' => 1, 'verify_username' => 'super', 'verify_password' => 'secret123']);
+        $this->assertSame('Invalid admin credentials.', $page['verifyError'], 'another admin\'s password does not count');
+
+        session()->forget('user_verified');
+        $page = $this->page('user_management', [], ['verify_admin' => 1, 'verify_username' => 'bali', 'verify_password' => 'wrong']);
         $this->assertSame('Invalid admin credentials.', $page['verifyError']);
 
+        session()->forget('user_verified');
         $this->signIn(1);
         $page = $this->page('user_management', [], ['verify_admin' => 1, 'verify_username' => 'super', 'verify_password' => 'secret123']);
         $this->assertSame('', $page['verifyError']);

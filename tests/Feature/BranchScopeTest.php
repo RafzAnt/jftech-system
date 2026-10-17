@@ -112,13 +112,20 @@ class BranchScopeTest extends TestCase
         BranchScope::abortUnlessClient(2);
     }
 
-    public function test_branch_admins_cannot_open_company_wide_pages(): void
+    public function test_branch_admins_cannot_open_the_company_wide_report_exports(): void
     {
         $this->signIn(2);
 
-        foreach (['/users', '/settings', '/login-history', '/inventory', '/inventory-requests', '/price-management', '/report-history', '/reports/export/csv', '/print-reports', '/print-inventory'] as $url) {
+        foreach (['/report-history', '/reports/export/csv', '/print-reports'] as $url) {
             $this->get($url)->assertForbidden("branch admin opened {$url}");
         }
+    }
+
+    public function test_a_branch_admin_cannot_change_the_prices(): void
+    {
+        $this->signIn(2);
+
+        $this->post('/price-management', ['action' => 'create', 'plan_name' => 'Free', 'speed_mbps' => 1, 'monthly_price' => 0, 'status' => 'active'])->assertForbidden();
     }
 
     public function test_the_super_admin_can_open_company_wide_pages(): void
@@ -148,20 +155,21 @@ class BranchScopeTest extends TestCase
         $this->getJson('/backend/api/get_client_billing.php?client_id=2')->assertOk()->assertJsonCount(2, 'bills');
     }
 
-    public function test_sidebar_only_lists_what_the_account_may_open(): void
+    public function test_every_account_gets_the_whole_sidebar(): void
     {
+        $links = ['dashboard.php', 'clients_browse.php', 'bill_inquiry.php', 'payment_history.php', 'price_management.php', 'employees.php', 'payroll.php', 'inventory.php', 'inventory_requests.php', 'reports.php', 'settings.php', 'user_management.php', 'login_history.php'];
+
         $this->signIn(2);
         $html = $this->get('/dashboard')->assertOk()->getContent();
         $this->assertStringContainsString('Balilihan Branch Admin', $html);
-        $this->assertStringContainsString('Client Accounts', $html);
-        foreach (['user_management.php', 'inventory.php', 'price_management.php', 'settings.php', 'login_history.php'] as $link) {
-            $this->assertStringNotContainsString($link, $html, "branch admin sidebar links to {$link}");
+        foreach ($links as $link) {
+            $this->assertStringContainsString($link, $html, "branch admin sidebar is missing {$link}");
         }
 
         $this->signIn(1);
         $html = $this->get('/dashboard')->assertOk()->getContent();
         $this->assertStringContainsString('Super Admin · All branches', $html);
-        foreach (['user_management.php', 'inventory.php', 'price_management.php', 'settings.php', 'login_history.php'] as $link) {
+        foreach ($links as $link) {
             $this->assertStringContainsString($link, $html, "super admin sidebar is missing {$link}");
         }
     }

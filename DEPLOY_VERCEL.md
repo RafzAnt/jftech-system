@@ -26,6 +26,16 @@ Vercel build command or output directory for this app.
    safe to rerun (it never promotes a branch admin) and deletes nothing. Run it
    before logging in to the updated app: an `admin` account that has no branch
    is refused at login.
+   For per-branch stock, also run
+   `database/supabase/migrations/2026_10_16_inventory_per_branch.sql`. It adds
+   `inventory.branch_name` (existing items stay with Balilihan) and makes the
+   item name unique per branch. It is safe to rerun and deletes nothing.
+   For the **employee app (NAP boxes, installation and repair requests)**, also
+   run `database/supabase/migrations/2026_10_17_nap_boxes_and_work_requests.sql`.
+   It adds the NAP box, port, work request and app sign-in tables and the item
+   out / return details of a stock request. It is safe to rerun and deletes
+   nothing. Run it before the new app signs in: the app now needs the sign-in
+   token that `employee_login.php` returns, so install the matching app version.
 4. Continue using the normal Laravel migrations only for local XAMPP/MySQL:
 
    ```bash

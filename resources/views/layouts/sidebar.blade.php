@@ -111,6 +111,9 @@
                 <a href="{{ $item['url'] }}" class="nav-item {{ $isActive ? 'active' : '' }}">
                     <span class="nav-icon">{!! $item['icon'] ?? '' !!}</span>
                     <span>{{ $item['label'] }}</span>
+                    @if (!empty($item['badge']))
+                    <span class="nav-badge" title="Waiting for you">{{ $item['badge'] }}</span>
+                    @endif
                 </a>
             @endif
         </div>

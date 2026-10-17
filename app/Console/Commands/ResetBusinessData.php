@@ -23,6 +23,9 @@ class ResetBusinessData extends Command
         'client_plan_change_histories' => 'Client plan changes',
         'clients' => 'Clients',
         'inventory_requests' => 'Stock requests (made by employees)',
+        'work_request_materials' => 'Materials of installation and repair requests',
+        'work_requests' => 'Installation and repair requests',
+        'employee_api_tokens' => 'Employee app sign-ins',
         'payroll' => 'Payroll',
         'attendance' => 'Attendance',
         'employees' => 'Employees',
@@ -45,7 +48,7 @@ class ResetBusinessData extends Command
         }
         $rows[] = ['Employee login accounts (role: employee)', $employeeAccounts];
         $this->table(['Data', 'Rows'], $rows);
-        $this->line('Kept: super admin and branch admin accounts, internet plans, business settings, stock (inventory), QR codes and login history of the kept accounts.');
+        $this->line('Kept: super admin and branch admin accounts, internet plans, business settings, stock (inventory), QR codes, NAP boxes (their ports become available again) and login history of the kept accounts.');
         $this->line('Back up the database first, for example: mysqldump -u root jftech_db > jftech-backup.sql');
 
         if (! $this->option('force') && $this->ask('Type RESET to permanently delete this data') !== 'RESET') {
@@ -59,6 +62,10 @@ class ResetBusinessData extends Command
                 DB::table($table)->delete();
             }
             DB::table('users')->where('role', 'employee')->delete();
+            // The clients are gone, so no port is connected to anybody any more.
+            if (Schema::hasTable('nap_ports')) {
+                DB::table('nap_ports')->where('status', 'occupied')->update(['status' => 'available', 'client_id' => null, 'occupied_at' => null]);
+            }
         });
 
         // Start numbering from 1 again (MySQL keeps counting after a DELETE).

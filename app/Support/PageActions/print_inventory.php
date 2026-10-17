@@ -11,8 +11,12 @@ $selectedCategory = $request->query('category') ?? '';
 $searchTerm = $request->query('search') ?? '';
 $showArchived = $request->has('archived') && $request->query('archived') == 1;
 
-$query = "SELECT * FROM inventory WHERE TRUE";
-$params = [];
+// A branch admin prints their own branch's stock; the super admin prints every branch or picks one.
+$scopeBranch = \App\Support\BranchScope::resolve($request->query('branch'));
+[$branchSql, $branchParams] = \App\Support\BranchScope::inventory($scopeBranch, 'inventory');
+
+$query = "SELECT * FROM inventory WHERE TRUE" . $branchSql;
+$params = $branchParams;
 
 if (!$showArchived) {
     $query .= " AND archived = 0";
