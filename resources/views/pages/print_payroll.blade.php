@@ -49,7 +49,9 @@
             'Rest Day Pay' => $record->rest_day_pay, 'Salary Adjustment' => $record->salary_adjustment,
             'Other Earnings' => $record->other_earnings,
         ];
-        $deductions = [
+        // Records made before the real payroll computation never deducted their late and undertime.
+        $computed = !empty($record->computation_mode);
+        $deductions = ($computed ? ['Late' . ($record->late_minutes ? ' (' . (int) $record->late_minutes . ' min)' : '') => $record->late, 'Undertime' . ($record->undertime_minutes ? ' (' . (int) $record->undertime_minutes . ' min)' : '') => $record->undertime] : []) + [
             'SSS' => $record->sss, 'PhilHealth' => $record->philhealth, 'Pag-IBIG' => $record->pagibig,
             'Withholding Tax' => $record->withholding_tax, 'Cash Advance' => $record->cash_advance,
             'Salary Loan' => $record->salary_loan, 'HDMF Loan' => $record->hdmf_loan,
@@ -64,7 +66,7 @@
         <div class="body">
             <table class="meta">
                 <tr><td><span class="label">Employee Name</span><strong>{{ $record->employee_name }}</strong></td><td><span class="label">Employee Code</span><strong>{{ $record->employee_code }}</strong></td><td><span class="label">Position</span><strong>{{ $record->position ?: 'General Admin' }}</strong></td><td><span class="label">Status</span><strong>{{ ucfirst($record->employment_status) }}</strong></td></tr>
-                <tr><td><span class="label">Department</span>{{ $record->department ?: 'N/A' }}</td><td><span class="label">Daily Rate</span>{{ $money($record->daily_rate) }}</td><td><span class="label">Hourly Rate</span>{{ $money($record->hourly_rate) }}</td><td><span class="label">Days Worked</span>{{ $record->total_days_worked }}</td></tr>
+                <tr><td><span class="label">Department</span>{{ $record->department ?: 'N/A' }}</td><td><span class="label">Daily Rate</span>{{ $money($record->daily_rate) }}</td><td><span class="label">Hourly Rate</span>{{ $money($record->hourly_rate) }}</td><td><span class="label">Days Worked</span>{{ rtrim(rtrim(number_format((float) $record->total_days_worked, 2, '.', ''), '0'), '.') }}</td></tr>
             </table>
             <div class="section-title">Earnings and Deductions</div>
             <div class="tables">

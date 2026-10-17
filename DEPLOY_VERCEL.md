@@ -36,6 +36,14 @@ Vercel build command or output directory for this app.
    out / return details of a stock request. It is safe to rerun and deletes
    nothing. Run it before the new app signs in: the app now needs the sign-in
    token that `employee_login.php` returns, so install the matching app version.
+   For the **real payroll computation** (automatic and manual payroll from the daily rate and attendance), also run
+   `database/supabase/migrations/2026_10_18_real_payroll.sql`. It lets `payroll.total_days_worked` take half days, adds
+   the late/undertime minutes and the computation mode, and replaces the old fixed per-rate SSS/PhilHealth/Pag-IBIG
+   settings with four working rules. It is safe to rerun and keeps every existing payroll record. See `docs/PAYROLL.md`.
+   For **overtime in the attendance** (overtime QR code, overtime in/out, minutes to the payroll), also run
+   `database/supabase/migrations/2026_10_18_attendance_overtime.sql`. It adds the overtime columns to `attendance` and the
+   overtime QR time settings, is safe to rerun and deletes nothing.
+   The weekly scheduler does not run on Vercel: use **Generate Automatic Payroll** on the Payroll page each week.
 4. Continue using the normal Laravel migrations only for local XAMPP/MySQL:
 
    ```bash

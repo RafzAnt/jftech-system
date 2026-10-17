@@ -112,6 +112,9 @@ trait BranchTestData
             $table->time('morning_time_out')->nullable();
             $table->time('afternoon_time_in')->nullable();
             $table->time('afternoon_time_out')->nullable();
+            $table->time('overtime_time_in')->nullable();
+            $table->time('overtime_time_out')->nullable();
+            $table->unsignedInteger('overtime_minutes')->default(0);
             $table->string('status_morning')->nullable();
             $table->string('status_afternoon')->nullable();
             $table->decimal('total_hours', 5, 2)->nullable();
@@ -125,8 +128,19 @@ trait BranchTestData
             $table->unsignedBigInteger('employee_id');
             $table->date('payroll_period_start');
             $table->date('payroll_period_end');
-            $table->integer('total_days_worked')->default(0);
+            $table->decimal('total_days_worked', 5, 2)->default(0);
             $table->decimal('total_hours', 8, 2)->default(0);
+            foreach ([
+                'daily_rate', 'monthly_basic_salary', 'hourly_rate', 'overtime_hours', 'absent', 'basic_salary',
+                'overtime_pay', 'regular_holiday', 'special_holiday', 'night_differential', 'incentives', 'allowances', 'leave_pay',
+                'rest_day_pay', 'salary_adjustment', 'other_earnings', 'late', 'undertime', 'sss', 'philhealth', 'pagibig',
+                'withholding_tax', 'cash_advance', 'salary_loan', 'hdmf_loan', 'other_deductions',
+            ] as $column) {
+                $table->decimal($column, 12, 2)->default(0);
+            }
+            $table->unsignedInteger('late_minutes')->default(0);
+            $table->unsignedInteger('undertime_minutes')->default(0);
+            $table->string('computation_mode', 10)->nullable();
             $table->decimal('gross_pay', 10, 2)->default(0);
             $table->decimal('deductions', 10, 2)->default(0);
             $table->decimal('net_pay', 10, 2)->default(0);
@@ -149,6 +163,7 @@ trait BranchTestData
             $table->id();
             $table->string('setting_key');
             $table->string('setting_value')->nullable();
+            $table->string('setting_label')->nullable();
         });
         Schema::create('qr_codes', function ($table) {
             $table->id();

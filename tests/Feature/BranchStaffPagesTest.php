@@ -48,21 +48,6 @@ class BranchStaffPagesTest extends TestCase
         return $ids;
     }
 
-    /** The payroll table of the test schema only has the basics; saving a record needs the full set of columns. */
-    private function widenPayrollTable(): void
-    {
-        Schema::table('payroll', function ($table) {
-            foreach ([
-                'daily_rate', 'monthly_basic_salary', 'hourly_rate', 'overtime_hours', 'late', 'undertime', 'absent', 'basic_salary',
-                'overtime_pay', 'regular_holiday', 'special_holiday', 'night_differential', 'incentives', 'allowances', 'leave_pay',
-                'rest_day_pay', 'salary_adjustment', 'other_earnings', 'sss', 'philhealth', 'pagibig', 'withholding_tax', 'cash_advance',
-                'salary_loan', 'hdmf_loan', 'other_deductions',
-            ] as $column) {
-                $table->decimal($column, 12, 2)->default(0);
-            }
-        });
-    }
-
     /** employee 3: an Admin employee of Balilihan with a payroll record (id 3). */
     private function addBalilihanAdminEmployee(): void
     {
@@ -72,10 +57,12 @@ class BranchStaffPagesTest extends TestCase
 
     private function payrollPost(int $employeeId, array $extra = []): array
     {
+        // The week, so it is another period than the month of the payroll records the tests start with.
         return $extra + [
             'employee_id' => $employeeId,
-            'payroll_period_start' => now()->startOfMonth()->toDateString(),
-            'payroll_period_end' => now()->endOfMonth()->toDateString(),
+            'payroll_period_start' => now()->startOfWeek()->toDateString(),
+            'payroll_period_end' => now()->endOfWeek()->toDateString(),
+            'computation_mode' => 'manual',
             'status' => 'draft',
         ];
     }
@@ -477,7 +464,6 @@ class BranchStaffPagesTest extends TestCase
 
     public function test_a_branch_admin_generates_payroll_for_a_technician_of_their_branch(): void
     {
-        $this->widenPayrollTable();
         $this->signIn(2);
         $page = $this->page('payroll', [], $this->payrollPost(1));
 
@@ -487,7 +473,6 @@ class BranchStaffPagesTest extends TestCase
 
     public function test_a_branch_admin_cannot_generate_payroll_for_an_admin_employee(): void
     {
-        $this->widenPayrollTable();
         $this->addBalilihanAdminEmployee();
         $this->signIn(2);
         $page = $this->page('payroll', [], $this->payrollPost(3));
@@ -498,7 +483,6 @@ class BranchStaffPagesTest extends TestCase
 
     public function test_the_super_admin_cannot_generate_payroll_for_a_technician(): void
     {
-        $this->widenPayrollTable();
         $this->signIn(1);
         $page = $this->page('payroll', [], $this->payrollPost(2));
 
@@ -508,7 +492,6 @@ class BranchStaffPagesTest extends TestCase
 
     public function test_the_super_admin_generates_payroll_for_an_admin_employee_of_any_branch(): void
     {
-        $this->widenPayrollTable();
         $this->addBalilihanAdminEmployee();
         $this->signIn(1);
         $page = $this->page('payroll', [], $this->payrollPost(3));
@@ -549,7 +532,6 @@ class BranchStaffPagesTest extends TestCase
 
     public function test_the_super_admin_cannot_edit_or_archive_a_technicians_payroll(): void
     {
-        $this->widenPayrollTable();
         $this->signIn(1);
         $edit = $this->page('payroll', [], $this->payrollPost(2, ['payroll_id' => 2, 'status' => 'paid']));
         $this->assertSame('Error: The super admin generates payroll for the Admin employees only; the branch admins generate it for their technicians.', $edit['error']);

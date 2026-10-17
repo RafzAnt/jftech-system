@@ -8,7 +8,9 @@ Run the migration first: `php artisan migrate` on local MySQL, or
 
 1. **Login** – `employee_login.php` returns a sign-in `token`. The app sends it as `Authorization: Bearer <token>` on
    every other call, so a request can only act as the employee who signed in (24 hours, or until log out).
-2. **Attendance** – the employee scans the branch QR code (`scan_attendance.php`); `me.php` gives today's times.
+2. **Attendance** – the employee scans the branch QR code (`scan_attendance.php`); `me.php` gives today's times. The
+   overtime QR code starts overtime on the first scan and ends it on the second (`Overtime In` / `Overtime Out`); its
+   minutes go to the payroll (`docs/PAYROLL.md`). Run `2026_10_18_attendance_overtime.sql` (or `php artisan migrate`) first.
 3. **Inventory** – *Item Out* and *Item Return* become stock requests (`inventory_request_create.php`, with
    `request_type`, condition, area used and person in charge). The branch admin approves them in **Inventory →
    Requests**; an approved item out leaves the stock, an accepted return goes back in.

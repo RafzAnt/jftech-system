@@ -171,6 +171,36 @@ $afternoonQR = null;
                                 </form>
                                 @endif
                 </div>
+                            <!-- Overtime QR -->
+                            <div class="qr-section">
+                                <h3>Overtime</h3>
+                                <p style="color: var(--text-muted); font-size: 0.85rem;">{{ formatScheduleTime($qrOvertimeStart) }} - {{ formatScheduleTime($qrOvertimeEnd) }}</p>
+                                 @php
+$overtimeQR = null;
+                                 foreach ($qrCodes as $qr) {
+                                     if ($qr['qr_type'] === 'overtime' && $qr['status'] === 'active') {
+                                         $overtimeQR = $qr;
+                                         break;
+                                     }
+                                 }
+                                 
+@endphp
+                                @if ($overtimeQR)
+                                <div id="overtimeQR" class="qr-display"></div>
+                                <p style="margin-top: 0.5rem; font-size: 0.75rem; color: var(--text-muted);">Code: {{ $overtimeQR['qr_code'] }}</p>
+                                @else
+                                <p style="color: var(--warning);">No active QR code</p>
+                                @endif
+                                <p style="margin-top: 0.5rem; font-size: 0.75rem; color: var(--text-muted);">Scan once to start the overtime and again to end it. The minutes go to the payroll. Generate it only on the days overtime is approved.</p>
+                                {{-- One QR code serves every branch, so only the super admin can replace it. --}}
+                                @if ($canGenerateQr)
+                                <form method="POST" action="?tab=attendance" style="margin-top: 0.75rem;">
+            @csrf
+                                    <input type="hidden" name="qr_type" value="overtime">
+                                    <button type="submit" name="generate_qr" class="btn btn-primary btn-sm">Generate Overtime QR</button>
+                                </form>
+                                @endif
+                            </div>
             </div>
 
             <section class="attendance-qr-print-sheet" id="attendanceQrPrintSheet" aria-hidden="true">
@@ -190,6 +220,13 @@ $afternoonQR = null;
                     <div class="attendance-print-qr-code" id="printAfternoonQr"></div>
                     <p>{{ formatScheduleTime($qrAfternoonStart) }} - {{ formatScheduleTime($qrAfternoonEnd) }}</p>
                     <p class="attendance-print-qr-value">Code: {{ $afternoonQR['qr_code'] ?? 'No active QR code' }}</p>
+                </div>
+                <div class="attendance-print-cut-line"></div>
+                <div class="attendance-print-qr attendance-print-time-out">
+                    <h2>Overtime</h2>
+                    <div class="attendance-print-qr-code" id="printOvertimeQr"></div>
+                    <p>{{ formatScheduleTime($qrOvertimeStart) }} - {{ formatScheduleTime($qrOvertimeEnd) }}</p>
+                    <p class="attendance-print-qr-value">Code: {{ $overtimeQR['qr_code'] ?? 'No active QR code' }}</p>
                 </div>
             </section>
         </div>
@@ -233,6 +270,7 @@ $afternoonQR = null;
                                         <th>Morning Out</th>
                                         <th>Afternoon In</th>
                                         <th>Afternoon Out</th>
+                                        <th>Overtime</th>
                                         <th>Hours</th>
                                         <th>Morning Status</th>
                                         <th>Afternoon Status</th>
@@ -249,6 +287,15 @@ $afternoonQR = null;
                                         <td class="attendance-out">{{ $record['morning_time_out'] ? date('h:i A', strtotime($record['morning_time_out'])) : '-' }}</td>
                                         <td class="attendance-in">{{ $record['afternoon_time_in'] ? date('h:i A', strtotime($record['afternoon_time_in'])) : '-' }}</td>
                                         <td class="attendance-out">{{ $record['afternoon_time_out'] ? date('h:i A', strtotime($record['afternoon_time_out'])) : '-' }}</td>
+                                        <td>
+                                            @if (!empty($record['overtime_time_in']) && !empty($record['overtime_time_out']))
+                                                {{ date('h:i A', strtotime($record['overtime_time_in'])) }} - {{ date('h:i A', strtotime($record['overtime_time_out'])) }} <span class="badge badge-info">{{ (int) $record['overtime_minutes'] }} min</span>
+                                            @elseif (!empty($record['overtime_time_in']))
+                                                {{ date('h:i A', strtotime($record['overtime_time_in'])) }} - <span style="color: var(--warning);">ongoing</span>
+                                            @else
+                                                -
+                                            @endif
+                                        </td>
                                         <td>{{ number_format((float) ($record['total_hours'] ?? 0), 2) }}h</td>
                                         <td>
                                             @if ($record['status_morning'] === 'present')
@@ -275,7 +322,7 @@ $afternoonQR = null;
                                     </tr>
                                     @endforeach
                                     @if (empty($attendanceRecords))
-                                    <tr><td colspan="11" style="text-align:center;color:var(--text-muted);padding:2rem;">No attendance records for {{ $attendanceView === 'date' ? date('M d, Y', strtotime($selectedDate)) : date('F Y', strtotime($selectedMonth . '-01')) }}</td></tr>
+                                    <tr><td colspan="12" style="text-align:center;color:var(--text-muted);padding:2rem;">No attendance records for {{ $attendanceView === 'date' ? date('M d, Y', strtotime($selectedDate)) : date('F Y', strtotime($selectedMonth . '-01')) }}</td></tr>
                                     @endif
                                 </tbody>
                             </table>
@@ -341,6 +388,22 @@ $afternoonQR = null;
                     </div>
                 </div>
                 @endforeach
+                <div class="manual-session" data-session="overtime">
+                    <div class="manual-session__title">Overtime <small>after the afternoon session; the minutes go to the payroll</small></div>
+                    <div class="form-grid manual-session__grid">
+                        <div class="form-group">
+                            <label class="form-label" for="manual_overtime_in">Overtime in</label>
+                            <input type="time" name="manual_overtime_in" id="manual_overtime_in" class="form-input" value="{{ $manualOld('manual_overtime_in') }}">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="manual_overtime_out">Overtime out</label>
+                            <input type="time" name="manual_overtime_out" id="manual_overtime_out" class="form-input" value="{{ $manualOld('manual_overtime_out') }}">
+                        </div>
+                        <div class="form-group" style="display:flex;align-items:flex-end;">
+                            <label style="display:flex;align-items:center;gap:.5rem;"><input type="checkbox" name="manual_overtime_clear" value="1" {{ $manualOld('manual_overtime_clear') === '1' ? 'checked' : '' }}> No overtime (remove it)</label>
+                        </div>
+                    </div>
+                </div>
                 <div class="form-group">
                     <label class="form-label" for="manualRemarks">Reason / remarks <span style="color: var(--text-muted);">(Optional)</span></label>
                     <textarea name="manual_remarks" id="manualRemarks" class="form-input" rows="2" maxlength="300" placeholder="e.g. Phone battery died, scanned late in person">{{ $manualOld('manual_remarks') }}</textarea>
@@ -452,6 +515,17 @@ $afternoonQR = null;
     });
     @endif
 
+    @if ($overtimeQR)
+    new QRCode(document.getElementById("overtimeQR"), {
+        text: "{{ $overtimeQR['qr_code'] }}",
+        width: 180,
+        height: 180,
+        colorDark: "#0a1628",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.H
+    });
+    @endif
+
     // The header button follows the active tab: Add Employee on Details, Manual Attendance on Attendance.
     document.querySelectorAll('.tab-btn').forEach(tab => tab.addEventListener('click', () => {
         document.querySelectorAll('[data-tab-action]').forEach(action => {
@@ -467,7 +541,9 @@ $afternoonQR = null;
     // Absent sessions have no clock times, so lock those fields.
     function syncManualSessions() {
         document.querySelectorAll('.manual-session').forEach(block => {
-            const absent = block.querySelector('.manual-status').value === 'absent';
+            const status = block.querySelector('.manual-status');
+            if (!status) return; // the overtime block has no status
+            const absent = status.value === 'absent';
             block.querySelectorAll('input[type="time"]').forEach(input => {
                 input.disabled = absent;
                 if (absent) input.value = '';
@@ -565,6 +641,7 @@ $afternoonQR = null;
         const qrDisplays = [
             ['morningQR', 'printMorningQr'],
             ['afternoonQR', 'printAfternoonQr'],
+            ['overtimeQR', 'printOvertimeQr'],
         ];
 
         qrDisplays.forEach(([sourceId, targetId]) => {

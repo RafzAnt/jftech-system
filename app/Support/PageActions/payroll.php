@@ -49,86 +49,58 @@ $payrollRecordPosition = static function ($payrollId) use ($pdo, $payrollEmploye
     return $position === false ? null : (string) $position;
 };
 
-$deductionSettings = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('payroll_500_sss', 'payroll_500_philhealth', 'payroll_500_pagibig', 'payroll_580_sss', 'payroll_580_philhealth', 'payroll_580_pagibig', 'payroll_600_sss', 'payroll_600_philhealth', 'payroll_600_pagibig')")
-    ->fetchAll(\PDO::FETCH_KEY_PAIR);
+$payroll = app(\App\Support\PayrollService::class);
+$payrollSettings = $payroll->settings();
+[$weekStart, $weekEnd] = $payroll->weekOf();
 
-function weeklyStatutoryDeductions(float $dailyRate, array $settings): array {
-    $rateKey = (string) (int) round($dailyRate);
-    if (! in_array($rateKey, ['500', '580', '600'], true)) {
-        return ['sss' => 0, 'philhealth' => 0, 'pagibig' => 0];
+$validDate = static function (string $date): bool {
+    return preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) === 1 && checkdate((int) substr($date, 5, 2), (int) substr($date, 8, 2), (int) substr($date, 0, 4));
+};
+
+// The numbers a payroll would get from the daily rate and the attendance of a period: the payroll form shows them before saving.
+if ($request->query('action') === 'preview') {
+    $previewEmployee = (int) $request->query('employee_id');
+    $previewStart = (string) $request->query('start');
+    $previewEnd = (string) $request->query('end');
+    if (!$previewEmployee || !isset($employeeMap[$previewEmployee]) || !$validDate($previewStart) || !$validDate($previewEnd) || $previewEnd < $previewStart) {
+        throw new \Illuminate\Http\Exceptions\HttpResponseException(response()->json(['success' => false, 'message' => 'Choose an employee and a valid period.'], 422));
     }
-
-    return [
-        'sss' => (float) ($settings["payroll_{$rateKey}_sss"] ?? 0),
-        'philhealth' => (float) ($settings["payroll_{$rateKey}_philhealth"] ?? 0),
-        'pagibig' => (float) ($settings["payroll_{$rateKey}_pagibig"] ?? 0),
-    ];
+    $lines = $payroll->compute($previewEmployee, (float) $employeeMap[$previewEmployee]['daily_rate'], $previewStart, $previewEnd);
+    throw new \Illuminate\Http\Exceptions\HttpResponseException(response()->json(['success' => true] + $lines));
 }
 
-function attendancePayrollSummary($pdo, int $employeeId, string $periodStart, string $periodEnd, float $dailyRate): array {
-    $attendance = getAttendanceDays($pdo, $employeeId, $periodStart, $periodEnd);
-    $stmt = $pdo->prepare("SELECT SUM(CASE WHEN status_morning = 'late' THEN 1 ELSE 0 END) + SUM(CASE WHEN status_afternoon = 'late' THEN 1 ELSE 0 END) AS late_count, SUM(CASE WHEN status_morning = 'absent' THEN 1 ELSE 0 END) + SUM(CASE WHEN status_afternoon = 'absent' THEN 1 ELSE 0 END) AS absent_count FROM attendance WHERE employee_id = ? AND attendance_date BETWEEN ? AND ?");
-    $stmt->execute([$employeeId, $periodStart, $periodEnd]);
-    $counts = $stmt->fetch() ?: [];
+// Automatic payroll for a whole week: every employee this account may pay, worked out from the daily rate and the attendance.
+if ($request->isMethod('post') && $request->input('payroll_action') === 'auto_generate') {
+    try {
+        if (!$canGeneratePayroll) {
+            throw new Exception($payrollRoleHint);
+        }
+        $weekDate = (string) $request->input('week_date');
+        if (!$validDate($weekDate)) {
+            throw new Exception('Choose a date in the week to generate payroll for.');
+        }
 
-    return [
-        'days_worked' => (int) ($attendance['days_worked'] ?? 0),
-        'total_hours' => (float) ($attendance['total_hours'] ?? 0),
-        'late_count' => (int) ($counts['late_count'] ?? 0),
-        'absent_count' => (int) ($counts['absent_count'] ?? 0),
-        'late_amount' => (int) ($counts['late_count'] ?? 0) * ($dailyRate / 8),
-        'absent_amount' => (int) ($counts['absent_count'] ?? 0) * ($dailyRate / 2),
-    ];
-}
-
-function getAttendanceDays($pdo, $employeeId, $periodStart, $periodEnd) {
-    $stmt = $pdo->prepare("
-        SELECT
-            COUNT(
-                CASE
-                    WHEN COALESCE(total_hours, 0) > 0
-                         OR morning_time_in IS NOT NULL
-                         OR afternoon_time_in IS NOT NULL
-                    THEN 1
-                END
-            ) AS days_worked,
-            COALESCE(SUM(total_hours), 0) AS total_hours
-        FROM attendance
-        WHERE employee_id = ?
-          AND attendance_date BETWEEN ? AND ?
-    ");
-    $stmt->execute([$employeeId, $periodStart, $periodEnd]);
-    return $stmt->fetch();
-}
-
-if ($request->has('action') && $request->query('action') === 'attendance') {
-    header('Content-Type: application/json');
-    $empId = (int) ($request->query('employee_id') ?? 0);
-    $start = $request->query('start') ?? '';
-    $end = $request->query('end') ?? '';
-    if ($empId && $start && $end && isset($employeeMap[$empId])) {
-        $empStmt = $pdo->prepare("SELECT daily_rate FROM employees WHERE id = ?");
-        $empStmt->execute([$empId]);
-        $emp = $empStmt->fetch();
-        $dailyRate = (float) ($emp['daily_rate'] ?? 0);
-        $summary = attendancePayrollSummary($pdo, $empId, $start, $end, $dailyRate);
-        $statutory = weeklyStatutoryDeductions($dailyRate, $deductionSettings);
-        echo json_encode([
-            ...$summary,
-            ...$statutory,
-        ]);
-    } else {
-        echo json_encode(['days_worked' => 0, 'total_hours' => 0, 'late_count' => 0, 'absent_count' => 0, 'late_amount' => 0, 'absent_amount' => 0]);
+        $result = $payroll->generateForWeek(\Carbon\Carbon::parse($weekDate), array_map('intval', array_column($payrollEmployees, 'id')));
+        $parts = [$result['created'] . ' created'];
+        if ($result['existing'] > 0) {
+            $parts[] = $result['existing'] . ' already had payroll';
+        }
+        if ($result['no_attendance'] > 0) {
+            $parts[] = $result['no_attendance'] . ' had no attendance';
+        }
+        if ($result['no_rate'] > 0) {
+            $parts[] = $result['no_rate'] . ' have no daily rate';
+        }
+        $success = 'Automatic payroll for ' . date('M d', strtotime($result['period_start'])) . ' - ' . date('M d, Y', strtotime($result['period_end'])) . ': ' . implode(', ', $parts) . '.';
+    } catch (Exception $e) {
+        $error = 'Error: ' . $e->getMessage();
     }
-    exit;
-}
-
-if ($request->isMethod('post')) {
+} elseif ($request->isMethod('post')) {
     try {
         $payrollId = $request->input('payroll_id') ?? null;
         $employeeId = (int) ($request->input('employee_id') ?? 0);
-        $periodStart = $request->input('payroll_period_start') ?? '';
-        $periodEnd = $request->input('payroll_period_end') ?? '';
+        $periodStart = (string) ($request->input('payroll_period_start') ?? '');
+        $periodEnd = (string) ($request->input('payroll_period_end') ?? '');
         $status = $request->input('status') ?? 'draft';
 
         if (!$employeeId || !isset($employeeMap[$employeeId])) {
@@ -152,7 +124,9 @@ if ($request->isMethod('post')) {
         if (!$periodStart || !$periodEnd) {
             throw new Exception('Payroll period start and end dates are required.');
         }
-
+        if (!$validDate($periodStart) || !$validDate($periodEnd)) {
+            throw new Exception('Enter the payroll period as valid dates.');
+        }
         if ($periodEnd < $periodStart) {
             throw new Exception('Payroll period end date cannot be earlier than the start date.');
         }
@@ -166,95 +140,86 @@ if ($request->isMethod('post')) {
             throw new Exception('Please enter a valid daily rate for the selected employee.');
         }
 
-        $earningsKeys = [
-            'basic_salary', 'overtime_pay', 'regular_holiday', 'special_holiday', 'night_differential',
-            'incentives', 'allowances', 'leave_pay', 'rest_day_pay', 'salary_adjustment', 'other_earnings'
+        $labels = [
+            'total_days_worked' => 'Days worked', 'late_minutes' => 'Late minutes', 'undertime_minutes' => 'Undertime minutes', 'overtime_hours' => 'Overtime hours',
+            'basic_salary' => 'Basic salary', 'overtime_pay' => 'Overtime pay', 'late' => 'Late', 'undertime' => 'Undertime', 'absent' => 'Absent',
+            'sss' => 'SSS', 'philhealth' => 'PhilHealth', 'pagibig' => 'Pag-IBIG',
+            'regular_holiday' => 'Regular holiday', 'special_holiday' => 'Special holiday', 'night_differential' => 'Night differential',
+            'incentives' => 'Incentives', 'allowances' => 'Allowances', 'leave_pay' => 'Leave pay', 'rest_day_pay' => 'Rest day pay',
+            'salary_adjustment' => 'Salary adjustment', 'other_earnings' => 'Other earnings',
+            'withholding_tax' => 'Withholding tax', 'cash_advance' => 'Cash advance', 'salary_loan' => 'Salary loan', 'hdmf_loan' => 'HDMF loan', 'other_deductions' => 'Other deductions',
         ];
-        $deductionKeys = [
-            'sss', 'philhealth', 'pagibig', 'withholding_tax', 'cash_advance', 'salary_loan', 'hdmf_loan', 'other_deductions'
-        ];
-        $inputKeys = array_merge(['overtime_hours', 'late', 'undertime', 'absent'], $earningsKeys, $deductionKeys);
+        // A number the admin typed, or null when the field was left empty.
+        $typed = static function (string $key) use ($request, $labels): ?float {
+            $raw = $request->input($key);
+            if ($raw === null || trim((string) $raw) === '') {
+                return null;
+            }
+            if (!is_numeric($raw)) {
+                throw new Exception($labels[$key] . ' must be a number.');
+            }
+            $value = max(0, (float) $raw);
+            if ($value > 999999.99) {
+                throw new Exception($labels[$key] . ' is too large.');
+            }
 
-        $input = [];
-        foreach ($inputKeys as $key) {
-            $input[$key] = max(0, (float) ($request->input($key) ?? 0));
+            return $value;
+        };
+
+        $mode = $request->input('computation_mode') === 'manual' ? 'manual' : 'auto';
+
+        // Undertime is not tracked by the clock, so its minutes are typed in both modes.
+        $override = ['undertime_minutes' => $typed('undertime_minutes') ?? 0];
+        if ($mode === 'manual') {
+            $periodDays = (int) round((strtotime($periodEnd) - strtotime($periodStart)) / 86400) + 1;
+            $days = $typed('total_days_worked');
+            if ($days !== null && $days > $periodDays) {
+                throw new Exception('Days worked cannot be more than the ' . $periodDays . ' day(s) of the period.');
+            }
+            $overtimeHours = $typed('overtime_hours');
+            $quantities = ['days_worked' => $days, 'late_minutes' => $typed('late_minutes'), 'overtime_minutes' => $overtimeHours === null ? null : $overtimeHours * 60];
+            foreach ($quantities as $key => $value) {
+                if ($value !== null) {
+                    $override[$key] = $value;
+                }
+            }
         }
 
-        $attendanceSummary = attendancePayrollSummary($pdo, $employeeId, $periodStart, $periodEnd, $dailyRate);
-        $daysWorked = $attendanceSummary['days_worked'];
-        $totalHours = $attendanceSummary['total_hours'];
-
-        $monthlyBasic = $dailyRate * 26;
-        $hourlyRate = $dailyRate / 8;
-
-        $input['basic_salary'] = $daysWorked * $dailyRate;
-        $input['late'] = $attendanceSummary['late_amount'];
-        $input['absent'] = $attendanceSummary['absent_amount'];
-        $statutory = weeklyStatutoryDeductions($dailyRate, $deductionSettings);
-        $input['sss'] = $statutory['sss'];
-        $input['philhealth'] = $statutory['philhealth'];
-        $input['pagibig'] = $statutory['pagibig'];
-
-        $grossPay = 0;
-        foreach ($earningsKeys as $key) {
-            $grossPay += $input[$key];
+        $lines = $payroll->compute($employeeId, $dailyRate, $periodStart, $periodEnd, $override);
+        if ($mode === 'auto' && $lines['total_days_worked'] <= 0 && $lines['overtime_hours'] <= 0) {
+            throw new Exception($employeeMap[$employeeId]['full_name'] . ' has no attendance in this period, so there is nothing to compute. Record the attendance first, or choose Manual to enter the pay by hand.');
         }
-        $totalDeductions = 0;
-        foreach ($deductionKeys as $key) {
-            $totalDeductions += $input[$key];
+        if ($mode === 'manual') {
+            // Whatever the admin typed over a computed amount wins; an empty field keeps the standard computation.
+            foreach (\App\Support\PayrollCalculator::COMPUTED as $key) {
+                $value = $typed($key);
+                if ($value !== null) {
+                    $lines[$key] = $value;
+                }
+            }
         }
-        $netPay = max(0, $grossPay - $totalDeductions);
 
-        $columns = [
-            'employee_id' => $employeeId,
-            'payroll_period_start' => $periodStart,
-            'payroll_period_end' => $periodEnd,
-            'total_days_worked' => $daysWorked,
-            'total_hours' => $totalHours,
-            'daily_rate' => $dailyRate,
-            'monthly_basic_salary' => $monthlyBasic,
-            'hourly_rate' => $hourlyRate,
-            'overtime_hours' => $input['overtime_hours'],
-            'late' => $input['late'],
-            'undertime' => $input['undertime'],
-            'absent' => $input['absent'],
-            'basic_salary' => $input['basic_salary'],
-            'overtime_pay' => $input['overtime_pay'],
-            'regular_holiday' => $input['regular_holiday'],
-            'special_holiday' => $input['special_holiday'],
-            'night_differential' => $input['night_differential'],
-            'incentives' => $input['incentives'],
-            'allowances' => $input['allowances'],
-            'leave_pay' => $input['leave_pay'],
-            'rest_day_pay' => $input['rest_day_pay'],
-            'salary_adjustment' => $input['salary_adjustment'],
-            'other_earnings' => $input['other_earnings'],
-            'gross_pay' => $grossPay,
-            'sss' => $input['sss'],
-            'philhealth' => $input['philhealth'],
-            'pagibig' => $input['pagibig'],
-            'withholding_tax' => $input['withholding_tax'],
-            'cash_advance' => $input['cash_advance'],
-            'salary_loan' => $input['salary_loan'],
-            'hdmf_loan' => $input['hdmf_loan'],
-            'other_deductions' => $input['other_deductions'],
-            'deductions' => $totalDeductions,
-            'net_pay' => $netPay,
-            'status' => $status,
-        ];
+        $extras = [];
+        foreach (array_merge(\App\Support\PayrollCalculator::EXTRA_EARNINGS, \App\Support\PayrollCalculator::EXTRA_DEDUCTIONS) as $key) {
+            $extras[$key] = $typed($key) ?? 0.0;
+        }
 
-        $colNames = array_keys($columns);
-        $colValues = array_values($columns);
+        // One payroll per employee and period; a second one would pay the same days twice.
+        $duplicate = \Illuminate\Support\Facades\DB::table('payroll')
+            ->where('employee_id', $employeeId)->where('payroll_period_start', $periodStart)->where('payroll_period_end', $periodEnd)
+            ->whereRaw('(archived = 0 OR archived IS NULL)')
+            ->when($payrollId, fn ($query) => $query->where('id', '!=', $payrollId))->exists();
+        if ($duplicate) {
+            throw new Exception($employeeMap[$employeeId]['full_name'] . ' already has payroll for this period. Edit that record instead.');
+        }
+
+        $columns = $payroll->row($employeeId, $dailyRate, $periodStart, $periodEnd, $lines, $extras, $mode, $status);
 
         if ($payrollId) {
-            $setParts = array_map(function ($c) { return "$c = ?"; }, $colNames);
-            $stmt = $pdo->prepare("UPDATE payroll SET " . implode(', ', $setParts) . " WHERE id = ?");
-            $stmt->execute(array_merge($colValues, [$payrollId]));
+            \Illuminate\Support\Facades\DB::table('payroll')->where('id', $payrollId)->update($columns);
             $success = 'Payroll record updated successfully.';
         } else {
-            $placeholders = array_fill(0, count($colNames), '?');
-            $stmt = $pdo->prepare("INSERT INTO payroll (" . implode(', ', $colNames) . ") VALUES (" . implode(', ', $placeholders) . ")");
-            $stmt->execute($colValues);
+            \Illuminate\Support\Facades\DB::table('payroll')->insert($columns + ['created_at' => now()]);
             $success = 'Payroll record created successfully.';
         }
     } catch (Exception $e) {
@@ -388,6 +353,13 @@ $totalRecords = (int) $stats['total'];
 $totalNetPay = (float) $stats['net'];
 $processedCount = (int) $stats['processed'];
 $paidCount = (int) $stats['paid'];
+
+$payrollConfig = [
+    'hoursPerDay' => $payrollSettings['hours_per_day'],
+    'overtimeRate' => $payrollSettings['overtime_rate'],
+    'daysPerMonth' => $payrollSettings['days_per_month'],
+];
+$eligibleCount = count($payrollEmployees);
 
 $employeeJson = json_encode(
     array_values($employees),

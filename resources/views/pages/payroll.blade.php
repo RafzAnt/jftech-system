@@ -24,11 +24,11 @@
         <div class="top-bar">
             <div>
                 <h1 class="page-title">Payroll</h1>
-                <p style="color: var(--text-muted); font-size: 0.85rem;">Create, review, and print payroll records based on attendance</p>
+                <p style="color: var(--text-muted); font-size: 0.85rem;">Pay computed from each daily rate and attendance, with the SSS, PhilHealth and Pag-IBIG shares. Generate it automatically or enter it manually.</p>
                 <p style="color: var(--text-muted); font-size: 0.85rem;">{{ $payrollRoleHint }}</p>
             </div>
             @if ($canGeneratePayroll)
-            <button id="generatePayrollButton" type="button" class="btn btn-success" onclick="document.getElementById('payrollModal').classList.add('active'); if (typeof window.openPayrollModal === 'function') window.openPayrollModal();">+ Generate Payroll</button>
+            <button id="generatePayrollButton" type="button" class="btn btn-success" onclick="document.getElementById('payrollModal').classList.add('active'); if (typeof window.openPayrollModal === 'function') window.openPayrollModal();">+ New Payroll</button>
             @endif
 
         </div>
@@ -58,6 +58,27 @@
                 <div class="stat-label">Paid</div>
             </div>
         </div>
+
+        @if ($canGeneratePayroll)
+        <div class="card print-hide" style="margin-bottom: 1.5rem;">
+            <div class="card-header">
+                <span class="card-title">Automatic Weekly Payroll</span>
+            </div>
+            <div class="card-body">
+                <p class="auto-payroll-text">Works out the pay of the {{ $eligibleCount }} employee(s) you pay: days worked &times; daily rate, late and overtime by the minute, and the SSS, PhilHealth and Pag-IBIG shares from the contribution tables. Anyone who already has payroll for the week, or no attendance in it, is skipped. Use <strong>+ New Payroll</strong> to enter a payroll by hand.</p>
+                <form method="POST" action="" class="auto-payroll-form">
+                    @csrf
+                    <input type="hidden" name="payroll_action" value="auto_generate">
+                    <div class="form-group" style="margin: 0;">
+                        <label class="form-label">Week that contains</label>
+                        <input type="date" name="week_date" id="autoWeekDate" class="form-input" value="{{ date('Y-m-d') }}" required>
+                    </div>
+                    <div class="auto-payroll-week" id="autoWeekLabel" data-week-start="{{ $weekStart }}" data-week-end="{{ $weekEnd }}">Monday to Sunday</div>
+                    <button type="submit" class="btn btn-success" onclick="return confirm('Generate the automatic payroll for this week? Employees that already have payroll for it are skipped.');">Generate Automatic Payroll</button>
+                </form>
+            </div>
+        </div>
+        @endif
 
         <div class="card print-hide" style="margin-bottom: 1.5rem;">
             <div class="card-header">
@@ -135,13 +156,18 @@
                         $prDeductions = (float) $record['deductions'];
                         $prNet = (float) $record['net_pay'];
                         $prEmpStatus = $record['employment_status'] ?? 'Regular';
+                        // Records made before the real payroll computation never deducted their late and undertime.
+                        $prComputed = !empty($record['computation_mode']);
+                        $prDays = rtrim(rtrim(number_format($prDaysWorked, 2, '.', ''), '0'), '.');
+                        $prLateMinutes = (int) ($record['late_minutes'] ?? 0);
+                        $prUndertimeMinutes = (int) ($record['undertime_minutes'] ?? 0);
                     
 @endphp
                         <div class="payslip-card">
                             <div class="payslip-header">
                                 @include('partials.print_company')
                                 <div class="payslip-period">
-                                    <div><strong>PAYSLIP</strong>@if ($showArchived) <span class="payslip-archived-badge">ARCHIVED</span>@endif</div>
+                                    <div><strong>PAYSLIP</strong>@if ($prComputed) <span class="payslip-mode-badge">{{ $record['computation_mode'] === 'auto' ? 'AUTOMATIC' : 'MANUAL' }}</span>@endif @if ($showArchived) <span class="payslip-archived-badge">ARCHIVED</span>@endif</div>
                                     <div>Payroll Period: {{ date('M d, Y', strtotime($record['payroll_period_start'])) }} - {{ date('M d, Y', strtotime($record['payroll_period_end'])) }}</div>
                                 </div>
                             </div>
@@ -166,13 +192,13 @@
                                         <td><span class="payslip-label">Monthly Basic Salary</span><strong>₱{{ number_format($prMonthlyBasic, 2) }}</strong></td>
                                         <td><span class="payslip-label">Daily Rate</span><strong>₱{{ number_format($prDailyRate, 2) }}</strong></td>
                                         <td><span class="payslip-label">Hourly Rate</span><strong>₱{{ number_format($prHourlyRate, 2) }}</strong></td>
-                                        <td><span class="payslip-label">Total Days Worked</span><strong>{{ number_format($prDaysWorked) }}</strong></td>
+                                        <td><span class="payslip-label">Total Days Worked</span><strong>{{ $prDays }}</strong></td>
                                     </tr>
                                     <tr>
                                         <td><span class="payslip-label">Overtime Hours</span><strong>{{ number_format($prOtHours, 2) }}</strong></td>
-                                        <td><span class="payslip-label">Late</span><strong>{{ number_format($prLate, 2) }}</strong></td>
-                                        <td><span class="payslip-label">Undertime</span><strong>{{ number_format($prUndertime, 2) }}</strong></td>
-                                        <td><span class="payslip-label">Absent</span><strong>{{ number_format($prAbsent, 2) }}</strong></td>
+                                        <td><span class="payslip-label">Late{{ $prComputed ? ' (' . $prLateMinutes . ' min)' : '' }}</span><strong>{{ $prComputed ? '₱' : '' }}{{ number_format($prLate, 2) }}</strong></td>
+                                        <td><span class="payslip-label">Undertime{{ $prComputed ? ' (' . $prUndertimeMinutes . ' min)' : '' }}</span><strong>{{ $prComputed ? '₱' : '' }}{{ number_format($prUndertime, 2) }}</strong></td>
+                                        <td><span class="payslip-label">Absent</span><strong>{{ $prComputed ? '₱' : '' }}{{ number_format($prAbsent, 2) }}</strong></td>
                                     </tr>
                                 </table>
 
@@ -207,6 +233,10 @@
                                                 <tr><th>Description</th><th>Amount</th></tr>
                                             </thead>
                                             <tbody>
+                                                @if ($prComputed)
+                                                <tr><td>Late</td><td>₱{{ number_format($prLate, 2) }}</td></tr>
+                                                <tr><td>Undertime</td><td>₱{{ number_format($prUndertime, 2) }}</td></tr>
+                                                @endif
                                                 <tr><td>SSS</td><td>₱{{ number_format((float) $record['sss'], 2) }}</td></tr>
                                                 <tr><td>PhilHealth</td><td>₱{{ number_format((float) $record['philhealth'], 2) }}</td></tr>
                                                 <tr><td>Pag-IBIG</td><td>₱{{ number_format((float) $record['pagibig'], 2) }}</td></tr>
@@ -242,7 +272,7 @@
                                             <a href="?restore={{ $record['id'] }}" class="btn btn-sm btn-success">Restore</a>
                                             <a href="?purge={{ $record['id'] }}" class="btn btn-sm btn-danger" onclick="return confirm('Permanently delete this archived payroll record? This cannot be undone.');">Delete Permanently</a>
                                         @else
-                                            <button type="button" class="btn btn-sm btn-secondary" onclick="editPayroll({{ htmlspecialchars(json_encode($record), ENT_QUOTES, 'UTF-8') }})">Edit</button>
+                                            <button type="button" class="btn btn-sm btn-secondary" onclick="editPayroll({{ json_encode($record) }})">Edit</button>
                                             <a href="?delete={{ $record['id'] }}" class="btn btn-sm btn-danger" onclick="return confirm('Archive this payroll record?');">Archive</a>
                                         @endif
                                     @endif
@@ -261,20 +291,21 @@
             <div class="modal-header">
                 <div style="display:flex;align-items:center;gap:.5rem">
                     @include('partials.modal_logo')
-                    <h3 class="modal-title" id="payrollModalTitle">Generate Payroll</h3>
+                    <h3 class="modal-title" id="payrollModalTitle">New Payroll</h3>
                 </div>
                 <button class="modal-close" onclick="document.getElementById('payrollModal').classList.remove('active'); if (typeof window.closePayrollModal === 'function') window.closePayrollModal();">&times;</button>
             </div>
             <form method="POST" action="">
             @csrf
                 <input type="hidden" name="payroll_id" id="payrollId">
+                <input type="hidden" name="computation_mode" id="computationMode" value="auto">
 
                 <div class="form-section">
                     <div class="form-section-title">Employee &amp; Period</div>
                     <div class="form-grid">
                         <div class="form-group">
                             <label class="form-label">Employee *</label>
-                            <select name="employee_id" id="employeeId" class="form-input" required onchange="syncDailyRate(); syncAttendance();">
+                            <select name="employee_id" id="employeeId" class="form-input" required onchange="syncDailyRate();">
                                 <option value="">Select employee</option>
                                 @foreach ($payrollEmployees as $employee)
                                 <option
@@ -287,20 +318,24 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Daily Rate (₱) *</label>
-                            <input type="number" name="daily_rate" id="dailyRate" class="form-input calc-readonly" step="0.01" min="0" required readonly>
+                            <label class="form-label">Daily Rate (₱)</label>
+                            <input type="number" id="dailyRate" class="form-input calc-readonly" step="0.01" min="0" readonly>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Period Start *</label>
-                            <input type="date" name="payroll_period_start" id="periodStart" class="form-input" required onchange="syncAttendance();">
+                            <input type="date" name="payroll_period_start" id="periodStart" class="form-input" required onchange="loadComputation();">
                         </div>
                         <div class="form-group">
                             <label class="form-label">Period End *</label>
-                            <input type="date" name="payroll_period_end" id="periodEnd" class="form-input" required onchange="syncAttendance();">
+                            <input type="date" name="payroll_period_end" id="periodEnd" class="form-input" required onchange="loadComputation();">
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Days Worked (auto)</label>
-                            <input type="number" name="total_days_worked" id="totalDaysWorked" class="form-input" min="0" readonly>
+                            <label class="form-label">Monthly Salary (rate &times; days)</label>
+                            <input type="text" id="monthlyBasic" class="form-input calc-readonly" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Hourly Rate</label>
+                            <input type="text" id="hourlyRate" class="form-input calc-readonly" readonly>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Status</label>
@@ -314,39 +349,35 @@
                 </div>
 
                 <div class="form-section">
-                    <div class="form-section-title">Payroll Computation</div>
+                    <div class="form-section-title">How is this payroll computed?</div>
+                    <div class="mode-toggle">
+                        <button type="button" class="mode-option active" data-mode="auto" onclick="setMode('auto')">
+                            <strong>Automatic</strong>
+                            <span>The pay is worked out from the daily rate and the attendance of the period. The contributions follow the SSS, PhilHealth and Pag-IBIG tables.</span>
+                        </button>
+                        <button type="button" class="mode-option" data-mode="manual" onclick="setMode('manual')">
+                            <strong>Manual</strong>
+                            <span>You type the days, minutes and amounts yourself. A field left empty keeps the standard computation.</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <div class="form-section-title">Attendance</div>
                     <div class="form-grid">
-                        <div class="form-group">
-                            <label class="form-label">Monthly Basic Salary</label>
-                            <input type="text" id="monthlyBasic" class="form-input calc-readonly" readonly>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Hourly Rate</label>
-                            <input type="text" id="hourlyRate" class="form-input calc-readonly" readonly>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Overtime Hours</label>
-                            <input type="number" name="overtime_hours" id="overtime_hours" class="form-input" step="0.01" min="0" value="0" oninput="computePayroll();">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Late Deduction (auto)</label>
-                            <input type="number" name="late" id="late" class="form-input calc-readonly" step="0.01" min="0" value="0" readonly>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Undertime</label>
-                            <input type="number" name="undertime" id="undertime" class="form-input" step="0.01" min="0" value="0" oninput="computePayroll();">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Absent Deduction (auto)</label>
-                            <input type="number" name="absent" id="absent" class="form-input calc-readonly" step="0.01" min="0" value="0" readonly>
-                        </div>
+                        <div class="form-group"><label class="form-label">Days Worked</label><input type="number" name="total_days_worked" id="total_days_worked" class="form-input" step="0.5" min="0" value="0" oninput="onQuantityInput('total_days_worked');"></div>
+                        <div class="form-group"><label class="form-label">Late (minutes)</label><input type="number" name="late_minutes" id="late_minutes" class="form-input" step="1" min="0" value="0" oninput="onQuantityInput('late_minutes');"></div>
+                        <div class="form-group"><label class="form-label">Undertime (minutes)</label><input type="number" name="undertime_minutes" id="undertime_minutes" class="form-input" step="1" min="0" value="0" oninput="onQuantityInput('undertime_minutes');"></div>
+                        <div class="form-group"><label class="form-label">Overtime (hours)</label><input type="number" name="overtime_hours" id="overtime_hours" class="form-input" step="0.01" min="0" value="0" oninput="onQuantityInput('overtime_hours');"></div>
+                        <div class="form-group"><label class="form-label">Absent (not paid)</label><input type="number" name="absent" id="absent" class="form-input" step="0.01" min="0" value="0" oninput="computePayroll();"></div>
+                        <div class="form-group" style="display:flex;align-items:flex-end;"><button type="button" class="btn btn-secondary" id="recalculateButton" onclick="loadComputation();">Recalculate from attendance</button></div>
                     </div>
                 </div>
 
                 <div class="form-section">
                     <div class="form-section-title">Earnings</div>
                     <div class="form-grid">
-                        <div class="form-group"><label class="form-label">Basic Salary (auto)</label><input type="number" name="basic_salary" id="basic_salary" class="form-input calc-readonly" step="0.01" min="0" value="0" readonly></div>
+                        <div class="form-group"><label class="form-label">Basic Salary</label><input type="number" name="basic_salary" id="basic_salary" class="form-input" step="0.01" min="0" value="0" oninput="computePayroll();"></div>
                         <div class="form-group"><label class="form-label">Overtime Pay</label><input type="number" name="overtime_pay" id="overtime_pay" class="form-input" step="0.01" min="0" value="0" oninput="computePayroll();"></div>
                         <div class="form-group"><label class="form-label">Regular Holiday</label><input type="number" name="regular_holiday" id="regular_holiday" class="form-input" step="0.01" min="0" value="0" oninput="computePayroll();"></div>
                         <div class="form-group"><label class="form-label">Special Holiday</label><input type="number" name="special_holiday" id="special_holiday" class="form-input" step="0.01" min="0" value="0" oninput="computePayroll();"></div>
@@ -363,9 +394,11 @@
                 <div class="form-section">
                     <div class="form-section-title">Deductions</div>
                     <div class="form-grid">
-                        <div class="form-group"><label class="form-label">SSS (auto)</label><input type="number" name="sss" id="sss" class="form-input calc-readonly" step="0.01" min="0" value="0" readonly></div>
-                        <div class="form-group"><label class="form-label">PhilHealth (auto)</label><input type="number" name="philhealth" id="philhealth" class="form-input calc-readonly" step="0.01" min="0" value="0" readonly></div>
-                        <div class="form-group"><label class="form-label">Pag-IBIG / HDMF (auto)</label><input type="number" name="pagibig" id="pagibig" class="form-input calc-readonly" step="0.01" min="0" value="0" readonly></div>
+                        <div class="form-group"><label class="form-label">Late</label><input type="number" name="late" id="late" class="form-input" step="0.01" min="0" value="0" oninput="computePayroll();"></div>
+                        <div class="form-group"><label class="form-label">Undertime</label><input type="number" name="undertime" id="undertime" class="form-input" step="0.01" min="0" value="0" oninput="computePayroll();"></div>
+                        <div class="form-group"><label class="form-label">SSS</label><input type="number" name="sss" id="sss" class="form-input" step="0.01" min="0" value="0" oninput="computePayroll();"></div>
+                        <div class="form-group"><label class="form-label">PhilHealth</label><input type="number" name="philhealth" id="philhealth" class="form-input" step="0.01" min="0" value="0" oninput="computePayroll();"></div>
+                        <div class="form-group"><label class="form-label">Pag-IBIG / HDMF</label><input type="number" name="pagibig" id="pagibig" class="form-input" step="0.01" min="0" value="0" oninput="computePayroll();"></div>
                         <div class="form-group"><label class="form-label">Withholding Tax</label><input type="number" name="withholding_tax" id="withholding_tax" class="form-input" step="0.01" min="0" value="0" oninput="computePayroll();"></div>
                         <div class="form-group"><label class="form-label">Cash Advance</label><input type="number" name="cash_advance" id="cash_advance" class="form-input" step="0.01" min="0" value="0" oninput="computePayroll();"></div>
                         <div class="form-group"><label class="form-label">Salary Loan</label><input type="number" name="salary_loan" id="salary_loan" class="form-input" step="0.01" min="0" value="0" oninput="computePayroll();"></div>
@@ -375,17 +408,20 @@
                 </div>
 
                 <div class="form-section">
+                    <div class="form-section-title">How it was worked out</div>
+                    <ul class="computation-notes" id="computationNotes"><li>Choose an employee and a period to see the computation.</li></ul>
+                </div>
+
+                <div class="form-section">
                     <div class="form-section-title">Summary</div>
                     <div class="computed-grid">
                         <div class="form-group"><label class="form-label">Gross Pay</label><input type="text" id="grossPay" class="form-input calc-readonly" readonly></div>
                         <div class="form-group"><label class="form-label">Total Deductions</label><input type="text" id="totalDeductions" class="form-input calc-readonly" readonly></div>
                         <div class="form-group"><label class="form-label">Net Pay</label><input type="text" id="netPay" class="form-input calc-readonly" readonly style="color: var(--success);"></div>
                     </div>
+                    <div class="payroll-shortfall" id="payrollShortfall" style="display:none;">The deductions are higher than the gross pay, so the net pay is 0.</div>
                 </div>
 
-                <div class="alert alert-info" style="margin-top: 1rem;">
-                    Daily rate, attendance, late/absent deductions, and SSS, PhilHealth, and Pag-IBIG are calculated automatically. Configure the weekly statutory amounts in Business Settings.
-                </div>
                 <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1rem; flex-wrap: wrap;">
                     <button type="button" class="btn btn-secondary" onclick="document.getElementById('payrollModal').classList.remove('active'); if (typeof window.closePayrollModal === 'function') window.closePayrollModal();">Cancel</button>
                     <button type="submit" name="save_payroll" class="btn btn-success">Save Payroll</button>
@@ -395,40 +431,75 @@
     </div>
 
     <script>
-    const payrollEmployees = {{ $employeeJson }};
+    const payrollEmployees = {!! $employeeJson !!};
+    const payrollConfig = @json($payrollConfig);
 
-    const EARNING_FIELDS = ['basic_salary', 'overtime_pay', 'regular_holiday', 'special_holiday', 'night_differential', 'incentives', 'allowances', 'leave_pay', 'rest_day_pay', 'salary_adjustment', 'other_earnings'];
-    const DEDUCTION_FIELDS = ['sss', 'philhealth', 'pagibig', 'withholding_tax', 'cash_advance', 'salary_loan', 'hdmf_loan', 'other_deductions'];
-    const NUM_FIELDS = ['overtime_hours', 'late', 'undertime', 'absent'].concat(EARNING_FIELDS, DEDUCTION_FIELDS);
+    // Quantities the attendance gives, and the amounts that follow from them. In an automatic payroll the system fills them in;
+    // in a manual one the admin may type over every one of them.
+    const COMPUTED_FIELDS = ['total_days_worked', 'late_minutes', 'overtime_hours', 'absent', 'basic_salary', 'overtime_pay', 'late', 'undertime', 'sss', 'philhealth', 'pagibig'];
+    const EXTRA_EARNINGS = ['regular_holiday', 'special_holiday', 'night_differential', 'incentives', 'allowances', 'leave_pay', 'rest_day_pay', 'salary_adjustment', 'other_earnings'];
+    const EXTRA_DEDUCTIONS = ['withholding_tax', 'cash_advance', 'salary_loan', 'hdmf_loan', 'other_deductions'];
+    const EARNING_FIELDS = ['basic_salary', 'overtime_pay'].concat(EXTRA_EARNINGS);
+    const DEDUCTION_FIELDS = ['late', 'undertime', 'sss', 'philhealth', 'pagibig'].concat(EXTRA_DEDUCTIONS);
+    const NUM_FIELDS = ['total_days_worked', 'late_minutes', 'undertime_minutes', 'overtime_hours', 'absent'].concat(EARNING_FIELDS, DEDUCTION_FIELDS);
 
+    const QUANTITY_FIELDS = ['total_days_worked', 'late_minutes', 'overtime_hours'];
+    let payrollMode = 'auto';
+    let computationRequest = 0;
+
+    function el(id) { return document.getElementById(id); }
     function setVal(id, value) {
-        const el = document.getElementById(id);
-        if (el) el.value = value;
+        const input = el(id);
+        if (input) input.value = value;
+    }
+    function num(id) { return parseFloat(el(id).value) || 0; }
+    function round2(value) { return (Math.round((value + Number.EPSILON) * 100) / 100).toFixed(2); }
+    function money(value) { return '₱' + Number(value).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+    function setMode(mode, skipLoad) {
+        payrollMode = mode === 'manual' ? 'manual' : 'auto';
+        el('computationMode').value = payrollMode;
+        document.querySelectorAll('.mode-option').forEach(function(option) {
+            option.classList.toggle('active', option.getAttribute('data-mode') === payrollMode);
+        });
+        COMPUTED_FIELDS.forEach(function(id) {
+            const input = el(id);
+            input.readOnly = payrollMode === 'auto';
+            input.classList.toggle('calc-readonly', payrollMode === 'auto');
+        });
+        // Undertime is not tracked by the clock, so its minutes are always typed; its amount follows from them.
+        el('recalculateButton').style.display = payrollMode === 'auto' ? '' : 'none';
+        if (!skipLoad) loadComputation();
     }
 
     function resetPayrollForm() {
-        document.getElementById('payrollModalTitle').textContent = 'Generate Payroll';
-        document.getElementById('payrollId').value = '';
-        document.getElementById('employeeId').value = '';
-        document.getElementById('dailyRate').value = '';
+        el('payrollModalTitle').textContent = 'New Payroll';
+        el('payrollId').value = '';
+        el('employeeId').value = '';
+        el('dailyRate').value = '';
         const today = new Date();
         const mondayOffset = (today.getDay() + 6) % 7;
         const monday = new Date(today);
         monday.setDate(today.getDate() - mondayOffset);
         const sunday = new Date(monday);
         sunday.setDate(monday.getDate() + 6);
-        const dateValue = function(date) { return date.toISOString().slice(0, 10); };
-        document.getElementById('periodStart').value = dateValue(monday);
-        document.getElementById('periodEnd').value = dateValue(sunday);
-        document.getElementById('totalDaysWorked').value = '';
-        document.getElementById('payrollStatus').value = 'draft';
+        el('periodStart').value = dateValue(monday);
+        el('periodEnd').value = dateValue(sunday);
+        el('payrollStatus').value = 'draft';
         NUM_FIELDS.forEach(function(id) { setVal(id, '0'); });
+        showNotes(['Choose an employee and a period to see the computation.']);
+        setMode('auto', true);
         computePayroll();
+    }
+
+    // A local date as YYYY-MM-DD (toISOString would shift it by the time zone).
+    function dateValue(date) {
+        return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
     }
 
     function openPayrollModal() {
         resetPayrollForm();
-        const modal = document.getElementById('payrollModal');
+        const modal = el('payrollModal');
         if (modal) {
             modal.classList.add('active');
             if (window.openModal) {
@@ -438,7 +509,7 @@
     }
 
     function closePayrollModal() {
-        const modal = document.getElementById('payrollModal');
+        const modal = el('payrollModal');
         if (modal) {
             modal.classList.remove('active');
             if (window.closeModal) {
@@ -448,25 +519,73 @@
     }
 
     function syncDailyRate() {
-        const employeeId = document.getElementById('employeeId').value;
+        const employeeId = el('employeeId').value;
         const employee = payrollEmployees.find(function(item) {
             return String(item.id) === String(employeeId);
         });
+        el('dailyRate').value = employee ? employee.daily_rate : '';
+        loadComputation();
+    }
 
-        if (employee) {
-            document.getElementById('dailyRate').value = employee.daily_rate;
+    function showNotes(notes) {
+        el('computationNotes').innerHTML = '';
+        notes.forEach(function(note) {
+            const item = document.createElement('li');
+            item.textContent = note;
+            el('computationNotes').appendChild(item);
+        });
+    }
+
+    // The standard computation of the period, from the server: attendance, late, overtime and the three contributions.
+    function loadComputation() {
+        const employeeId = el('employeeId').value;
+        const start = el('periodStart').value;
+        const end = el('periodEnd').value;
+        computePayroll();
+        if (!employeeId || !start || !end) return;
+
+        const request = ++computationRequest;
+        fetch(window.location.pathname + '?action=preview&employee_id=' + encodeURIComponent(employeeId) + '&start=' + encodeURIComponent(start) + '&end=' + encodeURIComponent(end), { headers: { 'Accept': 'application/json' } })
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                if (request !== computationRequest) return;
+                if (!data.success) {
+                    showNotes([data.message || 'The computation could not be loaded.']);
+                    return;
+                }
+                COMPUTED_FIELDS.forEach(function(id) {
+                    if (data[id] === undefined || id === 'undertime') return;
+                    setVal(id, QUANTITY_FIELDS.indexOf(id) === -1 ? Number(data[id]).toFixed(2) : data[id]);
+                });
+                onQuantityInput('undertime_minutes');
+                const notes = (data.notes || []).slice();
+                if (!data.attendance_records) {
+                    notes.unshift('No attendance is recorded for this employee in this period.');
+                }
+                showNotes(notes);
+                computePayroll();
+            })
+            .catch(function() { showNotes(['The computation could not be loaded. Check the connection and try again.']); });
+    }
+
+    // Typing a quantity changes the amount that follows from it: days -> basic salary, minutes -> late / undertime, hours -> overtime pay.
+    function onQuantityInput(id) {
+        const rate = num('dailyRate');
+        const hourly = rate / payrollConfig.hoursPerDay;
+        if (id === 'undertime_minutes') {
+            setVal('undertime', round2(hourly * num('undertime_minutes') / 60));
+        } else if (payrollMode === 'manual') {
+            if (id === 'total_days_worked') setVal('basic_salary', round2(num('total_days_worked') * rate));
+            if (id === 'late_minutes') setVal('late', round2(hourly * num('late_minutes') / 60));
+            if (id === 'overtime_hours') setVal('overtime_pay', round2(hourly * payrollConfig.overtimeRate * num('overtime_hours')));
         }
-        syncAttendance();
+        computePayroll();
     }
 
     function computePayroll() {
-        const num = function(id) { return parseFloat(document.getElementById(id).value) || 0; };
-        const dailyRate = num('dailyRate');
-        const monthlyBasic = dailyRate * 26;
-        const hourlyRate = dailyRate / 8;
-
-        setVal('monthlyBasic', '₱' + monthlyBasic.toFixed(2));
-        setVal('hourlyRate', '₱' + hourlyRate.toFixed(2));
+        const rate = num('dailyRate');
+        setVal('monthlyBasic', money(rate * payrollConfig.daysPerMonth));
+        setVal('hourlyRate', money(rate / payrollConfig.hoursPerDay));
 
         let gross = 0;
         EARNING_FIELDS.forEach(function(id) { gross += num(id); });
@@ -474,48 +593,43 @@
         DEDUCTION_FIELDS.forEach(function(id) { totalDeductions += num(id); });
         const net = Math.max(0, gross - totalDeductions);
 
-        setVal('grossPay', '₱' + gross.toFixed(2));
-        setVal('totalDeductions', '₱' + totalDeductions.toFixed(2));
-        setVal('netPay', '₱' + net.toFixed(2));
-    }
-
-    function syncAttendance() {
-        const employeeId = document.getElementById('employeeId').value;
-        const start = document.getElementById('periodStart').value;
-        const end = document.getElementById('periodEnd').value;
-        if (!employeeId || !start || !end) return;
-
-        fetch('payroll.php?action=attendance&employee_id=' + encodeURIComponent(employeeId) + '&start=' + encodeURIComponent(start) + '&end=' + encodeURIComponent(end))
-            .then(function(r) { return r.json(); })
-            .then(function(data) {
-                const days = data.days_worked || 0;
-                setVal('totalDaysWorked', days);
-                const rate = parseFloat(document.getElementById('dailyRate').value) || 0;
-                setVal('basic_salary', (days * rate).toFixed(2));
-                setVal('late', Number(data.late_amount || 0).toFixed(2));
-                setVal('absent', Number(data.absent_amount || 0).toFixed(2));
-                setVal('sss', Number(data.sss || 0).toFixed(2));
-                setVal('philhealth', Number(data.philhealth || 0).toFixed(2));
-                setVal('pagibig', Number(data.pagibig || 0).toFixed(2));
-                computePayroll();
-            })
-            .catch(function() {});
+        setVal('grossPay', money(gross));
+        setVal('totalDeductions', money(totalDeductions));
+        setVal('netPay', money(net));
+        el('payrollShortfall').style.display = totalDeductions > gross ? '' : 'none';
     }
 
     function editPayroll(record) {
-        document.getElementById('payrollModalTitle').textContent = 'Edit Payroll';
-        document.getElementById('payrollId').value = record.id;
-        document.getElementById('employeeId').value = record.employee_id;
-        document.getElementById('dailyRate').value = record.daily_rate;
-        document.getElementById('periodStart').value = record.payroll_period_start;
-        document.getElementById('periodEnd').value = record.payroll_period_end;
-        document.getElementById('totalDaysWorked').value = record.total_days_worked;
-        document.getElementById('payrollStatus').value = record.status;
+        el('payrollModalTitle').textContent = 'Edit Payroll';
+        el('payrollId').value = record.id;
+        el('employeeId').value = record.employee_id;
+        el('dailyRate').value = record.daily_rate;
+        el('periodStart').value = record.payroll_period_start;
+        el('periodEnd').value = record.payroll_period_end;
+        el('payrollStatus').value = record.status;
         NUM_FIELDS.forEach(function(id) {
-            setVal(id, record[id] !== undefined ? record[id] : '0');
+            setVal(id, record[id] !== undefined && record[id] !== null ? record[id] : '0');
         });
+        // Records from before automatic payroll are edited by hand.
+        setMode(record.computation_mode === 'auto' ? 'auto' : 'manual', true);
+        showNotes(['Saving recomputes an automatic payroll from the attendance. Use "Recalculate from attendance" to see the new numbers first.']);
         computePayroll();
-        document.getElementById('payrollModal').classList.add('active');
+        el('payrollModal').classList.add('active');
+    }
+
+    // The week an automatic payroll is generated for, shown under the date.
+    function showAutoWeek() {
+        const input = el('autoWeekDate');
+        const label = el('autoWeekLabel');
+        if (!input || !label || !input.value) return;
+        const parts = input.value.split('-').map(Number);
+        const date = new Date(parts[0], parts[1] - 1, parts[2]);
+        const monday = new Date(date);
+        monday.setDate(date.getDate() - ((date.getDay() + 6) % 7));
+        const sunday = new Date(monday);
+        sunday.setDate(monday.getDate() + 6);
+        const format = function(day) { return day.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }); };
+        label.textContent = 'Monday ' + format(monday) + ' to Sunday ' + format(sunday);
     }
 
     function printPayslip(record) {
@@ -716,6 +830,11 @@
     });
 
     document.addEventListener('DOMContentLoaded', function() {
+        const autoWeekDate = document.getElementById('autoWeekDate');
+        if (autoWeekDate) {
+            autoWeekDate.addEventListener('change', showAutoWeek);
+            showAutoWeek();
+        }
         const generatePayrollButton = document.getElementById('generatePayrollButton');
         if (generatePayrollButton) {
             generatePayrollButton.addEventListener('click', openPayrollModal);

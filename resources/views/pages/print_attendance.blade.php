@@ -149,15 +149,16 @@
     <table>
         <thead>
             <tr>
-                <th style="width: 9%;">Date</th>
-                <th style="width: 12%;">Employee</th>
-                <th style="width: 9%;">Position</th>
-                <th style="width: 9%;">Branch</th>
-                <th style="width: 11%;">Employee Code</th>
-                <th style="width: 11%;">Morning In</th>
-                <th style="width: 11%;">Morning Out</th>
-                <th style="width: 11%;">Afternoon In</th>
-                <th style="width: 11%;">Afternoon Out</th>
+                <th style="width: 8%;">Date</th>
+                <th style="width: 11%;">Employee</th>
+                <th style="width: 8%;">Position</th>
+                <th style="width: 8%;">Branch</th>
+                <th style="width: 9%;">Employee Code</th>
+                <th style="width: 9%;">Morning In</th>
+                <th style="width: 9%;">Morning Out</th>
+                <th style="width: 9%;">Afternoon In</th>
+                <th style="width: 9%;">Afternoon Out</th>
+                <th style="width: 12%;">Overtime</th>
                 <th style="width: 8%;">Status</th>
             </tr>
         </thead>
@@ -173,6 +174,7 @@
                 <td>{{ $att['morning_time_out'] ? date('h:i A', strtotime($att['morning_time_out'])) : '-' }}</td>
                 <td>{{ $att['afternoon_time_in'] ? date('h:i A', strtotime($att['afternoon_time_in'])) : '-' }}</td>
                 <td>{{ $att['afternoon_time_out'] ? date('h:i A', strtotime($att['afternoon_time_out'])) : '-' }}</td>
+                <td>{{ !empty($att['overtime_time_in']) && !empty($att['overtime_time_out']) ? date('h:i A', strtotime($att['overtime_time_in'])) . ' - ' . date('h:i A', strtotime($att['overtime_time_out'])) . ' (' . (int) $att['overtime_minutes'] . ' min)' : '-' }}</td>
                 <td>
                     @if ($att['status_morning'] === 'present' || $att['status_afternoon'] === 'present')
                         <span style="color: #16a34a; font-weight: 600;">Present</span>
@@ -185,7 +187,7 @@
             </tr>
             @endforeach
             @php
-if (empty($attendanceRecords)) { echo '<tr><td colspan="9" style="text-align: center; color: #64748b; padding: 18px;">No attendance records found.</td></tr>'; }
+if (empty($attendanceRecords)) { echo '<tr><td colspan="11" style="text-align: center; color: #64748b; padding: 18px;">No attendance records found.</td></tr>'; }
 @endphp
         </tbody>
     </table>

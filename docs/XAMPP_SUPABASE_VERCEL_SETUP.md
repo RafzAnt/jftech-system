@@ -32,7 +32,9 @@ Use one database connection at a time: MySQL from XAMPP locally, then Supabase P
    run once in the same SQL Editor (safe to rerun). Per-branch stock needs
    `database/supabase/migrations/2026_10_16_inventory_per_branch.sql` the same way, and the employee app
    (NAP boxes, installation and repair requests) needs
-   `database/supabase/migrations/2026_10_17_nap_boxes_and_work_requests.sql`.
+   `database/supabase/migrations/2026_10_17_nap_boxes_and_work_requests.sql`. The real payroll computation needs
+   `database/supabase/migrations/2026_10_18_real_payroll.sql` and overtime in the attendance needs
+   `database/supabase/migrations/2026_10_18_attendance_overtime.sql` (see `docs/PAYROLL.md`).
 3. Open **Connect** and copy the **Transaction pooler** host, user, port, and password. Do not guess these values.
 
 ## 3. Deploy to Vercel

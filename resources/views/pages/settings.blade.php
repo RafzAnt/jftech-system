@@ -80,24 +80,51 @@
 
         <div class="card" style="margin-bottom: 1.5rem;">
             <div class="card-header">
-                <span class="card-title">Weekly Payroll Deductions</span>
+                <span class="card-title">Payroll Computation</span>
             </div>
             <div class="card-body">
-                            <p style="margin:0 0 1rem;color:var(--text-muted);font-size:.85rem;">These amounts are filled in automatically using each employee’s saved daily rate. Payroll is prepared every Sunday at 11:55 PM (Philippine time) after the work week ends. The admin reviews it and marks it paid when the pay is released.</p>
+                <p style="margin:0 0 1rem;color:var(--text-muted);font-size:.85rem;">Pay is worked out from each employee’s daily rate and attendance. Late is deducted and overtime is added by the minute from the hourly rate (daily rate ÷ working hours). SSS, PhilHealth and Pag-IBIG are the employee’s monthly share from the contribution tables, divided by the payrolls in a month. The admin reviews each payroll and marks it paid when the pay is released.</p>
                 <form method="POST" action="" class="settings-form">
                     <fieldset{{ $canEditSettings ? '' : ' disabled' }} style="border:0;padding:0;margin:0;min-width:0;">
                     @csrf
                     <input type="hidden" name="update_settings" value="1">
                     <div class="form-grid">
-                        @foreach ([500 => 'Technician', 580 => 'Technician II', 600 => 'Admin'] as $rate => $role)
-                        <div class="form-group" style="grid-column:1/-1;margin-bottom:0;"><strong>₱{{ $rate }}/day — {{ $role }}</strong></div>
-                        <div class="form-group"><label class="form-label">Pag-IBIG / HDMF</label><input type="number" name="settings[payroll_{{ $rate }}_pagibig]" class="form-input" step="0.01" min="0" value="{{ $settings['payroll_' . $rate . '_pagibig']['setting_value'] ?? '0.00' }}"></div>
-                        <div class="form-group"><label class="form-label">SSS</label><input type="number" name="settings[payroll_{{ $rate }}_sss]" class="form-input" step="0.01" min="0" value="{{ $settings['payroll_' . $rate . '_sss']['setting_value'] ?? '0.00' }}"></div>
-                        <div class="form-group"><label class="form-label">PhilHealth</label><input type="number" name="settings[payroll_{{ $rate }}_philhealth]" class="form-input" step="0.01" min="0" value="{{ $settings['payroll_' . $rate . '_philhealth']['setting_value'] ?? '0.00' }}"></div>
-                        @endforeach
+                        <div class="form-group"><label class="form-label">Working days in a month</label><input type="number" name="settings[payroll_days_per_month]" class="form-input" step="1" min="1" max="31" value="{{ $settings['payroll_days_per_month']['setting_value'] ?? '24' }}"><small style="color:var(--text-muted);">Monthly salary = daily rate × this.</small></div>
+                        <div class="form-group"><label class="form-label">Payrolls in a month</label><input type="number" name="settings[payroll_weeks_per_month]" class="form-input" step="1" min="1" max="5" value="{{ $settings['payroll_weeks_per_month']['setting_value'] ?? '4' }}"><small style="color:var(--text-muted);">Each contribution is the monthly share ÷ this.</small></div>
+                        <div class="form-group"><label class="form-label">Working hours in a day</label><input type="number" name="settings[payroll_hours_per_day]" class="form-input" step="0.5" min="1" max="24" value="{{ $settings['payroll_hours_per_day']['setting_value'] ?? '8' }}"><small style="color:var(--text-muted);">Hourly rate = daily rate ÷ this.</small></div>
+                        <div class="form-group"><label class="form-label">Overtime multiplier</label><input type="number" name="settings[payroll_overtime_rate]" class="form-input" step="0.01" min="1" max="3" value="{{ $settings['payroll_overtime_rate']['setting_value'] ?? '1.25' }}"><small style="color:var(--text-muted);">Overtime pay = hourly rate × this × hours.</small></div>
                     </div>
-                    @if($canEditSettings)<div class="settings-form-actions"><button type="submit" class="btn btn-primary">Save Payroll Deductions</button></div>@endif
+                    @if($canEditSettings)<div class="settings-form-actions"><button type="submit" class="btn btn-primary">Save Payroll Rules</button></div>@endif
                 </fieldset></form>
+
+                <h4 style="margin:1.5rem 0 .5rem;font-size:.9rem;">Contributions by daily rate (employee share)</h4>
+                <p style="margin:0 0 .75rem;color:var(--text-muted);font-size:.8rem;">SSS: 5% of the monthly salary credit (salary rounded to the nearest ₱500, from ₱5,000 to ₱35,000). PhilHealth: 5% of the monthly salary (from ₱10,000 to ₱100,000), shared equally. Pag-IBIG: 2% of the salary up to ₱10,000.</p>
+                <div class="data-table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Daily Rate</th><th>Monthly Salary</th>
+                                <th>SSS / month</th><th>PhilHealth / month</th><th>Pag-IBIG / month</th>
+                                <th>SSS / payroll</th><th>PhilHealth / payroll</th><th>Pag-IBIG / payroll</th><th>Total / payroll</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($payrollSamples as $sample)
+                            <tr>
+                                <td>₱{{ number_format($sample['rate'], 2) }}</td>
+                                <td>₱{{ number_format($sample['monthly_salary'], 2) }}</td>
+                                <td>₱{{ number_format($sample['sss']['employee'], 2) }}</td>
+                                <td>₱{{ number_format($sample['philhealth']['employee'], 2) }}</td>
+                                <td>₱{{ number_format($sample['pagibig']['employee'], 2) }}</td>
+                                <td>₱{{ number_format($sample['weekly']['sss'], 2) }}</td>
+                                <td>₱{{ number_format($sample['weekly']['philhealth'], 2) }}</td>
+                                <td>₱{{ number_format($sample['weekly']['pagibig'], 2) }}</td>
+                                <td><strong>₱{{ number_format($sample['weekly']['sss'] + $sample['weekly']['philhealth'] + $sample['weekly']['pagibig'], 2) }}</strong></td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
@@ -139,6 +166,21 @@
                                 <input type="time" id="afternoonEndTime" name="settings[qr_afternoon_end]" class="form-input" value="{{ $settings['qr_afternoon_end']['setting_value'] ?? '17:00' }}">
                                 <button type="button" class="time-picker-button" onclick="openTimePicker('afternoonEndTime')" aria-label="Choose afternoon QR end time"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><path d="M12 8v4l3 2"></path></svg></button>
                             </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="overtimeStartTime">Overtime QR Start Time</label>
+                            <div class="time-input-control">
+                                <input type="time" id="overtimeStartTime" name="settings[qr_overtime_start]" class="form-input" value="{{ substr($settings['qr_overtime_start']['setting_value'] ?? '17:00', 0, 5) }}">
+                                <button type="button" class="time-picker-button" onclick="openTimePicker('overtimeStartTime')" aria-label="Choose overtime QR start time"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><path d="M12 8v4l3 2"></path></svg></button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="overtimeEndTime">Overtime QR End Time</label>
+                            <div class="time-input-control">
+                                <input type="time" id="overtimeEndTime" name="settings[qr_overtime_end]" class="form-input" value="{{ substr($settings['qr_overtime_end']['setting_value'] ?? '22:00', 0, 5) }}">
+                                <button type="button" class="time-picker-button" onclick="openTimePicker('overtimeEndTime')" aria-label="Choose overtime QR end time"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><path d="M12 8v4l3 2"></path></svg></button>
+                            </div>
+                            <small style="color: var(--text-muted);">Employees can scan the overtime QR code between these times, once to start the overtime and once to end it.</small>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Mark as Late After (minutes)</label>

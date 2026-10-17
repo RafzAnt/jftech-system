@@ -62,6 +62,93 @@
     }
 }
 
+/* ===== AUTOMATIC / MANUAL PAYROLL ===== */
+.auto-payroll-text {
+    margin: 0 0 1rem;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    line-height: 1.5;
+}
+
+.auto-payroll-form {
+    display: flex;
+    align-items: flex-end;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.auto-payroll-week {
+    flex: 1 1 220px;
+    padding-bottom: 0.65rem;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.mode-toggle {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
+.mode-option {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.3rem;
+    padding: 0.85rem 1rem;
+    text-align: left;
+    cursor: pointer;
+    color: var(--text-primary);
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm, 8px);
+    font-family: inherit;
+}
+
+.mode-option span {
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    line-height: 1.4;
+}
+
+.mode-option:hover {
+    border-color: var(--accent);
+}
+
+.mode-option.active {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+.computation-notes {
+    margin: 0;
+    padding: 0.75rem 1rem 0.75rem 1.75rem;
+    color: var(--text-secondary);
+    background: var(--bg-muted);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm, 8px);
+    font-size: 0.82rem;
+    line-height: 1.6;
+}
+
+/* Not an .alert: the page script removes every .alert a few seconds after load. */
+.payroll-shortfall {
+    margin-top: 1rem;
+    padding: 0.75rem 1rem;
+    color: var(--warning);
+    background: var(--warning-soft);
+    border: 1px solid color-mix(in srgb, var(--warning) 25%, transparent);
+    border-radius: var(--radius-sm, 8px);
+    font-size: 0.85rem;
+}
+
+@media (max-width: 640px) {
+    .mode-toggle {
+        grid-template-columns: 1fr;
+    }
+}
+
 /* ===== PAYSLIP COMPONENT ===== */
 .payslip-list {
     display: flex;
@@ -144,6 +231,18 @@
     letter-spacing: 0.05em;
     background: #f59e0b;
     color: #1f2937;
+    border-radius: 4px;
+    vertical-align: middle;
+}
+
+.payslip-mode-badge {
+    display: inline-block;
+    margin-left: 0.5rem;
+    padding: 0.1rem 0.5rem;
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+    background: #1e3a8a;
+    color: #ffffff;
     border-radius: 4px;
     vertical-align: middle;
 }

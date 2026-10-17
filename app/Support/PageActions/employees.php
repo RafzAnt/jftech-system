@@ -256,8 +256,31 @@ if ($request->isMethod('post') && $request->has('manual_attendance')) {
             $changes["{$key}_time_in"] = $timeIn;
             $changes["{$key}_time_out"] = $timeOut;
         }
+
+        // Overtime has no status: both times, or "no overtime" to take it away. The minutes in between go to the payroll.
+        $overtimeIn = $normalizeTime($request->input('manual_overtime_in'));
+        $overtimeOut = $normalizeTime($request->input('manual_overtime_out'));
+        if ($request->boolean('manual_overtime_clear')) {
+            $changes['overtime_time_in'] = null;
+            $changes['overtime_time_out'] = null;
+            $changes['overtime_minutes'] = 0;
+        } elseif ($overtimeIn !== null || $overtimeOut !== null) {
+            if ($overtimeIn === null || $overtimeOut === null) {
+                throw new Exception('Enter both the overtime time in and the overtime time out.');
+            }
+            if (strcmp($overtimeOut, $overtimeIn) <= 0) {
+                throw new Exception('Overtime time out must be after time in.');
+            }
+            $overtimeMinutes = \App\Support\AttendanceTime::minutesBetween($overtimeIn, $overtimeOut);
+            if ($overtimeMinutes > \App\Support\AttendanceTime::MAX_OVERTIME_MINUTES) {
+                throw new Exception('Overtime cannot be longer than 12 hours in a day.');
+            }
+            $changes['overtime_time_in'] = $overtimeIn;
+            $changes['overtime_time_out'] = $overtimeOut;
+            $changes['overtime_minutes'] = $overtimeMinutes;
+        }
         if (!$changes) {
-            throw new Exception('Fill in at least one session (morning or afternoon).');
+            throw new Exception('Fill in at least one session (morning, afternoon or overtime).');
         }
 
         $existingStmt = $pdo->prepare('SELECT * FROM attendance WHERE employee_id = ? AND attendance_date = ?');
@@ -310,7 +333,7 @@ if (($attendanceView === 'date' && $selectedDate === date('Y-m-d')) || ($attenda
 // Only attendance recorded in the admin's branch is joined in, so a scan stays with the branch it was made in.
 [$attendanceRowScope, $attendanceRowScopeParams] = \App\Support\BranchScope::attendance($scopeBranch, 'a');
 // Include active employees without a scan so their status remains blank until it is due.
-$attendanceQuery = "SELECT e.id as employee_id, e.full_name as employee_name, e.position, a.id as attendance_id, a.attendance_date, a.morning_time_in, a.morning_time_out, a.afternoon_time_in, a.afternoon_time_out, a.status_morning, a.status_afternoon, a.total_hours, a.qr_code_used, a.notes, COALESCE(a.branch_name, e.branch_name) AS branch_name FROM employees e LEFT JOIN attendance a ON e.id = a.employee_id AND a.attendance_date BETWEEN ? AND ?" . $attendanceRowScope . " WHERE e.status = 'active'";
+$attendanceQuery = "SELECT e.id as employee_id, e.full_name as employee_name, e.position, a.id as attendance_id, a.attendance_date, a.morning_time_in, a.morning_time_out, a.afternoon_time_in, a.afternoon_time_out, a.overtime_time_in, a.overtime_time_out, a.overtime_minutes, a.status_morning, a.status_afternoon, a.total_hours, a.qr_code_used, a.notes, COALESCE(a.branch_name, e.branch_name) AS branch_name FROM employees e LEFT JOIN attendance a ON e.id = a.employee_id AND a.attendance_date BETWEEN ? AND ?" . $attendanceRowScope . " WHERE e.status = 'active'";
 $attendanceParams = [$monthStart, $monthEnd, ...$attendanceRowScopeParams];
 if ($scopeBranch === '') {
     $attendanceQuery .= ' AND 1 = 0';
@@ -378,29 +401,42 @@ foreach ($attendanceRecords as &$record) {
 unset($record);
 
 // Get attendance schedule settings for QR display and generation
-$stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('qr_morning_start', 'qr_morning_end', 'qr_afternoon_start', 'qr_afternoon_end')");
+$stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('qr_morning_start', 'qr_morning_end', 'qr_afternoon_start', 'qr_afternoon_end', 'qr_overtime_start', 'qr_overtime_end')");
 $attendanceSettings = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 $qrMorningStart = $attendanceSettings['qr_morning_start'] ?? '08:00:00';
 $qrMorningEnd = $attendanceSettings['qr_morning_end'] ?? '12:00:00';
 $qrAfternoonStart = $attendanceSettings['qr_afternoon_start'] ?? '13:00:00';
 $qrAfternoonEnd = $attendanceSettings['qr_afternoon_end'] ?? '17:00:00';
+$qrOvertimeStart = $attendanceSettings['qr_overtime_start'] ?? '17:00:00';
+$qrOvertimeEnd = $attendanceSettings['qr_overtime_end'] ?? '22:00:00';
 
 // Get QR codes
-$stmt = $pdo->query("SELECT * FROM qr_codes WHERE valid_date = CURRENT_DATE ORDER BY created_at DESC LIMIT 2");
+$stmt = $pdo->query("SELECT * FROM qr_codes WHERE valid_date = CURRENT_DATE ORDER BY created_at DESC LIMIT 9");
 $qrCodes = $stmt->fetchAll();
 
 // Generate QR Code if requested
 if ($request->isMethod('post') && $request->has('generate_qr')) {
     abort_unless($canGenerateQr, 403);
     try {
-        $qrType = $request->input('qr_type');
+        $qrType = (string) $request->input('qr_type');
+        if (!in_array($qrType, ['morning', 'afternoon', 'overtime'], true)) {
+            throw new Exception('Choose the morning, afternoon or overtime QR code.');
+        }
         $validDate = date('Y-m-d');
-        
-        // Get time settings from database
-        $stmt = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'qr_" . $qrType . "_start'");
-        $startTime = $stmt->fetch()['setting_value'];
-        $stmt = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'qr_" . $qrType . "_end'");
-        $endTime = $stmt->fetch()['setting_value'];
+
+        // The time window of the session, from the settings (overtime: 5 PM to 10 PM unless changed).
+        $qrDefaults = ['morning' => ['08:00:00', '12:00:00'], 'afternoon' => ['13:00:00', '17:00:00'], 'overtime' => ['17:00:00', '22:00:00']];
+        $stmt = $pdo->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN (?, ?)");
+        $stmt->execute(["qr_{$qrType}_start", "qr_{$qrType}_end"]);
+        $qrWindow = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+        $startTime = $qrWindow["qr_{$qrType}_start"] ?? $qrDefaults[$qrType][0];
+        $endTime = $qrWindow["qr_{$qrType}_end"] ?? $qrDefaults[$qrType][1];
+        if (strlen($startTime) === 5) {
+            $startTime .= ':00';
+        }
+        if (strlen($endTime) === 5) {
+            $endTime .= ':00';
+        }
         
         // Deactivate old QR codes of same type
         $stmt = $pdo->prepare("UPDATE qr_codes SET status = 'expired' WHERE qr_type = ? AND valid_date = ?");
@@ -415,7 +451,7 @@ if ($request->isMethod('post') && $request->has('generate_qr')) {
         $success = ucfirst($qrType) . ' QR Code generated successfully!';
         
         // Refresh QR codes
-        $stmt = $pdo->query("SELECT * FROM qr_codes WHERE valid_date = CURRENT_DATE ORDER BY created_at DESC LIMIT 2");
+        $stmt = $pdo->query("SELECT * FROM qr_codes WHERE valid_date = CURRENT_DATE ORDER BY created_at DESC LIMIT 9");
         $qrCodes = $stmt->fetchAll();
     } catch (Exception $e) {
         $error = 'Error: ' . $e->getMessage();
