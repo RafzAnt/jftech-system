@@ -104,6 +104,22 @@ $stmt = $pdo->prepare($employeeListSql);
 $stmt->execute($employeeScopeParams);
 $employees = $stmt->fetchAll();
 
+// The branch filter of the page: it narrows the employee list of the Details tab and the Attendance tab alike. Left empty it
+// shows every branch the account may see.
+$selectedListBranch = trim((string) $request->query('branch', ''));
+foreach ($employeeBranches as $branchOption) {
+    if (strcasecmp($branchOption, $selectedListBranch) === 0) {
+        $selectedListBranch = $branchOption;
+        break;
+    }
+}
+if (!in_array($selectedListBranch, $employeeBranches, true)) {
+    $selectedListBranch = '';
+}
+$listedEmployees = $selectedListBranch === ''
+    ? $employees
+    : array_values(array_filter($employees, static fn (array $employee): bool => strcasecmp((string) $employee['branch_name'], $selectedListBranch) === 0));
+
 // Get the selected date or month attendance view.
 $attendanceView = 'date';
 $selectedDate = $request->query('attendance_date') ?? date('Y-m-d');

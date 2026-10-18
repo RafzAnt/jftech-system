@@ -132,6 +132,17 @@
     line-height: 1.6;
 }
 
+.field-hint {
+    display: block;
+    margin-top: 0.25rem;
+    color: var(--text-muted);
+    font-size: 0.72rem;
+}
+
+.field-hint.differs {
+    color: var(--warning);
+}
+
 /* Not an .alert: the page script removes every .alert a few seconds after load. */
 .payroll-shortfall {
     margin-top: 1rem;

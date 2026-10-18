@@ -26,22 +26,29 @@
                 <h1 class="page-title">Work Requests</h1>
                 <p style="color: var(--text-muted); font-size: 0.85rem;">{{ $canReview ? 'Installation and repair requests of your technicians' : 'Installation and repair requests of the technicians, by branch' }}</p>
             </div>
-            <div style="display:flex;gap:.65rem;flex-wrap:wrap;align-items:center;">
+            <form method="GET" action="" class="dashboard-branch-form" style="display:flex;gap:.65rem;flex-wrap:wrap;align-items:center;">
+                <input type="hidden" name="status" value="{{ $tab }}">
                 @if (! \App\Support\BranchScope::isRestricted())
-                <form method="GET" action="" class="dashboard-branch-form">
-                    <input type="hidden" name="status" value="{{ $tab }}">
-                    <label class="form-label" for="requestBranch" style="margin:0;">Branch</label>
-                    <select name="branch" id="requestBranch" class="form-select" onchange="this.form.submit()" style="width:auto;min-width:170px;">
-                        <option value="">All branches</option>
-                        @foreach ($branches as $branchOption)
-                        <option value="{{ $branchOption }}" {{ $branch === $branchOption ? 'selected' : '' }}>{{ $branchOption }}</option>
-                        @endforeach
-                    </select>
-                </form>
+                <label class="form-label" for="requestBranch" style="margin:0;">Branch</label>
+                <select name="branch" id="requestBranch" class="form-select" style="width:auto;min-width:170px;" onchange="document.getElementById('requestBarangay').value = ''; this.form.submit();">
+                    <option value="">All branches</option>
+                    @foreach ($branches as $branchOption)
+                    <option value="{{ $branchOption }}" {{ $branch === $branchOption ? 'selected' : '' }}>{{ $branchOption }}</option>
+                    @endforeach
+                </select>
                 @else
                 <span class="badge badge-info">{{ $branch ?: 'No branch assigned' }} branch</span>
                 @endif
-            </div>
+                <label class="form-label" for="requestBarangay" style="margin:0;">Barangay</label>
+                <input type="text" name="barangay" id="requestBarangay" class="form-input" list="requestBarangaySuggestions" placeholder="All barangays" autocomplete="off" value="{{ $barangay }}" style="width:auto;min-width:170px;">
+                <datalist id="requestBarangaySuggestions">
+                    @foreach ($barangaySuggestions as $suggestion)<option value="{{ $suggestion }}"></option>@endforeach
+                </datalist>
+                <button type="submit" class="btn btn-primary">Filter</button>
+                @if ($barangay !== '' || ($branch && ! \App\Support\BranchScope::isRestricted()))
+                <a href="work_requests.php?status={{ $tab }}" class="btn btn-secondary">Clear</a>
+                @endif
+            </form>
         </div>
 
         @if ($success)
@@ -53,7 +60,7 @@
 
         <div class="request-tabs">
             @foreach ($tabs as $key => $definition)
-            <a class="request-tab {{ $tab === $key ? 'active' : '' }}" href="work_requests.php?status={{ $key }}{{ $branch && ! \App\Support\BranchScope::isRestricted() ? '&branch=' . urlencode($branch) : '' }}">
+            <a class="request-tab {{ $tab === $key ? 'active' : '' }}" href="work_requests.php?status={{ $key }}{{ $branch && ! \App\Support\BranchScope::isRestricted() ? '&branch=' . urlencode($branch) : '' }}{{ $barangay !== '' ? '&barangay=' . urlencode($barangay) : '' }}">
                 {{ $definition['label'] }}
                 <span class="request-tab-count">{{ $tabCounts[$key] }}</span>
             </a>

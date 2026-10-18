@@ -10,12 +10,16 @@ return function (\Illuminate\Http\Request $request): array {
 $themeCssVersion = filemtime(public_path('css/jftech-theme.css'));
 $paymentHistoryCssVersion = filemtime(public_path('css/payment_history.css'));
 
-$selectedBarangay = trim((string) $request->query('barangay', ''));
-$selectedBarangay = ctype_digit($selectedBarangay) && (int) $selectedBarangay > 0 ? $selectedBarangay : '';
-$searchTerm = trim((string) $request->query('search', ''));
+$clientFilterCssVersion = filemtime(public_path('css/client_filter.css'));
 
-$stmt = $pdo->query('SELECT id, barangay_name FROM barangays ORDER BY barangay_name');
-$barangays = $stmt->fetchAll();
+// Branch, barangay and text search (the super admin may pick any branch; a branch admin only has their own).
+$location = \App\Support\LocationFilter::fromRequest($request);
+$branches = $location['branches'];
+$branchBarangays = $location['branchBarangays'];
+$selectedBranch = $location['selectedBranch'];
+$selectedBarangays = $location['selectedBarangays'];
+$searchTerm = $location['searchTerm'];
+$scopeBranch = $location['scopeBranch'];
 
 // Get payments with optional barangay and client-name filters.
 $paymentQuery = "SELECT p.*, c.client_code, c.full_name as client_name, COALESCE(c.registered_barangay_name, br.barangay_name) AS barangay_name, c.branch_name, u.full_name as received_by_name, b.bill_number, b.amount as bill_amount,
@@ -30,14 +34,9 @@ $paymentQuery = "SELECT p.*, c.client_code, c.full_name as client_name, COALESCE
 [$branchScope, $paymentParams] = \App\Support\BranchScope::clients(\App\Support\BranchScope::current(), 'c');
 $paymentQuery .= $branchScope;
 
-if ($selectedBarangay !== '') {
-    $paymentQuery .= ' AND c.barangay_id = ?';
-    $paymentParams[] = $selectedBarangay;
-}
-if ($searchTerm !== '') {
-    $paymentQuery .= ' AND c.full_name LIKE ?';
-    $paymentParams[] = '%' . $searchTerm . '%';
-}
+[$locationSql, $locationParams] = \App\Support\LocationFilter::clientConditions($location, 'c', 'br', ['p.reference_number', 'b.bill_number', 'p.payment_method']);
+$paymentQuery .= $locationSql;
+array_push($paymentParams, ...$locationParams);
 
 $paymentQuery .= ' ORDER BY p.payment_date DESC, p.id DESC';
 $stmt = $pdo->prepare($paymentQuery);

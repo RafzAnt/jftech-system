@@ -49,9 +49,20 @@
             <div id="detailsTab" class="tab-content {{ $activeTab === 'details' ? 'active' : '' }}">
                 <div class="card">
                     <div class="card-header">
-                        <span class="card-title">Employee List</span>
-                        <div class="search-box" style="margin: 0;">
-                            <input type="text" class="search-input" placeholder="Search employees..." data-target="#employeesTable">
+                        <span class="card-title">Employee List <span class="badge badge-info">{{ count($listedEmployees) }}{{ $selectedListBranch ? ' · ' . $selectedListBranch : '' }}</span></span>
+                        <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                            <form method="GET" action="" style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                                <input type="hidden" name="tab" value="details">
+                                <select name="branch" class="form-select" style="width: auto; min-width: 150px; padding: 0.5rem;" aria-label="Branch" onchange="this.form.submit()">
+                                    <option value="">{{ \App\Support\BranchScope::isRestricted() ? 'My branch' : 'All Branches' }}</option>
+                                    @foreach ($employeeBranches as $branch)
+                                    <option value="{{ $branch }}" {{ $selectedListBranch === $branch ? 'selected' : '' }}>{{ $branch }}</option>
+                                    @endforeach
+                                </select>
+                            </form>
+                            <div class="search-box" style="margin: 0;">
+                                <input type="text" class="search-input" placeholder="Search employees..." data-target="#employeesTable">
+                            </div>
                         </div>
                     </div>
                     <div class="card-body" style="padding: 0;">
@@ -70,7 +81,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach ($employees as $emp)
+                                    @foreach ($listedEmployees as $emp)
                                     <tr>
                                         <td><strong>{{ $emp['employee_code'] }}</strong></td>
                                         <td>{{ htmlspecialchars($emp['full_name']) }}</td>
@@ -90,7 +101,7 @@
                                         </td>
                                     </tr>
                                     @endforeach
-                                    @if (empty($employees))
+                                    @if (empty($listedEmployees))
                                     <tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:2rem;">No employees found</td></tr>
                                     @endif
                                 </tbody>

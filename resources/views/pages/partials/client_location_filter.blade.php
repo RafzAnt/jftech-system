@@ -1,4 +1,5 @@
-{{-- Branch, barangay, and client search fields. Render inside <form id="clientFilterForm">; styles: css/client_filter.css --}}
+{{-- Branch, barangay, and client search fields. Render inside <form id="clientFilterForm">; styles: css/client_filter.css.
+     Needs $branches, $branchBarangays, $selectedBranch, $selectedBarangays, $searchTerm, $scopeBranch (see App\Support\LocationFilter); optional $filterSearchLabel, $filterSearchPlaceholder. --}}
 <div class="client-filter-controls">
     <div class="form-group client-filter-field client-branch-field">
         <label class="form-label" for="clientBranchInput">Branch</label>
@@ -18,8 +19,8 @@
         <div id="clientBarangayHiddenInputs"></div>
     </div>
     <div class="form-group client-filter-field client-search-field">
-        <label class="form-label" for="searchInput">Search Clients</label>
-        <input type="text" class="search-input client-filter-text-input" placeholder="Name, client code, or mobile number" id="searchInput" name="search" value="{{ $searchTerm }}">
+        <label class="form-label" for="searchInput">{{ $filterSearchLabel ?? 'Search Clients' }}</label>
+        <input type="text" class="search-input client-filter-text-input" placeholder="{{ $filterSearchPlaceholder ?? 'Name, client code, or mobile number' }}" id="searchInput" name="search" value="{{ $searchTerm }}">
     </div>
     <div class="client-filter-submit">
         <button type="submit" class="btn btn-primary">Search</button>

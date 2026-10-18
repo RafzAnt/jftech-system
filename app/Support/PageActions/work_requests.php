@@ -20,6 +20,19 @@ return function (Request $request): array {
     $branch = BranchScope::resolve($request->query('branch'));
     $branches = array_keys(config('bohol_branches', []));
 
+    // The barangays to pick from: those of the branch (every branch's when the super admin looks at all of them).
+    $barangaySuggestions = $branch !== null && $branch !== ''
+        ? \App\Support\NapBoxes::barangaysOf($branch)
+        : array_values(array_unique(array_merge(...array_map(fn ($name) => \App\Support\NapBoxes::barangaysOf($name), $branches))));
+    sort($barangaySuggestions);
+    $barangay = '';
+    foreach ($barangaySuggestions as $suggestion) {
+        if (strcasecmp($suggestion, trim((string) $request->query('barangay', ''))) === 0) {
+            $barangay = $suggestion;
+            break;
+        }
+    }
+
     $tabs = [
         'pending' => ['label' => 'Pending Approval', 'statuses' => ['pending_approval']],
         'returned' => ['label' => 'Returned', 'statuses' => ['returned']],
@@ -78,8 +91,8 @@ return function (Request $request): array {
         }
     }
 
-    $requests = WorkRequestService::listing(null, $branch, $tabs[$tab]['statuses'], 100);
-    $counts = WorkRequestService::counts(null, $branch);
+    $requests = WorkRequestService::listing(null, $branch, $tabs[$tab]['statuses'], 100, $barangay);
+    $counts = WorkRequestService::counts(null, $branch, $barangay);
     $tabCounts = [];
     foreach ($tabs as $key => $definition) {
         $tabCounts[$key] = $definition['statuses'] === null ? array_sum($counts) : array_sum(array_map(fn ($status) => $counts[$status] ?? 0, $definition['statuses']));

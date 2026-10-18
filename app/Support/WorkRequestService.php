@@ -227,11 +227,12 @@ final class WorkRequestService
     }
 
     /** A list of requests, newest first. */
-    public static function listing(?int $employeeId, ?string $branch, ?array $statuses = null, int $limit = 100): array
+    public static function listing(?int $employeeId, ?string $branch, ?array $statuses = null, int $limit = 100, ?string $barangay = null): array
     {
         $rows = self::baseQuery()
             ->when($employeeId, fn ($q) => $q->where('work_requests.employee_id', $employeeId))
             ->when($branch !== null, fn ($q) => $branch === '' ? $q->whereRaw('1 = 0') : $q->whereRaw('LOWER(work_requests.branch_name) = LOWER(?)', [$branch]))
+            ->when($barangay !== null && $barangay !== '', fn ($q) => $q->whereRaw("LOWER(COALESCE(work_requests.barangay_name, '')) = LOWER(?)", [$barangay]))
             ->when($statuses, fn ($q) => $q->whereIn('work_requests.status', $statuses))
             ->orderByDesc('work_requests.created_at')
             ->orderByDesc('work_requests.id')
@@ -241,11 +242,12 @@ final class WorkRequestService
         return $rows->map(fn ($row) => self::present($row, false))->all();
     }
 
-    public static function counts(?int $employeeId, ?string $branch): array
+    public static function counts(?int $employeeId, ?string $branch, ?string $barangay = null): array
     {
         $query = DB::table('work_requests')
             ->when($employeeId, fn ($q) => $q->where('employee_id', $employeeId))
             ->when($branch !== null, fn ($q) => $branch === '' ? $q->whereRaw('1 = 0') : $q->whereRaw('LOWER(branch_name) = LOWER(?)', [$branch]))
+            ->when($barangay !== null && $barangay !== '', fn ($q) => $q->whereRaw("LOWER(COALESCE(barangay_name, '')) = LOWER(?)", [$barangay]))
             ->selectRaw('status, COUNT(*) AS total')
             ->groupBy('status')
             ->pluck('total', 'status');

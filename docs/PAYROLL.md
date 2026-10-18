@@ -69,6 +69,11 @@ methods when the law changes them.
 starts from the standard computation; an amount left empty keeps it. Changing the days, minutes or hours recomputes the
 amount that follows from them, which can then be typed over.
 
+In a manual payroll the SSS, PhilHealth and Pag-IBIG boxes are filled in automatically as soon as an employee is chosen (they
+only depend on the daily rate), and each shows its **Standard** amount underneath, marked "changed" when it was typed over.
+**Fill standard amounts** loads the standard numbers again. When an old payroll (made before the automatic computation) is edited,
+its contributions that are 0 are filled in with the standard amounts; type 0 on purpose for an employee who is not covered.
+
 Who pays whom is unchanged: a branch admin generates payroll for the technicians of their branch, the super admin only for
 the Admin employees. One payroll per employee and period (an archived one does not count).
 

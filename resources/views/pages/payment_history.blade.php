@@ -6,6 +6,7 @@
     <title>JFTECH - Payment History</title>
     <link rel="stylesheet" href="{{ asset('css/jftech-theme.css') }}?{{ $themeCssVersion }}">
     <link rel="stylesheet" href="{{ asset('css/payment_history.css') }}?{{ $paymentHistoryCssVersion }}">
+    <link rel="stylesheet" href="{{ asset('css/client_filter.css') }}?{{ $clientFilterCssVersion }}">
 </head>
 <body>
     <div class="grid-overlay"></div>
@@ -32,10 +33,22 @@
             </div>
         </div>
 
+        <!-- Branch, barangay and payment search -->
+        <form method="GET" action="" class="card client-filter-card" id="clientFilterForm" style="margin-bottom: 1.5rem;">
+            <div class="card-body">
+                @php
+                    $filterSearchLabel = 'Search Payments';
+                    $filterSearchPlaceholder = 'Client, client code, bill or reference number';
+                @endphp
+                @include('pages.partials.client_location_filter')
+            </div>
+        </form>
+
         <!-- Payment History Table -->
         <div class="card">
             <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
                 <span class="card-title">Payment History</span>
+                <span class="badge badge-info">{{ count($payments) }} payment(s){{ $selectedBranch ? ' · ' . $selectedBranch : '' }}{{ $selectedBarangays ? ' · ' . implode(', ', $selectedBarangays) : '' }}</span>
             </div>
             <div class="card-body" style="padding: 0;">
                 <div class="data-table-container">
@@ -43,6 +56,8 @@
                         <thead>
                                     <tr>
                                         <th>Client</th>
+                                         <th>Branch</th>
+                                         <th>Barangay</th>
                                          <th>Bill #</th>
                                          <th>Bill Amount</th>
                                          <th>Paid Amount</th>
@@ -59,6 +74,8 @@
                                         <td>
                                              <strong>{{ htmlspecialchars($payment['client_name']) }}</strong>
                                         </td>
+                                        <td>{{ $payment['branch_name'] ?: '—' }}</td>
+                                        <td>{{ $payment['barangay_name'] ?: '—' }}</td>
                                         <td>@if ($payment['bill_number']){{ $payment['bill_number'] }}@else<span style="color: var(--text-muted);">—</span>@endif</td>
                                         <td>{{ $payment['bill_amount'] ? '₱' . number_format($payment['bill_amount'], 2) : '-' }}</td>
                                         <td style="color: var(--success); font-weight: 700;">₱{{ number_format($payment['amount'], 2) }}</td>
@@ -70,7 +87,7 @@
                                     </tr>
                                     @endforeach
                                     @if (empty($payments))
-                                    <tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 2rem;">No payment records found</td></tr>
+                                    <tr><td colspan="11" style="text-align: center; color: var(--text-muted); padding: 2rem;">No payment records found</td></tr>
                                     @endif
                                 </tbody>
                     </table>

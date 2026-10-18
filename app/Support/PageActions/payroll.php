@@ -20,9 +20,31 @@ $scopeBranch = \App\Support\BranchScope::current();
 [$employeeScope, $employeeScopeParams] = \App\Support\BranchScope::employees($scopeBranch, 'e');
 [$payrollEmployeeScope, $payrollEmployeeScopeParams] = \App\Support\BranchScope::viaEmployee($scopeBranch, 'payroll.employee_id');
 
-$stmt = $pdo->prepare("SELECT e.id, e.employee_code, e.full_name, e.position, e.department, e.daily_rate, e.status FROM employees e WHERE 1 = 1" . $employeeScope . " ORDER BY e.full_name");
+// The branch filter of the page: the super admin may look at any branch, a branch admin only has their own. Left empty it
+// shows every branch the account may see.
+$payrollBranches = array_keys(config('bohol_branches', []));
+if ($scopeBranch !== null) {
+    $payrollBranches = array_values(array_filter($payrollBranches, static fn (string $name): bool => strcasecmp($name, $scopeBranch) === 0));
+}
+$selectedBranch = trim((string) $request->query('branch', ''));
+foreach ($payrollBranches as $branchOption) {
+    if (strcasecmp($branchOption, $selectedBranch) === 0) {
+        $selectedBranch = $branchOption;
+        break;
+    }
+}
+if (!in_array($selectedBranch, $payrollBranches, true)) {
+    $selectedBranch = '';
+}
+[$branchFilterScope, $branchFilterScopeParams] = \App\Support\BranchScope::viaEmployee($selectedBranch !== '' ? $selectedBranch : null, 'payroll.employee_id');
+
+$stmt = $pdo->prepare("SELECT e.id, e.employee_code, e.full_name, e.position, e.department, e.daily_rate, e.status, e.branch_name FROM employees e WHERE 1 = 1" . $employeeScope . " ORDER BY e.full_name");
 $stmt->execute($employeeScopeParams);
 $employees = $stmt->fetchAll();
+// The employees offered by the filter follow the chosen branch.
+$filterEmployees = $selectedBranch === ''
+    ? $employees
+    : array_values(array_filter($employees, static fn (array $employee): bool => strcasecmp((string) ($employee['branch_name'] ?? ''), $selectedBranch) === 0));
 
 $employeeMap = [];
 foreach ($employees as $employee) {
@@ -289,6 +311,11 @@ if ($employeeScope !== '') {
     array_push($params, ...$employeeScopeParams);
 }
 
+if ($selectedBranch !== '') {
+    $where[] = "LOWER(COALESCE(e.branch_name, '')) = LOWER(?)";
+    $params[] = $selectedBranch;
+}
+
 if ($selectedEmployee !== '') {
     $where[] = 'p.employee_id = ?';
     $params[] = $selectedEmployee;
@@ -316,7 +343,7 @@ if ($showArchived) {
 }
 
 $payrollSql = "
-    SELECT p.*, e.full_name AS employee_name, e.employee_code, e.position, e.department, e.status AS employment_status
+    SELECT p.*, e.full_name AS employee_name, e.employee_code, e.position, e.department, e.branch_name, e.status AS employment_status
     FROM payroll p
     JOIN employees e ON p.employee_id = e.id
 ";
@@ -342,11 +369,11 @@ $statStmt = $pdo->prepare("
         SUM(CASE WHEN status = 'processed' THEN 1 ELSE 0 END) AS processed,
         SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END) AS paid
     FROM payroll
-    WHERE (archived = 0 OR archived IS NULL)" . $payrollEmployeeScope);
-$statStmt->execute($payrollEmployeeScopeParams);
+    WHERE (archived = 0 OR archived IS NULL)" . $payrollEmployeeScope . $branchFilterScope);
+$statStmt->execute([...$payrollEmployeeScopeParams, ...$branchFilterScopeParams]);
 $stats = $statStmt->fetch();
-$archivedStmt = $pdo->prepare("SELECT COUNT(*) FROM payroll WHERE archived = 1" . $payrollEmployeeScope);
-$archivedStmt->execute($payrollEmployeeScopeParams);
+$archivedStmt = $pdo->prepare("SELECT COUNT(*) FROM payroll WHERE archived = 1" . $payrollEmployeeScope . $branchFilterScope);
+$archivedStmt->execute([...$payrollEmployeeScopeParams, ...$branchFilterScopeParams]);
 $archivedCount = (int) $archivedStmt->fetchColumn();
 
 $totalRecords = (int) $stats['total'];

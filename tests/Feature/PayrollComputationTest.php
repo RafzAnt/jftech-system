@@ -212,6 +212,51 @@ class PayrollComputationTest extends TestCase
         $this->assertEquals(1970, $payroll->net_pay);
     }
 
+    public function test_a_manual_payroll_leaves_the_contributions_to_the_standard_when_the_boxes_are_empty(): void
+    {
+        $this->signIn(2);
+        $this->post('/payroll', $this->form(1, ['computation_mode' => 'manual', 'total_days_worked' => 2, 'sss' => '', 'philhealth' => '', 'pagibig' => '']))->assertOk();
+
+        $payroll = $this->payrollOf(1);
+        $this->assertEquals([150, 75, 50], [(float) $payroll->sss, (float) $payroll->philhealth, (float) $payroll->pagibig]);
+        $this->assertEquals(337.5, $payroll->deductions, '275 of contributions and the 62.50 of the late minutes of the week');
+    }
+
+    public function test_a_contribution_typed_as_zero_stays_zero(): void
+    {
+        // An employee who is not covered: the admin types 0 on purpose, and that wins over the standard amount.
+        $this->signIn(2);
+        $this->post('/payroll', $this->form(1, ['computation_mode' => 'manual', 'total_days_worked' => 2, 'sss' => 0, 'philhealth' => 0, 'pagibig' => 0]))->assertOk();
+
+        $this->assertEquals([0, 0, 0], [(float) $this->payrollOf(1)->sss, (float) $this->payrollOf(1)->philhealth, (float) $this->payrollOf(1)->pagibig]);
+    }
+
+    public function test_the_preview_gives_the_standard_contributions_even_without_attendance(): void
+    {
+        // The form fills the contributions of a manual payroll from this, so it must not depend on the days worked.
+        DB::table('attendance')->delete();
+        $this->signIn(2);
+
+        $this->getJson('/payroll?action=preview&employee_id=1&start=' . self::START . '&end=' . self::END)
+            ->assertOk()
+            ->assertJsonPath('total_days_worked', 0)
+            ->assertJsonPath('sss', 150)
+            ->assertJsonPath('philhealth', 75)
+            ->assertJsonPath('pagibig', 50);
+    }
+
+    public function test_the_form_shows_the_standard_amount_under_each_contribution_and_a_button_to_fill_them(): void
+    {
+        $this->signIn(2);
+
+        $html = $this->get('/payroll')->assertOk()->getContent();
+
+        foreach (['sss', 'philhealth', 'pagibig'] as $key) {
+            $this->assertStringContainsString('id="hint_' . $key . '"', $html);
+        }
+        $this->assertStringContainsString('Fill standard amounts', $html);
+    }
+
     public function test_a_manual_payroll_can_have_more_deductions_than_pay_and_the_net_is_zero(): void
     {
         $this->signIn(2);

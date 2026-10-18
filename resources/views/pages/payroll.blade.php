@@ -88,10 +88,19 @@
                 <form method="GET" action="">
                     <div class="filter-grid">
                         <div class="form-group" style="margin: 0;">
+                            <label class="form-label">Branch</label>
+                            <select name="branch" class="form-input">
+                                <option value="">{{ \App\Support\BranchScope::isRestricted() ? 'My branch' : 'All Branches' }}</option>
+                                @foreach ($payrollBranches as $branchOption)
+                                <option value="{{ $branchOption }}" {{ $selectedBranch === $branchOption ? 'selected' : '' }}>{{ $branchOption }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin: 0;">
                             <label class="form-label">Employee</label>
                             <select name="employee_id" class="form-input" {{ $hasEmployees ? '' : 'disabled' }}>
                                 <option value="">All Employees</option>
-                                @foreach ($employees as $employee)
+                                @foreach ($filterEmployees as $employee)
                                 <option value="{{ $employee['id'] }}" {{ (string) $selectedEmployee === (string) $employee['id'] ? 'selected' : '' }}>
                                     {{ htmlspecialchars($employee['full_name']) }}
                                 </option>
@@ -181,7 +190,7 @@
                                     </tr>
                                     <tr>
                                         <td><span class="payslip-label">Employment Status</span><strong>{{ htmlspecialchars(ucfirst($prEmpStatus)) }}</strong></td>
-                                        <td><span class="payslip-label">Department</span><strong>{{ htmlspecialchars($record['department'] ?: 'N/A') }}</strong></td>
+                                        <td><span class="payslip-label">Branch{{ $record['department'] ? ' / Department' : '' }}</span><strong>{{ htmlspecialchars($record['branch_name'] ?: 'N/A') }}{{ $record['department'] ? ' · ' . htmlspecialchars($record['department']) : '' }}</strong></td>
                                         <td><span class="payslip-label">Date</span><strong>{{ date('M d, Y', strtotime($record['created_at'] ?? $record['payroll_period_end'])) }}</strong></td>
                                     </tr>
                                 </table>
@@ -396,9 +405,9 @@
                     <div class="form-grid">
                         <div class="form-group"><label class="form-label">Late</label><input type="number" name="late" id="late" class="form-input" step="0.01" min="0" value="0" oninput="computePayroll();"></div>
                         <div class="form-group"><label class="form-label">Undertime</label><input type="number" name="undertime" id="undertime" class="form-input" step="0.01" min="0" value="0" oninput="computePayroll();"></div>
-                        <div class="form-group"><label class="form-label">SSS</label><input type="number" name="sss" id="sss" class="form-input" step="0.01" min="0" value="0" oninput="computePayroll();"></div>
-                        <div class="form-group"><label class="form-label">PhilHealth</label><input type="number" name="philhealth" id="philhealth" class="form-input" step="0.01" min="0" value="0" oninput="computePayroll();"></div>
-                        <div class="form-group"><label class="form-label">Pag-IBIG / HDMF</label><input type="number" name="pagibig" id="pagibig" class="form-input" step="0.01" min="0" value="0" oninput="computePayroll();"></div>
+                        <div class="form-group"><label class="form-label">SSS</label><input type="number" name="sss" id="sss" class="form-input" step="0.01" min="0" value="0" oninput="computePayroll();"><small class="field-hint" id="hint_sss"></small></div>
+                        <div class="form-group"><label class="form-label">PhilHealth</label><input type="number" name="philhealth" id="philhealth" class="form-input" step="0.01" min="0" value="0" oninput="computePayroll();"><small class="field-hint" id="hint_philhealth"></small></div>
+                        <div class="form-group"><label class="form-label">Pag-IBIG / HDMF</label><input type="number" name="pagibig" id="pagibig" class="form-input" step="0.01" min="0" value="0" oninput="computePayroll();"><small class="field-hint" id="hint_pagibig"></small></div>
                         <div class="form-group"><label class="form-label">Withholding Tax</label><input type="number" name="withholding_tax" id="withholding_tax" class="form-input" step="0.01" min="0" value="0" oninput="computePayroll();"></div>
                         <div class="form-group"><label class="form-label">Cash Advance</label><input type="number" name="cash_advance" id="cash_advance" class="form-input" step="0.01" min="0" value="0" oninput="computePayroll();"></div>
                         <div class="form-group"><label class="form-label">Salary Loan</label><input type="number" name="salary_loan" id="salary_loan" class="form-input" step="0.01" min="0" value="0" oninput="computePayroll();"></div>
@@ -468,7 +477,8 @@
             input.classList.toggle('calc-readonly', payrollMode === 'auto');
         });
         // Undertime is not tracked by the clock, so its minutes are always typed; its amount follows from them.
-        el('recalculateButton').style.display = payrollMode === 'auto' ? '' : 'none';
+        // The button reloads the standard numbers in both modes: an automatic payroll follows them, a manual one starts from them.
+        el('recalculateButton').textContent = payrollMode === 'auto' ? 'Recalculate from attendance' : 'Fill standard amounts';
         if (!skipLoad) loadComputation();
     }
 
@@ -488,6 +498,7 @@
         el('payrollStatus').value = 'draft';
         NUM_FIELDS.forEach(function(id) { setVal(id, '0'); });
         showNotes(['Choose an employee and a period to see the computation.']);
+        standardContributions = null;
         setMode('auto', true);
         computePayroll();
     }
@@ -537,35 +548,68 @@
     }
 
     // The standard computation of the period, from the server: attendance, late, overtime and the three contributions.
-    function loadComputation() {
+    // What the server works out for the chosen employee and period (resolves to the answer, or null when nothing is chosen yet).
+    function fetchStandard() {
         const employeeId = el('employeeId').value;
         const start = el('periodStart').value;
         const end = el('periodEnd').value;
-        computePayroll();
-        if (!employeeId || !start || !end) return;
+        if (!employeeId || !start || !end) return Promise.resolve(null);
 
-        const request = ++computationRequest;
-        fetch(window.location.pathname + '?action=preview&employee_id=' + encodeURIComponent(employeeId) + '&start=' + encodeURIComponent(start) + '&end=' + encodeURIComponent(end), { headers: { 'Accept': 'application/json' } })
+        return fetch(window.location.pathname + '?action=preview&employee_id=' + encodeURIComponent(employeeId) + '&start=' + encodeURIComponent(start) + '&end=' + encodeURIComponent(end), { headers: { 'Accept': 'application/json' } })
             .then(function(response) { return response.json(); })
-            .then(function(data) {
-                if (request !== computationRequest) return;
-                if (!data.success) {
-                    showNotes([data.message || 'The computation could not be loaded.']);
-                    return;
-                }
-                COMPUTED_FIELDS.forEach(function(id) {
-                    if (data[id] === undefined || id === 'undertime') return;
-                    setVal(id, QUANTITY_FIELDS.indexOf(id) === -1 ? Number(data[id]).toFixed(2) : data[id]);
-                });
-                onQuantityInput('undertime_minutes');
-                const notes = (data.notes || []).slice();
-                if (!data.attendance_records) {
-                    notes.unshift('No attendance is recorded for this employee in this period.');
-                }
-                showNotes(notes);
-                computePayroll();
-            })
-            .catch(function() { showNotes(['The computation could not be loaded. Check the connection and try again.']); });
+            .catch(function() { return { success: false, message: 'The computation could not be loaded. Check the connection and try again.' }; });
+    }
+
+    // The standard SSS, PhilHealth and Pag-IBIG of the employee, shown under each box so a typed amount can be compared with it.
+    let standardContributions = null;
+    const CONTRIBUTION_FIELDS = ['sss', 'philhealth', 'pagibig'];
+
+    function rememberStandard(data) {
+        standardContributions = data && data.success ? { sss: Number(data.sss), philhealth: Number(data.philhealth), pagibig: Number(data.pagibig) } : null;
+        updateHints();
+    }
+
+    function updateHints() {
+        CONTRIBUTION_FIELDS.forEach(function(id) {
+            const hint = el('hint_' + id);
+            if (!hint) return;
+            if (!standardContributions) {
+                hint.textContent = '';
+                hint.classList.remove('differs');
+                return;
+            }
+            const differs = Math.abs(num(id) - standardContributions[id]) > 0.005;
+            hint.textContent = 'Standard: ' + money(standardContributions[id]) + (differs ? ' · changed' : '');
+            hint.classList.toggle('differs', differs);
+        });
+    }
+
+    // The standard computation of the period, from the server: attendance, late, overtime and the three contributions.
+    // It fills every computed box, in a manual payroll too (where each can then be typed over).
+    function loadComputation() {
+        computePayroll();
+        const request = ++computationRequest;
+        fetchStandard().then(function(data) {
+            if (request !== computationRequest || data === null) return;
+            if (!data.success) {
+                standardContributions = null;
+                updateHints();
+                showNotes([data.message || 'The computation could not be loaded.']);
+                return;
+            }
+            COMPUTED_FIELDS.forEach(function(id) {
+                if (data[id] === undefined || id === 'undertime') return;
+                setVal(id, QUANTITY_FIELDS.indexOf(id) === -1 ? Number(data[id]).toFixed(2) : data[id]);
+            });
+            onQuantityInput('undertime_minutes');
+            const notes = (data.notes || []).slice();
+            if (!data.attendance_records) {
+                notes.unshift('No attendance is recorded for this employee in this period.');
+            }
+            showNotes(notes);
+            rememberStandard(data);
+            computePayroll();
+        });
     }
 
     // Typing a quantity changes the amount that follows from it: days -> basic salary, minutes -> late / undertime, hours -> overtime pay.
@@ -597,6 +641,7 @@
         setVal('totalDeductions', money(totalDeductions));
         setVal('netPay', money(net));
         el('payrollShortfall').style.display = totalDeductions > gross ? '' : 'none';
+        updateHints();
     }
 
     function editPayroll(record) {
@@ -612,9 +657,28 @@
         });
         // Records from before automatic payroll are edited by hand.
         setMode(record.computation_mode === 'auto' ? 'auto' : 'manual', true);
-        showNotes(['Saving recomputes an automatic payroll from the attendance. Use "Recalculate from attendance" to see the new numbers first.']);
+        showNotes([payrollMode === 'auto'
+            ? 'Saving recomputes an automatic payroll from the attendance. Use "Recalculate from attendance" to see the new numbers first.'
+            : 'A manual payroll keeps the amounts as they are. Use "Fill standard amounts" to load the standard ones.']);
+        standardContributions = null;
         computePayroll();
         el('payrollModal').classList.add('active');
+
+        // The standard amounts are shown under the contributions. A payroll made before the real computation never had them
+        // worked out (they are 0), so they are filled in now; anything already there is left alone.
+        const request = ++computationRequest;
+        fetchStandard().then(function(data) {
+            if (request !== computationRequest || !data || !data.success) return;
+            rememberStandard(data);
+            if (!record.computation_mode) {
+                const filled = CONTRIBUTION_FIELDS.filter(function(id) { return num(id) === 0 && standardContributions[id] > 0; });
+                filled.forEach(function(id) { setVal(id, standardContributions[id].toFixed(2)); });
+                if (filled.length) {
+                    showNotes(['This payroll was made before the automatic computation, so its SSS, PhilHealth and Pag-IBIG were not worked out. The standard amounts are filled in now; save to keep them.'].concat(data.notes || []));
+                }
+            }
+            computePayroll();
+        });
     }
 
     // The week an automatic payroll is generated for, shown under the date.
