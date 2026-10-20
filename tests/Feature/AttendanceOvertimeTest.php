@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Support\PayrollService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\PreserveGlobalState;
 use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -44,10 +45,15 @@ class AttendanceOvertimeTest extends TestCase
     }
 
     /** An open overtime QR code (17:00 to 22:00), and the time it is. */
-    private function openOvertimeQr(string $at = '17:05'): void
+    private function openOvertimeQr(string $at = '17:05', ?string $branch = 'Balilihan'): void
     {
-        DB::table('qr_codes')->insert(['qr_code' => 'QR-OVERTIME', 'qr_type' => 'overtime', 'valid_date' => now()->toDateString(), 'valid_from' => '17:00:00', 'valid_until' => '22:00:00', 'status' => 'active']);
+        DB::table('qr_codes')->insert(['qr_code' => 'QR-OVERTIME', 'qr_type' => 'overtime', 'valid_date' => now()->toDateString(), 'valid_from' => '17:00:00', 'valid_until' => '22:00:00', 'status' => 'active', 'branch_name' => $branch]);
         $this->travelTo(now()->setTimeFromTimeString($at));
+    }
+
+    private function overtimeQr(string $code, ?string $branch, string $status = 'active'): void
+    {
+        DB::table('qr_codes')->insert(['qr_code' => $code, 'qr_type' => 'overtime', 'valid_date' => now()->toDateString(), 'valid_from' => '17:00:00', 'valid_until' => '22:00:00', 'status' => $status, 'branch_name' => $branch]);
     }
 
     private function scan(int $employeeId = 1)
@@ -99,6 +105,27 @@ class AttendanceOvertimeTest extends TestCase
         $this->assertNull($this->attendanceOf(1)->overtime_time_out);
     }
 
+    public function test_an_overtime_qr_code_only_works_for_the_employees_of_its_branch(): void
+    {
+        $this->openOvertimeQr();
+
+        $loon = $this->scan(2);
+        $loon->assertStatus(422)->assertJson(['success' => false]);
+        $this->assertStringContainsString('not for your branch', $loon->json('message'));
+        $this->assertNull($this->attendanceOf(2)->overtime_time_in, 'an employee of another branch records no overtime');
+
+        $this->scan(1)->assertOk()->assertJson(['success' => true, 'scan_type' => 'Overtime In']);
+    }
+
+    public function test_an_overtime_qr_code_without_a_branch_is_not_accepted(): void
+    {
+        // What the earlier shared code looks like: no branch.
+        $this->openOvertimeQr('17:05', null);
+
+        $this->scan(1)->assertStatus(422);
+        $this->assertNull($this->attendanceOf(1)->overtime_time_in);
+    }
+
     public function test_the_overtime_qr_code_only_works_in_its_window(): void
     {
         $this->openOvertimeQr('16:30');
@@ -109,7 +136,7 @@ class AttendanceOvertimeTest extends TestCase
 
     public function test_overtime_is_added_to_the_row_of_the_day_with_the_branch_of_the_employee(): void
     {
-        $this->openOvertimeQr('17:10');
+        $this->openOvertimeQr('17:10', 'Loon');
 
         $this->scan(2)->assertOk()->assertJson(['scan_type' => 'Overtime In', 'branch_name' => 'Loon']);
 
@@ -239,9 +266,9 @@ class AttendanceOvertimeTest extends TestCase
 
     // ---- the QR code and the settings ------------------------------------------------------------------
 
-    public function test_the_super_admin_generates_the_overtime_qr_with_the_default_window(): void
+    public function test_a_branch_admin_generates_the_overtime_qr_of_their_branch_with_the_default_window(): void
     {
-        $this->signIn(1);
+        $this->signIn(2);
 
         $page = $this->page('employees', ['tab' => 'attendance'], ['generate_qr' => 1, 'qr_type' => 'overtime']);
 
@@ -249,6 +276,7 @@ class AttendanceOvertimeTest extends TestCase
         $qr = DB::table('qr_codes')->where('qr_type', 'overtime')->first();
         $this->assertSame('17:00:00', $qr->valid_from);
         $this->assertSame('22:00:00', $qr->valid_until);
+        $this->assertSame('Balilihan', $qr->branch_name, 'the code carries the branch of its admin');
         $this->assertStringStartsWith('JFTECH-OVERTIME-', $qr->qr_code);
         $this->assertSame('overtime', collect($page['qrCodes'])->firstWhere('status', 'active')['qr_type']);
     }
@@ -256,7 +284,7 @@ class AttendanceOvertimeTest extends TestCase
     public function test_the_overtime_qr_follows_the_times_of_the_settings(): void
     {
         DB::table('system_settings')->insert([['setting_key' => 'qr_overtime_start', 'setting_value' => '17:30'], ['setting_key' => 'qr_overtime_end', 'setting_value' => '20:00']]);
-        $this->signIn(1);
+        $this->signIn(2);
 
         $this->page('employees', ['tab' => 'attendance'], ['generate_qr' => 1, 'qr_type' => 'overtime']);
 
@@ -265,15 +293,28 @@ class AttendanceOvertimeTest extends TestCase
         $this->assertSame('20:00:00', $qr->valid_until);
     }
 
-    public function test_generating_the_overtime_qr_again_replaces_the_one_of_the_day(): void
+    public function test_generating_the_overtime_qr_again_replaces_only_the_one_of_that_branch(): void
     {
-        DB::table('qr_codes')->insert(['qr_code' => 'QR-OLD-OVERTIME', 'qr_type' => 'overtime', 'valid_date' => now()->toDateString(), 'valid_from' => '17:00:00', 'valid_until' => '22:00:00', 'status' => 'active']);
-        $this->signIn(1);
+        $this->overtimeQr('QR-OLD-BALILIHAN', 'Balilihan');
+        $this->overtimeQr('QR-LOON', 'Loon');
+        $this->signIn(2);
 
         $this->page('employees', ['tab' => 'attendance'], ['generate_qr' => 1, 'qr_type' => 'overtime']);
 
-        $this->assertSame('expired', DB::table('qr_codes')->where('qr_code', 'QR-OLD-OVERTIME')->value('status'));
-        $this->assertSame(1, DB::table('qr_codes')->where('qr_type', 'overtime')->where('status', 'active')->count());
+        $this->assertSame('expired', DB::table('qr_codes')->where('qr_code', 'QR-OLD-BALILIHAN')->value('status'));
+        $this->assertSame('active', DB::table('qr_codes')->where('qr_code', 'QR-LOON')->value('status'), "another branch's code is not touched");
+        $this->assertSame(1, DB::table('qr_codes')->where('qr_type', 'overtime')->where('branch_name', 'Balilihan')->where('status', 'active')->count());
+    }
+
+    public function test_each_branch_has_its_own_overtime_qr_the_same_day(): void
+    {
+        $this->overtimeQr('QR-LOON', 'Loon');
+        $this->signIn(2);
+
+        $this->page('employees', ['tab' => 'attendance'], ['generate_qr' => 1, 'qr_type' => 'overtime']);
+
+        $codes = DB::table('qr_codes')->where('qr_type', 'overtime')->where('status', 'active')->orderBy('branch_name')->pluck('branch_name')->all();
+        $this->assertSame(['Balilihan', 'Loon'], $codes, 'both branches have a code the same day');
     }
 
     public function test_a_qr_type_that_is_not_a_session_is_refused(): void
@@ -286,9 +327,9 @@ class AttendanceOvertimeTest extends TestCase
         $this->assertSame(0, DB::table('qr_codes')->count());
     }
 
-    public function test_a_branch_admin_cannot_generate_the_overtime_qr(): void
+    public function test_the_super_admin_cannot_generate_an_overtime_qr(): void
     {
-        $this->signIn(2);
+        $this->signIn(1);
 
         try {
             $this->page('employees', ['tab' => 'attendance'], ['generate_qr' => 1, 'qr_type' => 'overtime']);
@@ -299,17 +340,32 @@ class AttendanceOvertimeTest extends TestCase
         }
     }
 
-    public function test_the_attendance_tab_shows_the_overtime_qr_the_column_and_the_manual_fields(): void
+    #[DataProvider('sharedQrTypes')]
+    public function test_a_branch_admin_still_cannot_generate_the_shared_morning_and_afternoon_qr(string $type): void
+    {
+        $this->signIn(2);
+
+        try {
+            $this->page('employees', ['tab' => 'attendance'], ['generate_qr' => 1, 'qr_type' => $type]);
+            $this->fail("the {$type} QR code is the super admin's");
+        } catch (HttpException $e) {
+            $this->assertSame(403, $e->getStatusCode());
+        }
+        $this->assertSame(0, DB::table('qr_codes')->count());
+    }
+
+    public static function sharedQrTypes(): array
+    {
+        return ['morning' => ['morning'], 'afternoon' => ['afternoon']];
+    }
+
+    public function test_the_attendance_tab_shows_the_overtime_column_and_the_manual_fields(): void
     {
         DB::table('attendance')->where('id', 1)->update(['overtime_time_in' => '17:00:00', 'overtime_time_out' => '18:30:00', 'overtime_minutes' => 90]);
-        DB::table('qr_codes')->insert(['qr_code' => 'QR-OVERTIME', 'qr_type' => 'overtime', 'valid_date' => now()->toDateString(), 'valid_from' => '17:00:00', 'valid_until' => '22:00:00', 'status' => 'active']);
         $this->signIn(1);
 
         $html = $this->get('/employees?tab=attendance')->assertOk()->getContent();
 
-        $this->assertStringContainsString('Generate Overtime QR', $html);
-        $this->assertStringContainsString('id="overtimeQR"', $html);
-        $this->assertStringContainsString('id="printOvertimeQr"', $html);
         $this->assertStringContainsString('<th>Overtime</th>', $html);
         $this->assertStringContainsString('05:00 PM - 06:30 PM', $html);
         $this->assertStringContainsString('90 min', $html);
@@ -317,15 +373,69 @@ class AttendanceOvertimeTest extends TestCase
         $this->assertStringContainsString('name="manual_overtime_clear"', $html);
     }
 
-    public function test_a_branch_admin_sees_the_overtime_qr_but_has_no_button_to_replace_it(): void
+    public function test_a_branch_admin_sees_the_overtime_qr_of_their_branch_and_a_button_to_make_it(): void
     {
-        DB::table('qr_codes')->insert(['qr_code' => 'QR-OVERTIME', 'qr_type' => 'overtime', 'valid_date' => now()->toDateString(), 'valid_from' => '17:00:00', 'valid_until' => '22:00:00', 'status' => 'active']);
+        $this->overtimeQr('QR-BALILIHAN', 'Balilihan');
+        $this->overtimeQr('QR-LOON', 'Loon');
         $this->signIn(2);
 
         $html = $this->get('/employees?tab=attendance')->assertOk()->getContent();
 
         $this->assertStringContainsString('id="overtimeQR"', $html);
+        $this->assertStringContainsString('QR-BALILIHAN', $html);
+        $this->assertStringNotContainsString('QR-LOON', $html, "another branch's code is not shown");
+        $this->assertStringContainsString('Generate Overtime QR', $html);
+        $this->assertStringContainsString('Only for Balilihan.', $html);
+        $this->assertStringContainsString('id="printOvertimeQr"', $html);
+        $this->assertStringContainsString('Overtime · Balilihan', $html);
+    }
+
+    public function test_a_branch_admin_without_a_code_is_told_so(): void
+    {
+        $this->overtimeQr('QR-LOON', 'Loon');
+        $this->signIn(2);
+
+        $html = $this->get('/employees?tab=attendance')->assertOk()->getContent();
+
+        $this->assertStringNotContainsString('id="overtimeQR"', $html);
+        $this->assertStringContainsString('No active QR code', $html);
+        $this->assertStringContainsString('Generate Overtime QR', $html);
+    }
+
+    public function test_the_super_admin_sees_which_branches_have_an_overtime_qr_but_cannot_make_one(): void
+    {
+        $this->overtimeQr('QR-BALILIHAN', 'Balilihan');
+        $this->overtimeQr('QR-LOON', 'Loon');
+        $this->overtimeQr('QR-OLD', 'Loon', 'expired');
+        $this->signIn(1);
+
+        $page = $this->get('/employees?tab=attendance')->assertOk();
+        $html = $page->getContent();
+
+        $this->assertSame(['Balilihan', 'Loon'], array_column($page->viewData('overtimeQrByBranch'), 'branch_name'));
+        $this->assertStringContainsString('Each branch admin makes the overtime QR code of their own branch.', $html);
+        $this->assertStringContainsString('<strong>Loon</strong>', $html);
         $this->assertStringNotContainsString('Generate Overtime QR', $html);
+        $this->assertStringNotContainsString('id="overtimeQR"', $html, 'the super admin has no overtime code of their own');
+        $this->assertStringNotContainsString('id="printOvertimeQr"', $html);
+    }
+
+    public function test_the_printed_attendance_sheet_has_the_shared_codes_and_the_overtime_code_of_the_own_branch(): void
+    {
+        DB::table('qr_codes')->insert([
+            ['qr_code' => 'QR-MORNING', 'qr_type' => 'morning', 'valid_date' => now()->toDateString(), 'valid_from' => '08:00:00', 'valid_until' => '12:00:00', 'status' => 'active'],
+        ]);
+        $this->overtimeQr('QR-BALILIHAN', 'Balilihan');
+        $this->overtimeQr('QR-LOON', 'Loon');
+
+        $this->signIn(2);
+        $mine = array_column($this->page('print_attendance')['attendanceQrCodes'], 'qr_code');
+        sort($mine);
+        $this->assertSame(['QR-BALILIHAN', 'QR-MORNING'], $mine);
+
+        $this->signIn(1);
+        $all = array_column($this->page('print_attendance')['attendanceQrCodes'], 'qr_code');
+        $this->assertSame(['QR-MORNING'], $all, 'the super admin has no overtime code to print');
     }
 
     public function test_the_super_admin_sets_the_overtime_qr_times(): void

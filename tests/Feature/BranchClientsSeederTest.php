@@ -64,6 +64,34 @@ class BranchClientsSeederTest extends TestCase
         $this->assertGreaterThan(0, DB::table('clients')->where('status', 'suspended')->count(), 'not everyone is active');
     }
 
+    public function test_the_emails_are_ordinary_gmail_addresses(): void
+    {
+        $this->seed(BranchClientsSeeder::class);
+
+        $emails = DB::table('clients')->pluck('email')->all();
+        $this->assertCount($this->barangayCount() * 2, array_unique($emails), 'every address is different');
+        foreach ($emails as $email) {
+            $this->assertStringEndsWith('@gmail.com', $email);
+            $this->assertNotFalse(filter_var($email, FILTER_VALIDATE_EMAIL), $email);
+            $this->assertDoesNotMatchRegularExpression('/[^a-z.@]/', $email, 'plain lower case letters only');
+        }
+        $this->assertSame(0, DB::table('clients')->where('email', 'like', '%demo.jftech.local')->count());
+    }
+
+    public function test_sample_clients_made_before_get_their_address_in_the_same_form(): void
+    {
+        DB::table('clients')->insert([
+            ['client_code' => 'JFT-DEMO-LOO-01', 'full_name' => 'Teresa Pacaña', 'email' => 'teresa.pacaña@demo.jftech.local', 'branch_name' => 'Loon', 'registered_barangay_name' => 'Genomoan', 'status' => 'active'],
+            // Not a sample: left exactly as it is.
+            ['client_code' => 'JFT-2026-REAL', 'full_name' => 'Real Client', 'email' => 'real@demo.jftech.local', 'branch_name' => 'Loon', 'registered_barangay_name' => 'Genomoan', 'status' => 'active'],
+        ]);
+
+        $this->seed(BranchClientsSeeder::class);
+
+        $this->assertSame('teresa.pacana@gmail.com', DB::table('clients')->where('client_code', 'JFT-DEMO-LOO-01')->value('email'));
+        $this->assertSame('real@demo.jftech.local', DB::table('clients')->where('client_code', 'JFT-2026-REAL')->value('email'));
+    }
+
     public function test_running_it_again_changes_nothing(): void
     {
         $this->seed(BranchClientsSeeder::class);

@@ -174,6 +174,7 @@ trait BranchTestData
             $table->time('valid_until')->nullable();
             $table->string('status')->default('active');
             $table->unsignedBigInteger('created_by')->nullable();
+            $table->string('branch_name', 100)->nullable();
             $table->timestamp('created_at')->nullable();
         });
         Schema::create('inventory', function ($table) {

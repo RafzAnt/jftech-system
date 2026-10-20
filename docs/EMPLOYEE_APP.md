@@ -18,7 +18,9 @@ and **Profile**. The Profile shows who is signed in and holds **My work requests
    every other call, so a request can only act as the employee who signed in (24 hours, or until log out).
 2. **Attendance** – the employee scans the branch QR code (`scan_attendance.php`); `me.php` gives today's times. The
    overtime QR code starts overtime on the first scan and ends it on the second (`Overtime In` / `Overtime Out`); its
-   minutes go to the payroll (`docs/PAYROLL.md`). Run `2026_10_18_attendance_overtime.sql` (or `php artisan migrate`) first.
+   minutes go to the payroll (`docs/PAYROLL.md`). The overtime code is the branch's own (made by the branch admin) and only
+   works for that branch's employees. Run `2026_10_18_attendance_overtime.sql` and `2026_10_20_overtime_qr_per_branch.sql`
+   (or `php artisan migrate`) first.
 3. **Inventory** – *Item Out* and *Item Return* become stock requests (`inventory_request_create.php`, with
    `request_type`, condition, area used and person in charge). The branch admin approves them in **Inventory →
    Requests**; an approved item out leaves the stock, an accepted return goes back in.

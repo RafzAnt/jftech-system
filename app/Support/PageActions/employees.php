@@ -96,7 +96,11 @@ if ($scopeBranch !== null) {
     $employeeBranches = array_values(array_filter($employeeBranches, static fn (string $name): bool => strcasecmp($name, $scopeBranch) === 0));
 }
 [$employeeScope, $employeeScopeParams] = \App\Support\BranchScope::employees($scopeBranch, 'e');
+// The morning and afternoon QR codes are shared by every branch, so the super admin makes them. The overtime QR code belongs to a branch:
+// each branch admin makes the one of their own branch (each branch approves its own overtime days), and the super admin never does.
 $canGenerateQr = auth()->user()?->isSuperAdmin() ?? false;
+$overtimeQrBranch = auth()->user()?->isBranchAdmin() ? \App\Support\BranchScope::current() : null;
+$canGenerateOvertimeQr = $overtimeQrBranch !== null && $overtimeQrBranch !== '';
 
 // Get all employees
 $employeeListSql = "SELECT e.*, u.username, u.status as user_status FROM employees e LEFT JOIN users u ON e.user_id = u.id WHERE 1 = 1" . $employeeScope . " ORDER BY e.full_name";
@@ -426,15 +430,34 @@ $qrAfternoonEnd = $attendanceSettings['qr_afternoon_end'] ?? '17:00:00';
 $qrOvertimeStart = $attendanceSettings['qr_overtime_start'] ?? '17:00:00';
 $qrOvertimeEnd = $attendanceSettings['qr_overtime_end'] ?? '22:00:00';
 
-// Get QR codes
-$stmt = $pdo->query("SELECT * FROM qr_codes WHERE valid_date = CURRENT_DATE ORDER BY created_at DESC LIMIT 9");
-$qrCodes = $stmt->fetchAll();
+// Today's QR codes: the shared morning and afternoon ones, and the overtime one of the branch admin's own branch. The super admin sees the
+// overtime codes of every branch in a list ($overtimeQrByBranch), but has no overtime code of their own.
+$qrToday = date('Y-m-d');
+$loadQrCodes = static function () use ($pdo, $qrToday, $canGenerateOvertimeQr, $overtimeQrBranch): array {
+    $sql = "SELECT * FROM qr_codes WHERE valid_date = ? AND status = 'active' AND (qr_type IN ('morning', 'afternoon')";
+    $params = [$qrToday];
+    if ($canGenerateOvertimeQr) {
+        $sql .= " OR (qr_type = 'overtime' AND LOWER(COALESCE(branch_name, '')) = LOWER(?))";
+        $params[] = $overtimeQrBranch;
+    }
+    $stmt = $pdo->prepare($sql . ') ORDER BY created_at DESC, id DESC LIMIT 9');
+    $stmt->execute($params);
+
+    return $stmt->fetchAll();
+};
+$qrCodes = $loadQrCodes();
+$overtimeQrByBranch = [];
+if (auth()->user()?->isSuperAdmin()) {
+    $stmt = $pdo->prepare("SELECT branch_name, qr_code, valid_from, valid_until FROM qr_codes WHERE valid_date = ? AND qr_type = 'overtime' AND status = 'active' AND branch_name IS NOT NULL ORDER BY branch_name");
+    $stmt->execute([$qrToday]);
+    $overtimeQrByBranch = $stmt->fetchAll();
+}
 
 // Generate QR Code if requested
 if ($request->isMethod('post') && $request->has('generate_qr')) {
-    abort_unless($canGenerateQr, 403);
+    $qrType = (string) $request->input('qr_type');
+    abort_unless($qrType === 'overtime' ? $canGenerateOvertimeQr : $canGenerateQr, 403);
     try {
-        $qrType = (string) $request->input('qr_type');
         if (!in_array($qrType, ['morning', 'afternoon', 'overtime'], true)) {
             throw new Exception('Choose the morning, afternoon or overtime QR code.');
         }
@@ -454,21 +477,29 @@ if ($request->isMethod('post') && $request->has('generate_qr')) {
             $endTime .= ':00';
         }
         
+        // The overtime code is the branch's own: it replaces only that branch's code of the day, and carries the branch. The morning and
+        // afternoon codes are shared, so they have no branch.
+        $qrBranch = $qrType === 'overtime' ? $overtimeQrBranch : null;
+
         // Deactivate old QR codes of same type
-        $stmt = $pdo->prepare("UPDATE qr_codes SET status = 'expired' WHERE qr_type = ? AND valid_date = ?");
-        $stmt->execute([$qrType, $validDate]);
-        
+        if ($qrBranch !== null) {
+            $stmt = $pdo->prepare("UPDATE qr_codes SET status = 'expired' WHERE qr_type = ? AND valid_date = ? AND LOWER(COALESCE(branch_name, '')) = LOWER(?)");
+            $stmt->execute([$qrType, $validDate, $qrBranch]);
+        } else {
+            $stmt = $pdo->prepare("UPDATE qr_codes SET status = 'expired' WHERE qr_type = ? AND valid_date = ?");
+            $stmt->execute([$qrType, $validDate]);
+        }
+
         // Generate new QR code
         $qrCode = 'JFTECH-' . strtoupper($qrType) . '-' . date('Ymd') . '-' . bin2hex(random_bytes(4));
-        
-        $stmt = $pdo->prepare("INSERT INTO qr_codes (qr_code, qr_type, valid_date, valid_from, valid_until, status, created_by) VALUES (?, ?, ?, ?, ?, 'active', ?)");
-        $stmt->execute([$qrCode, $qrType, $validDate, $startTime, $endTime, auth()->id()]);
-        
+
+        $stmt = $pdo->prepare("INSERT INTO qr_codes (qr_code, qr_type, valid_date, valid_from, valid_until, status, created_by, branch_name) VALUES (?, ?, ?, ?, ?, 'active', ?, ?)");
+        $stmt->execute([$qrCode, $qrType, $validDate, $startTime, $endTime, auth()->id(), $qrBranch]);
+
         $success = ucfirst($qrType) . ' QR Code generated successfully!';
-        
+
         // Refresh QR codes
-        $stmt = $pdo->query("SELECT * FROM qr_codes WHERE valid_date = CURRENT_DATE ORDER BY created_at DESC LIMIT 9");
-        $qrCodes = $stmt->fetchAll();
+        $qrCodes = $loadQrCodes();
     } catch (Exception $e) {
         $error = 'Error: ' . $e->getMessage();
     }

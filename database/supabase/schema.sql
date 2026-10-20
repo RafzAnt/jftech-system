@@ -186,6 +186,9 @@ ALTER TABLE public.inventory_requests
     ADD COLUMN IF NOT EXISTS area_used varchar(150),
     ADD COLUMN IF NOT EXISTS person_in_charge varchar(100);
 
+-- The overtime QR code belongs to a branch (the morning and afternoon codes are shared, so they have none).
+ALTER TABLE public.qr_codes ADD COLUMN IF NOT EXISTS branch_name varchar(100);
+
 -- The photo of a NAP box (base64 text of a picture the browser has shrunk), apart from nap_boxes so the list never loads it.
 CREATE TABLE IF NOT EXISTS public.nap_box_photos (
     nap_box_id bigint PRIMARY KEY REFERENCES public.nap_boxes(id) ON DELETE CASCADE,

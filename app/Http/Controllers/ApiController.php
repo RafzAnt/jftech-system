@@ -194,6 +194,11 @@ class ApiController extends Controller
         $now = now();
         if ($now->format('H:i:s') < $qr->valid_from || $now->format('H:i:s') > $qr->valid_until) return response()->json(['success' => false, 'message' => 'QR code is outside its valid time window.'], 422);
         if ($qr->qr_type === 'overtime') {
+            // Each branch approves its own overtime days and makes its own code, so a code only works for the employees of its branch.
+            if (strcasecmp(trim((string) ($qr->branch_name ?? '')), trim((string) $employee->branch_name)) !== 0) {
+                return response()->json(['success' => false, 'message' => "This overtime QR code is not for your branch. Ask your branch admin for your branch's overtime QR code."], 422);
+            }
+
             return $this->scanOvertime($employee, $qr, $now);
         }
         $settings = DB::table('system_settings')->pluck('setting_value', 'setting_key');

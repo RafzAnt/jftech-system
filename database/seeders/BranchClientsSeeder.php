@@ -5,11 +5,12 @@ namespace Database\Seeders;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * Sample clients for every barangay of every branch: two in each, with a plan and the first bill, the way the Clients page registers
- * one. The codes are JFT-DEMO-<BRANCH>-B<barangay number>-<1 or 2> and the e-mails end in @demo.jftech.local, so they are easy to
- * recognise.
+ * one. The codes are JFT-DEMO-<BRANCH>-B<barangay number>-<1 or 2>, so they are easy to recognise; the e-mails are ordinary
+ * name.surname@gmail.com addresses. (A run also brings the e-mails of sample clients made earlier, with @demo.jftech.local, to that form.)
  *
  * A barangay is topped up to two sample clients: one that exists (also from an earlier run of this seeder) counts, so running it again
  * adds nothing and never goes above two. Clients that are not samples are left alone and do not count.
@@ -46,6 +47,8 @@ class BranchClientsSeeder extends Seeder
         $branches = array_keys(config('bohol_branches', []));
         $barangaysOf = config('bohol_barangays', []);
         $today = Carbon::today();
+
+        $this->useGmailAddresses();
 
         // What is there already: the sample clients per barangay (they count towards the two), the codes, and every name in use.
         $samples = DB::table('clients')->where('client_code', 'like', 'JFT-DEMO-%-%')->get(['client_code', 'branch_name', 'registered_barangay_name']);
@@ -88,7 +91,7 @@ class BranchClientsSeeder extends Seeder
                             'client_code' => $code,
                             'full_name' => $name,
                             'contact_number' => sprintf('0917%07d', 2000 + $sequence),
-                            'email' => strtolower(str_replace(' ', '.', $name)) . '@demo.jftech.local',
+                            'email' => $this->email($name),
                             'branch_name' => $branch,
                             'registered_barangay_name' => $barangay,
                             // Only Balilihan's barangays are also kept in the barangays table.
@@ -132,6 +135,29 @@ class BranchClientsSeeder extends Seeder
                     ];
                 }
                 DB::table('bills')->insert($bills);
+            }
+        });
+    }
+
+    /** "Teresa Pacaña" becomes teresa.pacana@gmail.com: lower case, plain letters, a dot between the words. */
+    private function email(string $name): string
+    {
+        return Str::of($name)->ascii()->lower()->replace(' ', '.')->append('@gmail.com')->toString();
+    }
+
+    /** The sample clients made before (with @demo.jftech.local, or a letter an e-mail cannot have) get their address in the same form. */
+    private function useGmailAddresses(): void
+    {
+        $outdated = [];
+        foreach (DB::table('clients')->where('client_code', 'like', 'JFT-DEMO-%-%')->get(['id', 'full_name', 'email']) as $client) {
+            $email = $this->email($client->full_name);
+            if ($client->email !== $email) {
+                $outdated[$client->id] = $email;
+            }
+        }
+        DB::transaction(function () use ($outdated): void {
+            foreach ($outdated as $id => $email) {
+                DB::table('clients')->where('id', $id)->update(['email' => $email]);
             }
         });
     }

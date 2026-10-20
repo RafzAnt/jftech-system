@@ -182,7 +182,7 @@ $afternoonQR = null;
                                 </form>
                                 @endif
                 </div>
-                            <!-- Overtime QR -->
+                            <!-- Overtime QR: each branch has its own, made by its branch admin -->
                             <div class="qr-section">
                                 <h3>Overtime</h3>
                                 <p style="color: var(--text-muted); font-size: 0.85rem;">{{ formatScheduleTime($qrOvertimeStart) }} - {{ formatScheduleTime($qrOvertimeEnd) }}</p>
@@ -196,19 +196,31 @@ $overtimeQR = null;
                                  }
                                  
 @endphp
-                                @if ($overtimeQR)
-                                <div id="overtimeQR" class="qr-display"></div>
-                                <p style="margin-top: 0.5rem; font-size: 0.75rem; color: var(--text-muted);">Code: {{ $overtimeQR['qr_code'] }}</p>
-                                @else
-                                <p style="color: var(--warning);">No active QR code</p>
-                                @endif
-                                {{-- One QR code serves every branch, so only the super admin can replace it. --}}
-                                @if ($canGenerateQr)
-                                <form method="POST" action="?tab=attendance" style="margin-top: 0.75rem;">
+                                @if ($canGenerateOvertimeQr)
+                                    @if ($overtimeQR)
+                                    <div id="overtimeQR" class="qr-display"></div>
+                                    <p style="margin-top: 0.5rem; font-size: 0.75rem; color: var(--text-muted);">Code: {{ $overtimeQR['qr_code'] }}</p>
+                                    @else
+                                    <p style="color: var(--warning);">No active QR code</p>
+                                    @endif
+                                    <p style="margin-top: 0.5rem; font-size: 0.75rem; color: var(--text-muted);">Only for {{ $overtimeQrBranch }}. Generate it on the days your branch approves overtime.</p>
+                                    <form method="POST" action="?tab=attendance" style="margin-top: 0.75rem;">
             @csrf
-                                    <input type="hidden" name="qr_type" value="overtime">
-                                    <button type="submit" name="generate_qr" class="btn btn-primary btn-sm">Generate Overtime QR</button>
-                                </form>
+                                        <input type="hidden" name="qr_type" value="overtime">
+                                        <button type="submit" name="generate_qr" class="btn btn-primary btn-sm">Generate Overtime QR</button>
+                                    </form>
+                                @else
+                                    {{-- The super admin does not make overtime codes; it sees which branches have one today. --}}
+                                    <p style="font-size: 0.8rem; color: var(--text-muted);">Each branch admin makes the overtime QR code of their own branch.</p>
+                                    @if ($overtimeQrByBranch)
+                                    <ul class="overtime-qr-branches" style="list-style: none; margin: 0.75rem 0 0; padding: 0; font-size: 0.8rem;">
+                                        @foreach ($overtimeQrByBranch as $branchQr)
+                                        <li style="padding: 0.3rem 0; border-top: 1px solid var(--border-color);"><strong>{{ $branchQr['branch_name'] }}</strong> <span style="color: var(--text-muted);">· active today</span></li>
+                                        @endforeach
+                                    </ul>
+                                    @else
+                                    <p style="margin-top: 0.5rem; color: var(--warning);">No branch has an overtime QR code today.</p>
+                                    @endif
                                 @endif
                             </div>
             </div>
@@ -231,13 +243,15 @@ $overtimeQR = null;
                     <p>{{ formatScheduleTime($qrAfternoonStart) }} - {{ formatScheduleTime($qrAfternoonEnd) }}</p>
                     <p class="attendance-print-qr-value">Code: {{ $afternoonQR['qr_code'] ?? 'No active QR code' }}</p>
                 </div>
+                @if ($canGenerateOvertimeQr)
                 <div class="attendance-print-cut-line"></div>
                 <div class="attendance-print-qr attendance-print-time-out">
-                    <h2>Overtime</h2>
+                    <h2>Overtime · {{ $overtimeQrBranch }}</h2>
                     <div class="attendance-print-qr-code" id="printOvertimeQr"></div>
                     <p>{{ formatScheduleTime($qrOvertimeStart) }} - {{ formatScheduleTime($qrOvertimeEnd) }}</p>
                     <p class="attendance-print-qr-value">Code: {{ $overtimeQR['qr_code'] ?? 'No active QR code' }}</p>
                 </div>
+                @endif
             </section>
         </div>
                 </div>
@@ -657,6 +671,8 @@ $overtimeQR = null;
         qrDisplays.forEach(([sourceId, targetId]) => {
             const source = document.getElementById(sourceId);
             const target = document.getElementById(targetId);
+            // The overtime code is only on the sheet of a branch admin.
+            if (!target) return;
             target.replaceChildren();
 
             const sourceImage = source?.querySelector('img');
