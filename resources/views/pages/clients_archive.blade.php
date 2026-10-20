@@ -69,5 +69,6 @@
             </div>
         </div>
     </div>
+    <script src="{{ asset('js/jftech-main.js') }}?{{ $mainJsVersion ?? 1 }}"></script>
 </body>
 </html>

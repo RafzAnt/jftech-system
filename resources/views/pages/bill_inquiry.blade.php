@@ -17,7 +17,7 @@
         <div class="top-bar">
             <div>
                 <h1 class="page-title">Client Accounts</h1>
-                <p style="color: var(--text-muted); font-size: 0.85rem;">View client records and billing history</p>
+                <p style="color: var(--text-muted); font-size: 0.85rem;">{{ $canRecordPayments ? 'View client records and billing history' : 'View client records, bills and payments. The branch admin records the payments.' }}</p>
             </div>
         </div>
 
@@ -189,7 +189,7 @@
                                 <th>Balance</th>
                                 <th>Due Date</th>
                                 <th>Status</th>
-                                <th aria-label="Bill actions"></th>
+                                @if ($canRecordPayments)<th aria-label="Bill actions"></th>@endif
                             </tr>
                         </thead>
                         <tbody>
@@ -218,13 +218,15 @@
                                         <span class="badge badge-secondary">{{ ucfirst($bill['status']) }}</span>
                                     @endif
                                 </td>
+                                @if ($canRecordPayments)
                                 <td>
                                     <button type="button" class="btn btn-sm btn-success" data-bill-id="{{ $bill['id'] }}" data-bill-number="{{ $bill['bill_number'] }}" data-balance="{{ $bill['balance'] }}" onclick="openPaymentModal(this)">Pay</button>
                                 </td>
+                                @endif
                             </tr>
                             @endforeach
                             @if (empty($bills))
-                            <tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">No billing records found</td></tr>
+                            <tr><td colspan="{{ $canRecordPayments ? 7 : 6 }}" style="text-align: center; color: var(--text-muted); padding: 2rem;">No billing records found</td></tr>
                             @endif
                         </tbody>
                     </table>
@@ -313,7 +315,7 @@
         </div>
         @endif
 
-        @if ($selectedClient)
+        @if ($selectedClient && $canRecordPayments)
         <div class="modal-overlay" id="paymentModal" onclick="if (event.target === this) closePaymentModal()">
             <div class="modal-content modal-large">
                 <div class="modal-header">
@@ -388,7 +390,7 @@
         document.getElementById('paymentModal')?.classList.remove('active');
     }
 
-    @if ($paymentError && $selectedClient)
+    @if ($paymentError && $selectedClient && $canRecordPayments)
     document.addEventListener('DOMContentLoaded', () => document.getElementById('paymentModal').classList.add('active'));
     @endif
     </script>

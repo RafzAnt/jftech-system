@@ -222,6 +222,12 @@ trait BranchTestData
             $table->timestamps();
             $table->unique(['branch_name', 'name']);
         });
+        Schema::create('nap_box_photos', function ($table) {
+            $table->unsignedBigInteger('nap_box_id')->primary();
+            $table->string('mime_type', 30);
+            $table->longText('data');
+            $table->timestamps();
+        });
         Schema::create('nap_ports', function ($table) {
             $table->id();
             $table->unsignedBigInteger('nap_box_id');
@@ -287,6 +293,10 @@ trait BranchTestData
             $table->string('movement_type');
             $table->text('remarks')->nullable();
             $table->unsignedBigInteger('performed_by')->nullable();
+            $table->unsignedBigInteger('employee_id')->nullable();
+            $table->unsignedBigInteger('client_id')->nullable();
+            $table->unsignedBigInteger('nap_box_id')->nullable();
+            $table->unsignedBigInteger('work_request_id')->nullable();
             $table->timestamp('created_at')->nullable();
         });
         Schema::create('login_history', function ($table) {

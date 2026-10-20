@@ -186,6 +186,24 @@ ALTER TABLE public.inventory_requests
     ADD COLUMN IF NOT EXISTS area_used varchar(150),
     ADD COLUMN IF NOT EXISTS person_in_charge varchar(100);
 
+-- The photo of a NAP box (base64 text of a picture the browser has shrunk), apart from nap_boxes so the list never loads it.
+CREATE TABLE IF NOT EXISTS public.nap_box_photos (
+    nap_box_id bigint PRIMARY KEY REFERENCES public.nap_boxes(id) ON DELETE CASCADE,
+    mime_type varchar(30) NOT NULL,
+    data text NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.nap_box_photos ENABLE ROW LEVEL SECURITY;
+
+-- Inventory and NAP boxes work as one: a stock transaction says which employee, client and NAP box it was for.
+ALTER TABLE public.inventory_stock_movements
+    ADD COLUMN IF NOT EXISTS employee_id bigint REFERENCES public.employees(id) ON DELETE SET NULL,
+    ADD COLUMN IF NOT EXISTS client_id bigint REFERENCES public.clients(id) ON DELETE SET NULL,
+    ADD COLUMN IF NOT EXISTS nap_box_id bigint REFERENCES public.nap_boxes(id) ON DELETE SET NULL,
+    ADD COLUMN IF NOT EXISTS work_request_id bigint REFERENCES public.work_requests(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS inventory_stock_movements_nap_box_index ON public.inventory_stock_movements (nap_box_id);
+
 ALTER TABLE public.nap_boxes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.nap_ports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.work_requests ENABLE ROW LEVEL SECURITY;

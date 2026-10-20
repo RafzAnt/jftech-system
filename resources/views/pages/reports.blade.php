@@ -19,7 +19,7 @@
     @include('layouts.sidebar')
     <main class="main-content">
         <div class="top-bar report-heading">
-            <div><p class="report-eyebrow">Summary report</p><h1 class="page-title">Business Report</h1><p>Totals for the selected period only. Showing: <strong>{{ $branchLabel }}</strong></p></div>
+            <div><p class="report-eyebrow">Business report</p><h1 class="page-title">Business Report</h1><p>Every record for the selected period, with totals. Showing: <strong>{{ $branchLabel }}</strong></p></div>
             <form method="GET" action="{{ url('/pages/reports.php') }}" class="report-filter no-print" id="reportFilter">
                 <div><label for="month">Report Month</label><input id="month" type="month" name="month" value="{{ $month }}"></div>
                 <span class="filter-or">or</span>
@@ -46,7 +46,10 @@
         </section>
 
         @php($b = $report['bills'])
-        <h2 class="report-section-title">Billing</h2>
+        @php($d = $report['details'])
+        @php($peso = fn ($amount) => '₱' . number_format((float) $amount, 2))
+        @php($statusBadge = ['paid' => 'badge-success', 'approved' => 'badge-success', 'pending' => 'badge-warning', 'processed' => 'badge-info', 'overdue' => 'badge-danger', 'denied' => 'badge-danger', 'draft' => 'badge-secondary'])
+        <h2 class="report-section-title">Summary</h2>
         <section class="stats-grid report-stats">
             <article class="stat-card">
                 <div class="stat-label">Total bills for this period</div>
@@ -75,58 +78,184 @@
             <p>Outstanding balance after partial payments: <strong>₱{{ number_format($b['outstanding'], 2) }}</strong>@if ($b['cancelledCount'] > 0) &middot; {{ number_format($b['cancelledCount']) }} cancelled bill(s) not counted @endif</p>
         </div>
 
-        <h2 class="report-section-title">Payments received</h2>
-        <section class="report-summary-grid report-summary-grid--two">
-            <article class="card report-card">
-                <div class="card-header"><span class="card-title">Collections</span><span class="badge badge-info">{{ $report['label'] }}</span></div>
-                <dl class="report-list">
-                    <div><dt>Total payments received</dt><dd>₱{{ number_format($report['payments']['collected'], 2) }}</dd></div>
-                    <div><dt>Number of payments</dt><dd>{{ number_format($report['payments']['count']) }}</dd></div>
-                </dl>
-            </article>
-            <article class="card report-card">
-                <div class="card-header"><span class="card-title">By payment method</span></div>
-                <dl class="report-list">
-                    @forelse ($report['payments']['methods'] as $method)
-                    <div><dt>{{ ucwords(str_replace('_', ' ', $method->payment_method)) }} <small>({{ number_format($method->payment_count) }})</small></dt><dd>₱{{ number_format($method->total, 2) }}</dd></div>
-                    @empty
-                    <p class="report-empty">No payments received in this period.</p>
-                    @endforelse
-                </dl>
-            </article>
-        </section>
+        <h2 class="report-section-title">1. Billing</h2>
+        <div class="card report-table-card">
+            <div class="card-header"><span class="card-title">Bills for {{ $report['label'] }}</span><span class="badge badge-info">{{ number_format(count($d['bills']['rows'])) }} bill(s)</span></div>
+            <div class="data-table-container">
+                <table class="data-table report-table">
+                    <thead><tr><th>#</th><th>Bill No.</th><th>Client</th><th>Billing period</th><th>Due date</th><th>Status</th><th class="num">Amount</th><th class="num">Received</th><th class="num">Balance</th></tr></thead>
+                    <tbody>
+                        @forelse ($d['bills']['rows'] as $row)
+                        <tr>
+                            <td>{{ $loop->iteration }}</td>
+                            <td>{{ $row['bill_number'] }}</td>
+                            <td><strong>{{ $row['client_name'] }}</strong> <small class="report-muted">{{ $row['client_code'] }}</small></td>
+                            <td>{{ date('M d', strtotime($row['billing_period_start'])) }} &ndash; {{ date('M d, Y', strtotime($row['billing_period_end'])) }}</td>
+                            <td>{{ date('M d, Y', strtotime($row['due_date'])) }}</td>
+                            <td><span class="badge {{ $statusBadge[$row['status']] ?? 'badge-secondary' }}">{{ ucfirst($row['status']) }}</span></td>
+                            <td class="num">{{ $peso($row['amount']) }}</td>
+                            <td class="num">{{ $peso($row['received']) }}</td>
+                            <td class="num">{{ $peso($row['balance']) }}</td>
+                        </tr>
+                        @empty
+                        <tr><td colspan="9" class="report-empty-row">No bills in this period.</td></tr>
+                        @endforelse
+                    </tbody>
+                    <tfoot><tr class="report-total-row"><td colspan="6">Total ({{ number_format(count($d['bills']['rows'])) }} bill(s))</td><td class="num">{{ $peso($d['bills']['total']['amount']) }}</td><td class="num">{{ $peso($d['bills']['total']['received']) }}</td><td class="num">{{ $peso($d['bills']['total']['balance']) }}</td></tr></tfoot>
+                </table>
+            </div>
+        </div>
 
-        <h2 class="report-section-title">Clients, staff and inventory</h2>
-        <section class="report-summary-grid">
-            <article class="card report-card">
-                <div class="card-header"><span class="card-title">Clients</span></div>
-                <dl class="report-list">
-                    <div><dt>New installations</dt><dd>{{ number_format($report['clients']['new']) }}</dd></div>
-                    <div><dt>Clients billed</dt><dd>{{ number_format($b['billedClients']) }}</dd></div>
-                    <div><dt>Clients with overdue bills</dt><dd>{{ number_format($b['overdueClients']) }}</dd></div>
-                </dl>
-            </article>
-            <article class="card report-card">
-                <div class="card-header"><span class="card-title">Attendance &amp; payroll</span></div>
-                <dl class="report-list">
-                    <div><dt>Attendance records</dt><dd>{{ number_format($report['attendance']['records']) }}</dd></div>
-                    <div><dt>Present / Late / Absent</dt><dd>{{ number_format($report['attendance']['present']) }} / {{ number_format($report['attendance']['late']) }} / {{ number_format($report['attendance']['absent']) }}</dd></div>
-                    <div><dt>Payroll entries</dt><dd>{{ number_format($report['payroll']['entries']) }}</dd></div>
-                    <div><dt>Net pay released</dt><dd>₱{{ number_format($report['payroll']['net'], 2) }}</dd></div>
-                </dl>
-            </article>
-            @if ($report['requests'] !== null)
-            <article class="card report-card">
-                <div class="card-header"><span class="card-title">Inventory requests</span></div>
-                <dl class="report-list">
-                    <div><dt>Total requests</dt><dd>{{ number_format($report['requests']['total']) }}</dd></div>
-                    <div><dt>Approved</dt><dd>{{ number_format($report['requests']['approved']) }}</dd></div>
-                    <div><dt>Pending</dt><dd>{{ number_format($report['requests']['pending']) }}</dd></div>
-                    <div><dt>Denied</dt><dd>{{ number_format($report['requests']['denied']) }}</dd></div>
-                </dl>
-            </article>
-            @endif
-        </section>
+        <h2 class="report-section-title">2. Payments received</h2>
+        <div class="card report-table-card">
+            <div class="card-header"><span class="card-title">Payments by method</span><span class="badge badge-info">{{ $report['label'] }}</span></div>
+            <div class="data-table-container">
+                <table class="data-table report-table">
+                    <thead><tr><th>Payment method</th><th class="num">Payments</th><th class="num">Amount</th></tr></thead>
+                    <tbody>
+                        @forelse ($report['payments']['methods'] as $method)
+                        <tr><td>{{ ucwords(str_replace('_', ' ', $method->payment_method)) }}</td><td class="num">{{ number_format($method->payment_count) }}</td><td class="num">{{ $peso($method->total) }}</td></tr>
+                        @empty
+                        <tr><td colspan="3" class="report-empty-row">No payments received in this period.</td></tr>
+                        @endforelse
+                    </tbody>
+                    <tfoot><tr class="report-total-row"><td>Total payments received</td><td class="num">{{ number_format($report['payments']['count']) }}</td><td class="num">{{ $peso($report['payments']['collected']) }}</td></tr></tfoot>
+                </table>
+            </div>
+        </div>
+        <div class="card report-table-card">
+            <div class="card-header"><span class="card-title">Payment list</span><span class="badge badge-info">{{ number_format(count($d['payments']['rows'])) }} payment(s)</span></div>
+            <div class="data-table-container">
+                <table class="data-table report-table">
+                    <thead><tr><th>#</th><th>Date</th><th>Client</th><th>Bill No.</th><th>Method</th><th>Reference No.</th><th class="num">Amount</th></tr></thead>
+                    <tbody>
+                        @forelse ($d['payments']['rows'] as $row)
+                        <tr>
+                            <td>{{ $loop->iteration }}</td>
+                            <td>{{ date('M d, Y', strtotime($row['payment_date'])) }}</td>
+                            <td><strong>{{ $row['client_name'] }}</strong> <small class="report-muted">{{ $row['client_code'] }}</small></td>
+                            <td>{{ $row['bill_number'] ?: '—' }}</td>
+                            <td>{{ ucwords(str_replace('_', ' ', $row['payment_method'])) }}</td>
+                            <td>{{ $row['reference_number'] ?: '—' }}</td>
+                            <td class="num">{{ $peso($row['amount']) }}</td>
+                        </tr>
+                        @empty
+                        <tr><td colspan="7" class="report-empty-row">No payments received in this period.</td></tr>
+                        @endforelse
+                    </tbody>
+                    <tfoot><tr class="report-total-row"><td colspan="6">Total ({{ number_format(count($d['payments']['rows'])) }} payment(s))</td><td class="num">{{ $peso($d['payments']['total']['amount']) }}</td></tr></tfoot>
+                </table>
+            </div>
+        </div>
+
+        <h2 class="report-section-title">3. New installations</h2>
+        <div class="card report-table-card">
+            <div class="card-header"><span class="card-title">Clients installed in {{ $report['label'] }}</span><span class="badge badge-info">{{ number_format(count($d['clients']['rows'])) }} client(s)</span></div>
+            <div class="data-table-container">
+                <table class="data-table report-table">
+                    <thead><tr><th>#</th><th>Installed</th><th>Client</th><th>Branch</th><th>Barangay</th><th>Plan</th><th class="num">Monthly rate</th></tr></thead>
+                    <tbody>
+                        @forelse ($d['clients']['rows'] as $row)
+                        <tr>
+                            <td>{{ $loop->iteration }}</td>
+                            <td>{{ date('M d, Y', strtotime($row['installation_date'])) }}</td>
+                            <td><strong>{{ $row['full_name'] }}</strong> <small class="report-muted">{{ $row['client_code'] }}</small></td>
+                            <td>{{ $row['branch_name'] ?: '—' }}</td>
+                            <td>{{ $row['registered_barangay_name'] ?: '—' }}</td>
+                            <td>{{ $row['wifi_plan'] ?: '—' }}</td>
+                            <td class="num">{{ $peso($row['monthly_rate']) }}</td>
+                        </tr>
+                        @empty
+                        <tr><td colspan="7" class="report-empty-row">No new installations in this period.</td></tr>
+                        @endforelse
+                    </tbody>
+                    <tfoot><tr class="report-total-row"><td colspan="6">Total ({{ number_format(count($d['clients']['rows'])) }} client(s))</td><td class="num">{{ $peso($d['clients']['total']['monthly']) }}</td></tr></tfoot>
+                </table>
+            </div>
+        </div>
+
+        <h2 class="report-section-title">4. Attendance</h2>
+        <div class="card report-table-card">
+            <div class="card-header"><span class="card-title">Attendance per employee</span><span class="badge badge-info">{{ number_format(count($d['attendance']['rows'])) }} employee(s)</span></div>
+            <div class="data-table-container">
+                <table class="data-table report-table">
+                    <thead><tr><th>#</th><th>Employee</th><th>Position</th><th class="num">Records</th><th class="num">Present</th><th class="num">Late</th><th class="num">Absent</th><th class="num">Hours</th></tr></thead>
+                    <tbody>
+                        @forelse ($d['attendance']['rows'] as $row)
+                        <tr>
+                            <td>{{ $loop->iteration }}</td>
+                            <td><strong>{{ $row['full_name'] }}</strong> <small class="report-muted">{{ $row['employee_code'] }}</small></td>
+                            <td>{{ $row['position'] ?: '—' }}</td>
+                            <td class="num">{{ number_format($row['records']) }}</td>
+                            <td class="num">{{ number_format($row['present']) }}</td>
+                            <td class="num">{{ number_format($row['late']) }}</td>
+                            <td class="num">{{ number_format($row['absent']) }}</td>
+                            <td class="num">{{ number_format($row['hours'], 2) }}</td>
+                        </tr>
+                        @empty
+                        <tr><td colspan="8" class="report-empty-row">No attendance recorded in this period.</td></tr>
+                        @endforelse
+                    </tbody>
+                    @php($t = $d['attendance']['total'])
+                    <tfoot><tr class="report-total-row"><td colspan="3">Total</td><td class="num">{{ number_format($t['records']) }}</td><td class="num">{{ number_format($t['present']) }}</td><td class="num">{{ number_format($t['late']) }}</td><td class="num">{{ number_format($t['absent']) }}</td><td class="num">{{ number_format($t['hours'], 2) }}</td></tr></tfoot>
+                </table>
+            </div>
+        </div>
+
+        <h2 class="report-section-title">5. Payroll</h2>
+        <div class="card report-table-card">
+            <div class="card-header"><span class="card-title">Payroll released in {{ $report['label'] }}</span><span class="badge badge-info">{{ number_format(count($d['payroll']['rows'])) }} entr{{ count($d['payroll']['rows']) === 1 ? 'y' : 'ies' }}</span></div>
+            <div class="data-table-container">
+                <table class="data-table report-table">
+                    <thead><tr><th>#</th><th>Employee</th><th>Pay period</th><th>Status</th><th class="num">Days</th><th class="num">Gross pay</th><th class="num">Deductions</th><th class="num">Net pay</th></tr></thead>
+                    <tbody>
+                        @forelse ($d['payroll']['rows'] as $row)
+                        <tr>
+                            <td>{{ $loop->iteration }}</td>
+                            <td><strong>{{ $row['full_name'] }}</strong> <small class="report-muted">{{ $row['position'] ?: $row['employee_code'] }}</small></td>
+                            <td>{{ date('M d', strtotime($row['payroll_period_start'])) }} &ndash; {{ date('M d, Y', strtotime($row['payroll_period_end'])) }}</td>
+                            <td><span class="badge {{ $statusBadge[$row['status']] ?? 'badge-secondary' }}">{{ ucfirst($row['status']) }}</span></td>
+                            <td class="num">{{ rtrim(rtrim(number_format((float) $row['total_days_worked'], 2), '0'), '.') }}</td>
+                            <td class="num">{{ $peso($row['gross_pay']) }}</td>
+                            <td class="num">{{ $peso($row['deductions']) }}</td>
+                            <td class="num">{{ $peso($row['net_pay']) }}</td>
+                        </tr>
+                        @empty
+                        <tr><td colspan="8" class="report-empty-row">No payroll entries in this period.</td></tr>
+                        @endforelse
+                    </tbody>
+                    @php($t = $d['payroll']['total'])
+                    <tfoot><tr class="report-total-row"><td colspan="4">Total</td><td class="num">{{ rtrim(rtrim(number_format($t['days'], 2), '0'), '.') }}</td><td class="num">{{ $peso($t['gross']) }}</td><td class="num">{{ $peso($t['deductions']) }}</td><td class="num">{{ $peso($t['net']) }}</td></tr></tfoot>
+                </table>
+            </div>
+        </div>
+
+        @if ($d['requests'] !== null)
+        <h2 class="report-section-title">6. Inventory requests</h2>
+        <div class="card report-table-card">
+            <div class="card-header"><span class="card-title">Stock requests in {{ $report['label'] }}</span><span class="badge badge-info">{{ number_format($report['requests']['total']) }} request(s) &middot; {{ number_format($report['requests']['approved']) }} approved &middot; {{ number_format($report['requests']['pending']) }} pending &middot; {{ number_format($report['requests']['denied']) }} denied</span></div>
+            <div class="data-table-container">
+                <table class="data-table report-table">
+                    <thead><tr><th>#</th><th>Date</th><th>Requested by</th><th>Item</th><th>Status</th><th class="num">Quantity</th></tr></thead>
+                    <tbody>
+                        @forelse ($d['requests']['rows'] as $row)
+                        <tr>
+                            <td>{{ $loop->iteration }}</td>
+                            <td>{{ date('M d, Y', strtotime($row['created_at'])) }}</td>
+                            <td>{{ $row['employee_name'] }}</td>
+                            <td>{{ $row['item_name'] }}</td>
+                            <td><span class="badge {{ $statusBadge[$row['status']] ?? 'badge-secondary' }}">{{ ucfirst($row['status']) }}</span></td>
+                            <td class="num">{{ number_format($row['quantity']) }}</td>
+                        </tr>
+                        @empty
+                        <tr><td colspan="6" class="report-empty-row">No inventory requests in this period.</td></tr>
+                        @endforelse
+                    </tbody>
+                    <tfoot><tr class="report-total-row"><td colspan="5">Total ({{ number_format(count($d['requests']['rows'])) }} request(s))</td><td class="num">{{ number_format($d['requests']['total']['quantity']) }}</td></tr></tfoot>
+                </table>
+            </div>
+        </div>
+        @endif
     </main>
     <script>
         // Picking a month fills the dates and shows that month straight away.

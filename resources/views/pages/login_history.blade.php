@@ -78,7 +78,7 @@
             </div>
             <div class="card-body" style="padding: 0;">
                 <div class="data-table-container">
-                    <table class="data-table">
+                    <table class="data-table" data-no-pagination>
 <thead>
                              <tr>
                                  <th>User</th>

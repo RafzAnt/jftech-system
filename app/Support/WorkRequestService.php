@@ -200,7 +200,7 @@ final class WorkRequestService
             }
 
             // 3. The stock: finalise what the employee reported.
-            self::finaliseMaterials($request, $adminId);
+            self::finaliseMaterials($request, $adminId, $clientId);
 
             DB::table('work_requests')->where('id', $id)->update([
                 'status' => 'confirmed', 'client_id' => $clientId, 'admin_remarks' => self::cleanRemarks($remarks) ?? $request->admin_remarks,
@@ -551,6 +551,9 @@ final class WorkRequestService
             if (! $item || strcasecmp(trim((string) $item->branch_name), trim($branch)) !== 0) {
                 throw new DomainException('Choose materials from the stock of your branch.');
             }
+            if (NapBoxes::isStockItem($item)) {
+                throw new DomainException("{$item->item_name} is a NAP box, not a material. Your admin installs NAP boxes from the stock.");
+            }
             if (isset($materials[$item->id])) {
                 $materials[$item->id]['used_quantity'] += $used;
                 $materials[$item->id]['returned_quantity'] += $returned;
@@ -567,8 +570,13 @@ final class WorkRequestService
      * What was taken out was already deducted when the admin approved the item-out request, so used and damaged
      * items only leave a record in the stock history, while items brought back are added to the stock again.
      */
-    private static function finaliseMaterials(object $request, int $adminId): void
+    private static function finaliseMaterials(object $request, int $adminId, ?int $clientId): void
     {
+        // Who, for whom and where: each line of the stock history of this job points at the employee, the client and the NAP box.
+        $links = [
+            'employee_id' => (int) $request->employee_id, 'client_id' => $clientId, 'work_request_id' => (int) $request->id,
+            'nap_box_id' => $request->work_type === 'installation' && $request->actual_nap_box_id ? (int) $request->actual_nap_box_id : null,
+        ];
         $rows = DB::table('work_request_materials')->where('work_request_id', $request->id)->get();
         foreach ($rows as $row) {
             if (! $row->inventory_id) {
@@ -583,23 +591,20 @@ final class WorkRequestService
             if ($row->returned_quantity > 0) {
                 $balance += (int) $row->returned_quantity;
                 DB::table('inventory')->where('id', $item->id)->update(['quantity' => $balance]);
-                self::movement($item->id, (int) $row->returned_quantity, $balance, 'stock_returned', "Returned after {$request->work_type} {$request->request_code}.", $adminId);
+                self::movement($item->id, (int) $row->returned_quantity, $balance, 'stock_returned', "Returned after {$request->work_type} {$request->request_code}.", $adminId, $links);
             }
             if ($row->used_quantity > 0) {
-                self::movement($item->id, 0, $balance, 'job_used', "{$row->used_quantity} used on {$request->work_type} {$request->request_code}.", $adminId);
+                self::movement($item->id, 0, $balance, 'job_used', "{$row->used_quantity} used on {$request->work_type} {$request->request_code}.", $adminId, $links);
             }
             if ($row->damaged_quantity > 0) {
-                self::movement($item->id, 0, $balance, 'job_damaged', "{$row->damaged_quantity} damaged on {$request->work_type} {$request->request_code}.", $adminId);
+                self::movement($item->id, 0, $balance, 'job_damaged', "{$row->damaged_quantity} damaged on {$request->work_type} {$request->request_code}.", $adminId, $links);
             }
         }
     }
 
-    private static function movement(int $inventoryId, int $change, int $balance, string $type, string $remarks, int $adminId): void
+    private static function movement(int $inventoryId, int $change, int $balance, string $type, string $remarks, int $adminId, array $links = []): void
     {
-        DB::table('inventory_stock_movements')->insert([
-            'inventory_id' => $inventoryId, 'quantity_change' => $change, 'balance_after' => $balance, 'movement_type' => $type,
-            'remarks' => $remarks, 'performed_by' => $adminId, 'created_at' => now(),
-        ]);
+        StockMovements::record($inventoryId, $change, $balance, $type, $remarks, $adminId, $links);
     }
 
     /** Save the client of a finished installation and give them their first bill, like the Clients page does. */

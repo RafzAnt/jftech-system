@@ -7,7 +7,8 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * NAP boxes and their ports. A branch admin keeps the boxes of their own branch (add, change, archive, and what is
- * connected to each port); the super admin looks at every branch and can pick one.
+ * connected to each port); the super admin looks at every branch and can pick one. A NAP box is also stock: a new box is taken
+ * from the "NAP Box" items of the inventory, and the inventory shows what was used on each box.
  */
 return function (Request $request): array {
     $themeCssVersion = @filemtime(public_path('css/jftech-theme.css')) ?: 1;
@@ -70,15 +71,24 @@ return function (Request $request): array {
                 if (! in_array($status, ['active', 'inactive'], true)) {
                     $status = 'active';
                 }
+                // The photo comes as a picture the browser has already shrunk (a data address); it is checked before anything is saved.
+                $photoData = trim((string) $request->input('photo_data', ''));
+                if ($photoData !== '') {
+                    NapBoxes::checkPhoto($photoData);
+                }
                 $duplicate = DB::table('nap_boxes')->whereRaw('LOWER(branch_name) = LOWER(?)', [$ownBranch])->whereRaw('LOWER(name) = LOWER(?)', [$name])
                     ->when($boxId, fn ($q) => $q->where('id', '!=', $boxId))->exists();
                 if ($duplicate) {
                     throw new DomainException("{$name} already exists in {$ownBranch}.");
                 }
 
-                DB::transaction(function () use ($box, $boxId, $ownBranch, $name, $barangay, $location, $totalPorts, $status): void {
+                DB::transaction(function () use ($box, $boxId, $ownBranch, $name, $barangay, $location, $totalPorts, $status, $request, $photoData): void {
                     if (! $box) {
-                        NapBoxes::create($ownBranch, $name, $barangay, $location, $totalPorts);
+                        // A new box is installed from the stock: it takes one NAP Box out of the branch's inventory.
+                        $newBoxId = NapBoxes::installFromStock($ownBranch, $name, $barangay, $location, $totalPorts, (int) $request->input('stock_item_id') ?: null, auth()->id());
+                        if ($photoData !== '') {
+                            NapBoxes::savePhoto($newBoxId, $photoData);
+                        }
 
                         return;
                     }
@@ -100,8 +110,13 @@ return function (Request $request): array {
                     DB::table('nap_boxes')->where('id', $boxId)->update([
                         'name' => $name, 'barangay_name' => $barangay, 'location' => $location, 'total_ports' => $totalPorts, 'status' => $status, 'updated_at' => now(),
                     ]);
+                    if ($photoData !== '') {
+                        NapBoxes::savePhoto($boxId, $photoData);
+                    } elseif ($request->boolean('remove_photo')) {
+                        NapBoxes::removePhoto($boxId);
+                    }
                 });
-                $success = $box ? "{$name} was updated." : "{$name} was added with {$totalPorts} ports.";
+                $success = $box ? "{$name} was updated." : "{$name} was added with {$totalPorts} ports. One NAP Box was taken from your inventory.";
             } elseif (in_array($action, ['archive_box', 'restore_box'], true)) {
                 $box = $ownBox((int) $request->input('box_id')) ?? abort(404);
                 if ($action === 'archive_box') {
@@ -190,6 +205,10 @@ return function (Request $request): array {
             ->get(['full_name', 'client_code'])->map(fn ($client) => $client->full_name . ' — ' . $client->client_code)->all();
     }
     $barangaySuggestions = $branchBarangays !== [] ? $branchBarangays : array_values(array_unique(array_column($boxes, 'barangay_name')));
+
+    // The NAP Box stock a new box is taken from (the branch admin's own branch), and the boxes that are still in stock.
+    $napStockItems = $canManage ? NapBoxes::stockItems($ownBranch) : [];
+    $napInStock = array_sum(array_column(NapBoxes::stockItems($branch), 'quantity'));
 
     return get_defined_vars();
 };

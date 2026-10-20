@@ -14,6 +14,7 @@
     </script>
     <link rel="stylesheet" href="{{ asset('css/jftech-theme.css') }}?{{ $themeCssVersion }}">
     <link rel="stylesheet" href="{{ asset('css/payroll.css') }}?{{ $payrollCssVersion }}">
+    <link rel="stylesheet" href="{{ asset('css/client_filter.css') }}?{{ $clientFilterCssVersion }}">
 </head>
 <body>
     <div class="grid-overlay"></div>
@@ -24,7 +25,7 @@
         <div class="top-bar">
             <div>
                 <h1 class="page-title">Payroll</h1>
-                <p style="color: var(--text-muted); font-size: 0.85rem;">Pay computed from each daily rate and attendance, with the SSS, PhilHealth and Pag-IBIG shares. Generate it automatically or enter it manually.</p>
+                <p style="color: var(--text-muted); font-size: 0.85rem;">Pay computed from each daily rate and attendance, with the SSS, PhilHealth and Pag-IBIG shares.</p>
                 <p style="color: var(--text-muted); font-size: 0.85rem;">{{ $payrollRoleHint }}</p>
             </div>
             @if ($canGeneratePayroll)
@@ -59,79 +60,18 @@
             </div>
         </div>
 
-        @if ($canGeneratePayroll)
-        <div class="card print-hide" style="margin-bottom: 1.5rem;">
-            <div class="card-header">
-                <span class="card-title">Automatic Weekly Payroll</span>
-            </div>
-            <div class="card-body">
-                <p class="auto-payroll-text">Works out the pay of the {{ $eligibleCount }} employee(s) you pay: days worked &times; daily rate, late and overtime by the minute, and the SSS, PhilHealth and Pag-IBIG shares from the contribution tables. Anyone who already has payroll for the week, or no attendance in it, is skipped. Use <strong>+ New Payroll</strong> to enter a payroll by hand.</p>
-                <form method="POST" action="" class="auto-payroll-form">
-                    @csrf
-                    <input type="hidden" name="payroll_action" value="auto_generate">
-                    <div class="form-group" style="margin: 0;">
-                        <label class="form-label">Week that contains</label>
-                        <input type="date" name="week_date" id="autoWeekDate" class="form-input" value="{{ date('Y-m-d') }}" required>
-                    </div>
-                    <div class="auto-payroll-week" id="autoWeekLabel" data-week-start="{{ $weekStart }}" data-week-end="{{ $weekEnd }}">Monday to Sunday</div>
-                    <button type="submit" class="btn btn-success" onclick="return confirm('Generate the automatic payroll for this week? Employees that already have payroll for it are skipped.');">Generate Automatic Payroll</button>
-                </form>
-            </div>
-        </div>
-        @endif
-
-        <div class="card print-hide" style="margin-bottom: 1.5rem;">
+        <form method="GET" action="" class="card client-filter-card print-hide" id="clientFilterForm" style="margin-bottom: 1.5rem;">
             <div class="card-header">
                 <span class="card-title">Filter Payroll</span>
             </div>
             <div class="card-body">
-                <form method="GET" action="">
-                    <div class="filter-grid">
-                        <div class="form-group" style="margin: 0;">
-                            <label class="form-label">Branch</label>
-                            <select name="branch" class="form-input">
-                                <option value="">{{ \App\Support\BranchScope::isRestricted() ? 'My branch' : 'All Branches' }}</option>
-                                @foreach ($payrollBranches as $branchOption)
-                                <option value="{{ $branchOption }}" {{ $selectedBranch === $branchOption ? 'selected' : '' }}>{{ $branchOption }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="form-group" style="margin: 0;">
-                            <label class="form-label">Employee</label>
-                            <select name="employee_id" class="form-input" {{ $hasEmployees ? '' : 'disabled' }}>
-                                <option value="">All Employees</option>
-                                @foreach ($filterEmployees as $employee)
-                                <option value="{{ $employee['id'] }}" {{ (string) $selectedEmployee === (string) $employee['id'] ? 'selected' : '' }}>
-                                    {{ htmlspecialchars($employee['full_name']) }}
-                                </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="form-group" style="margin: 0;">
-                            <label class="form-label">Status</label>
-                            <select name="status" class="form-input">
-                                <option value="">All Statuses</option>
-                                <option value="draft" {{ $selectedStatus === 'draft' ? 'selected' : '' }}>Draft</option>
-                                <option value="processed" {{ $selectedStatus === 'processed' ? 'selected' : '' }}>Processed</option>
-                                <option value="paid" {{ $selectedStatus === 'paid' ? 'selected' : '' }}>Paid</option>
-                            </select>
-                        </div>
-                        <div class="form-group" style="margin: 0;">
-                            <label class="form-label">Period Start</label>
-                            <input type="date" name="period_start" class="form-input" value="{{ htmlspecialchars($selectedStart) }}">
-                        </div>
-                        <div class="form-group" style="margin: 0;">
-                            <label class="form-label">Period End</label>
-                            <input type="date" name="period_end" class="form-input" value="{{ htmlspecialchars($selectedEnd) }}">
-                        </div>
-                    </div>
-                    <div style="display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1rem; flex-wrap: wrap;">
-                        <a href="payroll.php" class="btn btn-secondary">Clear</a>
-                        <button type="submit" class="btn btn-primary">Apply Filter</button>
-                    </div>
-                </form>
+                @php
+                    $filterSearchLabel = 'Search Employees';
+                    $filterSearchPlaceholder = 'Employee name, code, position or mobile number';
+                @endphp
+                @include('pages.partials.client_location_filter')
             </div>
-        </div>
+        </form>
 
         <div class="card">
             <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
@@ -144,7 +84,7 @@
                 </div>
             </div>
             <div class="card-body">
-                <div class="payslip-list">
+                <div class="payslip-list" data-paginate-list data-page-size="5">
                     @if (empty($payrollRecords))
                         <div class="card" style="padding: 2rem; text-align: center; color: var(--text-muted);">
                             {{ $showArchived ? 'No archived payroll records.' : 'No payroll records found.' }}
@@ -310,21 +250,23 @@
                 <input type="hidden" name="computation_mode" id="computationMode" value="auto">
 
                 <div class="form-section">
+                    <div class="form-section-title">How is this payroll computed?</div>
+                    <div class="mode-toggle">
+                        <button type="button" class="mode-option active" data-mode="auto" onclick="setMode('auto')" title="The pay is worked out from the daily rate and the attendance of the period. The contributions follow the SSS, PhilHealth and Pag-IBIG tables.">Automatic</button>
+                        <button type="button" class="mode-option" data-mode="manual" onclick="setMode('manual')" title="You type the days, minutes and amounts yourself. A field left empty keeps the standard computation.">Manual</button>
+                    </div>
+                </div>
+
+                <div class="form-section">
                     <div class="form-section-title">Employee &amp; Period</div>
                     <div class="form-grid">
                         <div class="form-group">
                             <label class="form-label">Employee *</label>
-                            <select name="employee_id" id="employeeId" class="form-input" required onchange="syncDailyRate();">
-                                <option value="">Select employee</option>
-                                @foreach ($payrollEmployees as $employee)
-                                <option
-                                    value="{{ $employee['id'] }}"
-                                    data-rate="{{ htmlspecialchars($employee['daily_rate']) }}"
-                                >
-                                    {{ htmlspecialchars($employee['full_name'] . ' - ' . $employee['employee_code']) }}
-                                </option>
-                                @endforeach
-                            </select>
+                            <input type="hidden" name="employee_id" id="employeeId">
+                            <div class="location-field">
+                                <input type="text" id="employeeSearch" class="form-input" placeholder="{{ $isSuperAdminPayroll ? 'Type a name, code or branch' : 'Type a name or code' }}" autocomplete="off" required role="combobox" aria-autocomplete="list" aria-controls="employeeSuggestions" aria-expanded="false">
+                                <div id="employeeSuggestions" class="location-suggestions" role="listbox" hidden></div>
+                            </div>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Daily Rate (₱)</label>
@@ -354,20 +296,6 @@
                                 <option value="paid">Paid</option>
                             </select>
                         </div>
-                    </div>
-                </div>
-
-                <div class="form-section">
-                    <div class="form-section-title">How is this payroll computed?</div>
-                    <div class="mode-toggle">
-                        <button type="button" class="mode-option active" data-mode="auto" onclick="setMode('auto')">
-                            <strong>Automatic</strong>
-                            <span>The pay is worked out from the daily rate and the attendance of the period. The contributions follow the SSS, PhilHealth and Pag-IBIG tables.</span>
-                        </button>
-                        <button type="button" class="mode-option" data-mode="manual" onclick="setMode('manual')">
-                            <strong>Manual</strong>
-                            <span>You type the days, minutes and amounts yourself. A field left empty keeps the standard computation.</span>
-                        </button>
                     </div>
                 </div>
 
@@ -441,6 +369,7 @@
 
     <script>
     const payrollEmployees = {!! $employeeJson !!};
+    const employeeChoices = @json($employeeChoices);
     const payrollConfig = @json($payrollConfig);
 
     // Quantities the attendance gives, and the amounts that follow from them. In an automatic payroll the system fills them in;
@@ -485,7 +414,7 @@
     function resetPayrollForm() {
         el('payrollModalTitle').textContent = 'New Payroll';
         el('payrollId').value = '';
-        el('employeeId').value = '';
+        setEmployee('', true);
         el('dailyRate').value = '';
         const today = new Date();
         const mondayOffset = (today.getDay() + 6) % 7;
@@ -528,6 +457,54 @@
             }
         }
     }
+
+    // The employee box: type to see the employees this account pays, then pick one. The hidden field holds the chosen id.
+    function employeeLabel(id) {
+        const choice = employeeChoices.find(function(item) { return String(item.id) === String(id); });
+        if (choice) return choice.label;
+        const employee = payrollEmployees.find(function(item) { return String(item.id) === String(id); });
+        return employee ? employee.full_name + ' - ' + employee.employee_code : '';
+    }
+
+    // quiet: only fill the box; the caller sets the daily rate and loads the computation itself.
+    function setEmployee(id, quiet) {
+        el('employeeId').value = id || '';
+        el('employeeSearch').value = id ? employeeLabel(id) : '';
+        el('employeeSearch').setCustomValidity(id ? '' : 'Choose an employee from the suggestions.');
+        if (!quiet) syncDailyRate();
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const search = el('employeeSearch');
+        if (!search) return;
+        search.setCustomValidity('Choose an employee from the suggestions.');
+        createSuggestionList(
+            search,
+            el('employeeSuggestions'),
+            function() { return employeeChoices.map(function(item) { return item.label; }); },
+            function(label) {
+                const choice = employeeChoices.find(function(item) { return item.label === label; });
+                if (choice) setEmployee(choice.id);
+            }
+        );
+        // Typing over a chosen employee un-chooses them until another one is picked.
+        search.addEventListener('input', function() {
+            if (el('employeeId').value !== '' && search.value !== employeeLabel(el('employeeId').value)) {
+                const typed = search.value;
+                setEmployee('');
+                search.value = typed;
+            }
+        });
+        // A name typed in full but not clicked still counts.
+        search.addEventListener('blur', function() {
+            setTimeout(function() {
+                if (el('employeeId').value !== '') return;
+                const typed = search.value.trim().toLocaleLowerCase();
+                const exact = employeeChoices.filter(function(item) { return item.label.toLocaleLowerCase() === typed; });
+                if (exact.length === 1) setEmployee(exact[0].id);
+            }, 150);
+        });
+    });
 
     function syncDailyRate() {
         const employeeId = el('employeeId').value;
@@ -647,7 +624,7 @@
     function editPayroll(record) {
         el('payrollModalTitle').textContent = 'Edit Payroll';
         el('payrollId').value = record.id;
-        el('employeeId').value = record.employee_id;
+        setEmployee(record.employee_id, true);
         el('dailyRate').value = record.daily_rate;
         el('periodStart').value = record.payroll_period_start;
         el('periodEnd').value = record.payroll_period_end;

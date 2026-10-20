@@ -6,46 +6,32 @@ return function (\Illuminate\Http\Request $request): array {
 
 $themeCssVersion = filemtime(public_path('css/jftech-theme.css'));
 $payrollCssVersion = filemtime(public_path('css/payroll.css'));
+$clientFilterCssVersion = filemtime(public_path('css/client_filter.css'));
 
 $success = '';
 $error = '';
 
-$selectedEmployee = $request->query('employee_id') ?? '';
-$selectedStatus = $request->query('status') ?? '';
-$selectedStart = $request->query('period_start') ?? '';
-$selectedEnd = $request->query('period_end') ?? '';
 
 // A branch admin only works with their own branch's employees and payroll.
 $scopeBranch = \App\Support\BranchScope::current();
 [$employeeScope, $employeeScopeParams] = \App\Support\BranchScope::employees($scopeBranch, 'e');
 [$payrollEmployeeScope, $payrollEmployeeScopeParams] = \App\Support\BranchScope::viaEmployee($scopeBranch, 'payroll.employee_id');
 
-// The branch filter of the page: the super admin may look at any branch, a branch admin only has their own. Left empty it
-// shows every branch the account may see.
-$payrollBranches = array_keys(config('bohol_branches', []));
-if ($scopeBranch !== null) {
-    $payrollBranches = array_values(array_filter($payrollBranches, static fn (string $name): bool => strcasecmp($name, $scopeBranch) === 0));
-}
-$selectedBranch = trim((string) $request->query('branch', ''));
-foreach ($payrollBranches as $branchOption) {
-    if (strcasecmp($branchOption, $selectedBranch) === 0) {
-        $selectedBranch = $branchOption;
-        break;
-    }
-}
-if (!in_array($selectedBranch, $payrollBranches, true)) {
-    $selectedBranch = '';
-}
-[$branchFilterScope, $branchFilterScopeParams] = \App\Support\BranchScope::viaEmployee($selectedBranch !== '' ? $selectedBranch : null, 'payroll.employee_id');
+// Branch, barangay and employee search (the super admin may pick any branch; a branch admin only has their own). Left empty it
+// shows every record the account may see. An employee has no barangay of their own, so it is looked up in the address.
+$location = \App\Support\LocationFilter::fromRequest($request);
+$branches = $location['branches'];
+$branchBarangays = $location['branchBarangays'];
+$selectedBranch = $location['selectedBranch'];
+$selectedBarangays = $location['selectedBarangays'];
+$searchTerm = $location['searchTerm'];
+[$locationSql, $locationParams] = \App\Support\LocationFilter::employeeConditions($location, 'e');
+// The same filter for queries on the payroll table itself.
+$filteredEmployeeIds = "payroll.employee_id IN (SELECT e.id FROM employees e WHERE 1 = 1{$locationSql})";
 
 $stmt = $pdo->prepare("SELECT e.id, e.employee_code, e.full_name, e.position, e.department, e.daily_rate, e.status, e.branch_name FROM employees e WHERE 1 = 1" . $employeeScope . " ORDER BY e.full_name");
 $stmt->execute($employeeScopeParams);
 $employees = $stmt->fetchAll();
-// The employees offered by the filter follow the chosen branch.
-$filterEmployees = $selectedBranch === ''
-    ? $employees
-    : array_values(array_filter($employees, static fn (array $employee): bool => strcasecmp((string) ($employee['branch_name'] ?? ''), $selectedBranch) === 0));
-
 $employeeMap = [];
 foreach ($employees as $employee) {
     $employeeMap[$employee['id']] = $employee;
@@ -311,29 +297,9 @@ if ($employeeScope !== '') {
     array_push($params, ...$employeeScopeParams);
 }
 
-if ($selectedBranch !== '') {
-    $where[] = "LOWER(COALESCE(e.branch_name, '')) = LOWER(?)";
-    $params[] = $selectedBranch;
-}
-
-if ($selectedEmployee !== '') {
-    $where[] = 'p.employee_id = ?';
-    $params[] = $selectedEmployee;
-}
-
-if ($selectedStatus !== '') {
-    $where[] = 'p.status = ?';
-    $params[] = $selectedStatus;
-}
-
-if ($selectedStart !== '') {
-    $where[] = 'p.payroll_period_start >= ?';
-    $params[] = $selectedStart;
-}
-
-if ($selectedEnd !== '') {
-    $where[] = 'p.payroll_period_end <= ?';
-    $params[] = $selectedEnd;
+if ($locationSql !== '') {
+    $where[] = substr($locationSql, strlen(' AND '));
+    array_push($params, ...$locationParams);
 }
 
 if ($showArchived) {
@@ -369,11 +335,11 @@ $statStmt = $pdo->prepare("
         SUM(CASE WHEN status = 'processed' THEN 1 ELSE 0 END) AS processed,
         SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END) AS paid
     FROM payroll
-    WHERE (archived = 0 OR archived IS NULL)" . $payrollEmployeeScope . $branchFilterScope);
-$statStmt->execute([...$payrollEmployeeScopeParams, ...$branchFilterScopeParams]);
+    WHERE (archived = 0 OR archived IS NULL)" . $payrollEmployeeScope . ' AND ' . $filteredEmployeeIds);
+$statStmt->execute([...$payrollEmployeeScopeParams, ...$locationParams]);
 $stats = $statStmt->fetch();
-$archivedStmt = $pdo->prepare("SELECT COUNT(*) FROM payroll WHERE archived = 1" . $payrollEmployeeScope . $branchFilterScope);
-$archivedStmt->execute([...$payrollEmployeeScopeParams, ...$branchFilterScopeParams]);
+$archivedStmt = $pdo->prepare("SELECT COUNT(*) FROM payroll WHERE archived = 1" . $payrollEmployeeScope . ' AND ' . $filteredEmployeeIds);
+$archivedStmt->execute([...$payrollEmployeeScopeParams, ...$locationParams]);
 $archivedCount = (int) $archivedStmt->fetchColumn();
 
 $totalRecords = (int) $stats['total'];
@@ -387,6 +353,13 @@ $payrollConfig = [
     'daysPerMonth' => $payrollSettings['days_per_month'],
 ];
 $eligibleCount = count($payrollEmployees);
+
+// The employees the payroll form suggests while typing: only the ones this account pays (a branch admin: the technicians of their
+// branch; the super admin: the Admin employees of every branch, so the branch is part of the text they can search).
+$employeeChoices = array_map(static fn (array $employee): array => [
+    'id' => (int) $employee['id'],
+    'label' => $employee['full_name'] . ' - ' . $employee['employee_code'] . ($isSuperAdminPayroll ? ' · ' . ($employee['branch_name'] ?: 'No branch') : ''),
+], $payrollEmployees);
 
 $employeeJson = json_encode(
     array_values($employees),

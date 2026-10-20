@@ -202,7 +202,6 @@ $overtimeQR = null;
                                 @else
                                 <p style="color: var(--warning);">No active QR code</p>
                                 @endif
-                                <p style="margin-top: 0.5rem; font-size: 0.75rem; color: var(--text-muted);">Scan once to start the overtime and again to end it. The minutes go to the payroll. Generate it only on the days overtime is approved.</p>
                                 {{-- One QR code serves every branch, so only the super admin can replace it. --}}
                                 @if ($canGenerateQr)
                                 <form method="POST" action="?tab=attendance" style="margin-top: 0.75rem;">

@@ -55,10 +55,9 @@ methods when the law changes them.
 
 ## Automatic
 
-* **Generate Automatic Payroll** (Payroll page, pick any date of the week): one *processed* payroll for every employee the
-  account may pay who has attendance in that Monday–Sunday week and no payroll for it yet.
-* `php artisan payroll:generate-weekly` does the same for everybody; it is scheduled for Sunday 23:55 when the server
-  runs `php artisan schedule:run` every minute. Vercel has no scheduler, so use the button there.
+* `php artisan payroll:generate-weekly` creates one *processed* payroll for every employee who has attendance in that
+  Monday–Sunday week and no payroll for it yet. It is scheduled for Sunday 23:55 when the server runs
+  `php artisan schedule:run` every minute.
 * **+ New Payroll → Automatic** works out one employee and period on the form, shows how each number was computed, and
   recomputes from the attendance every time it is saved. Only the undertime minutes and the extra earnings and deductions
   (holiday pay, allowances, cash advance, loans, ...) are typed.

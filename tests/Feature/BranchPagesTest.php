@@ -410,6 +410,62 @@ class BranchPagesTest extends TestCase
         $this->assertSame('Balilihan', $this->page('reports', ['branch' => 'Balilihan'])['branch']);
     }
 
+    public function test_the_business_report_lists_the_records_and_their_totals_match_the_summary(): void
+    {
+        $start = now()->startOfMonth()->toDateString();
+        $end = now()->endOfMonth()->toDateString();
+
+        $all = PeriodReport::build($start, $end);
+        $details = $all['details'];
+
+        $this->assertCount(3, $details['bills']['rows']);
+        $this->assertEquals($all['bills']['amount'], $details['bills']['total']['amount']);
+        $this->assertEquals(3000, $details['bills']['total']['received']);
+        $this->assertEquals($all['bills']['outstanding'], $details['bills']['total']['balance']);
+
+        $this->assertCount(2, $details['payments']['rows']);
+        $this->assertEquals($all['payments']['collected'], $details['payments']['total']['amount']);
+
+        $this->assertCount(2, $details['attendance']['rows']);
+        $this->assertSame($all['attendance']['records'], $details['attendance']['total']['records']);
+        $this->assertSame($all['attendance']['present'], $details['attendance']['total']['present']);
+
+        $this->assertCount(2, $details['payroll']['rows']);
+        $this->assertEquals($all['payroll']['net'], $details['payroll']['total']['net']);
+
+        $this->assertCount(2, $details['requests']['rows']);
+        $this->assertSame($all['requests']['total'], count($details['requests']['rows']));
+        $this->assertSame(3, $details['requests']['total']['quantity']);
+
+        $bali = PeriodReport::build($start, $end, 'Balilihan')['details'];
+        $this->assertSame(['B-1'], array_column($bali['bills']['rows'], 'bill_number'));
+        $this->assertEquals(1000, $bali['payments']['total']['amount']);
+        $this->assertSame(['Eli Santos'], array_column($bali['attendance']['rows'], 'full_name'));
+        $this->assertEquals(3000, $bali['payroll']['total']['net']);
+        $this->assertNull($bali['requests']);
+
+        $none = PeriodReport::build($start, $end, '')['details'];
+        $this->assertSame([], $none['bills']['rows']);
+        $this->assertEquals(0, $none['bills']['total']['amount']);
+    }
+
+    public function test_the_report_page_and_print_view_show_the_records_with_a_total_row(): void
+    {
+        $this->signIn(1);
+
+        foreach (['reports', 'print_monthly_reports'] as $page) {
+            $html = view('pages.' . $page, $this->page($page))->render();
+
+            $this->assertStringContainsString('Ana Reyes', $html);
+            $this->assertStringContainsString('B-3', $html);
+            $this->assertStringContainsString('Total (3 bill(s))', $html);
+            $this->assertStringContainsString('₱3,500.00', $html);
+            $this->assertStringContainsString('Total (2 payment(s))', $html);
+            $this->assertStringContainsString('Eli Santos', $html);
+            $this->assertStringContainsString('Total (2 request(s)', $html);
+        }
+    }
+
     // ---- user accounts ---------------------------------------------------------------------------------
 
     private function users(array $post): array

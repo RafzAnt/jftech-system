@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Inventory;
 use App\Support\BranchScope;
+use App\Support\StockMovements;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -31,10 +32,17 @@ class InventoryController extends Controller
         $filterCategory = (string) $request->query('category', '');
         $filteredItems = $filterCategory ? array_values(array_filter($items, fn ($item) => $item['category'] === $filterCategory)) : $items;
         $tab = $request->query('tab') === 'movements' ? 'movements' : 'stock';
+        // Each transaction also says which employee handled it and, for a job, the client and NAP box it was for.
+        $linked = StockMovements::linked();
         $movements = $this->inBranch(DB::table('inventory_stock_movements as movement')
             ->join('inventory as item', 'movement.inventory_id', '=', 'item.id')
-            ->leftJoin('users as user', 'movement.performed_by', '=', 'user.id'), $branch, 'item')
-            ->select('movement.*', 'item.item_name', 'item.category', 'item.branch_name', 'user.full_name as performed_by_name')
+            ->leftJoin('users as user', 'movement.performed_by', '=', 'user.id')
+            ->when($linked, fn ($query) => $query
+                ->leftJoin('employees as employee', 'movement.employee_id', '=', 'employee.id')
+                ->leftJoin('clients as client', 'movement.client_id', '=', 'client.id')
+                ->leftJoin('nap_boxes as nap', 'movement.nap_box_id', '=', 'nap.id')
+                ->addSelect('employee.full_name as employee_name', 'client.full_name as client_name', 'client.client_code', 'nap.name as nap_box_name')), $branch, 'item')
+            ->addSelect('movement.*', 'item.item_name', 'item.category', 'item.branch_name', 'user.full_name as performed_by_name')
             ->when($filterCategory, fn ($query) => $query->where('item.category', $filterCategory))
             ->latest('movement.created_at')
             ->limit(100)
@@ -46,11 +54,27 @@ class InventoryController extends Controller
             $request->session()->put('inventory_submission_token', $submissionToken);
         }
 
-        $commonItemNames = ['Access Point', 'Cable Clamp', 'Cable Tie', 'Ethernet Cable', 'Fiber Cable', 'LAN Connector', 'ONU', 'Patch Cord', 'Pigtail', 'Router', 'Splitter', 'UPS'];
+        $commonItemNames = ['Access Point', 'Cable Clamp', 'Cable Tie', 'Ethernet Cable', 'Fiber Cable', 'LAN Connector', 'NAP Box', 'ONU', 'Patch Cord', 'Pigtail', 'Router', 'Splitter', 'UPS'];
         $existingInventoryNames = $this->inBranch(Inventory::query(), $branch)->orderBy('item_name')->pluck('item_name')->all();
         $inventoryNameSuggestions = array_values(array_unique(array_merge($commonItemNames, $existingInventoryNames)));
 
-        return view('pages.inventory', ['currentPage' => 'inventory', 'themeCssVersion' => @filemtime(public_path('css/jftech-theme.css')) ?: 1, 'inventoryCssVersion' => @filemtime(public_path('css/inventory.css')) ?: 1, 'showArchived' => $showArchived, 'success' => session('success', ''), 'error' => session('error', ''), 'inventoryItems' => $items, 'categories' => $categories, 'archivedCount' => $this->inBranch(Inventory::query(), $branch)->where('archived', 1)->count(), 'branch' => $branch, 'inventoryBranches' => array_keys(config('bohol_branches', [])), 'canManageInventory' => (bool) auth()->user()?->isBranchAdmin(), 'filterCategory' => $filterCategory, 'filteredItems' => $filteredItems, 'totalItems' => count($filteredItems), 'totalValue' => array_sum(array_map(fn ($item) => $item['quantity'] * $item['unit_price'], $filteredItems)), 'lowStock' => count(array_filter($filteredItems, fn ($item) => $item['available_quantity'] <= $item['reorder_level'])), 'tab' => $tab, 'movements' => $movements, 'submissionToken' => $submissionToken, 'inventoryNameSuggestions' => $inventoryNameSuggestions, 'existingInventoryNames' => $existingInventoryNames]);
+        // NAP boxes are equipment too, so they are counted with the stock. A project that has not run the
+        // field work migration yet simply has none.
+        try {
+            $napBoxes = \App\Support\NapBoxes::boxes($branch);
+        } catch (\Throwable) {
+            $napBoxes = [];
+        }
+        $napBoxCount = count($napBoxes);
+        $napPortsAvailable = array_sum(array_column($napBoxes, 'available_ports'));
+
+        // The NAP boxes still on the shelf (the "NAP Box" items of the stock), next to the ones already installed.
+        $napInStock = array_sum(array_column(\App\Support\NapBoxes::stockItems($branch), 'quantity'));
+        // The category list of the form always offers the NAP Box category, even before the first NAP Box item exists.
+        $modalCategories = array_values(array_unique(array_merge($categories, [\App\Support\NapBoxes::STOCK_CATEGORY])));
+        sort($modalCategories);
+
+        return view('pages.inventory', ['napInStock' => $napInStock, 'modalCategories' => $modalCategories, 'napBoxCount' => $napBoxCount, 'napPortsAvailable' => $napPortsAvailable, 'currentPage' => 'inventory','themeCssVersion' => @filemtime(public_path('css/jftech-theme.css')) ?: 1, 'inventoryCssVersion' => @filemtime(public_path('css/inventory.css')) ?: 1, 'showArchived' => $showArchived, 'success' => session('success', ''), 'error' => session('error', ''), 'inventoryItems' => $items, 'categories' => $categories, 'archivedCount' => $this->inBranch(Inventory::query(), $branch)->where('archived', 1)->count(), 'branch' => $branch, 'inventoryBranches' => array_keys(config('bohol_branches', [])), 'canManageInventory' => (bool) auth()->user()?->isBranchAdmin(), 'filterCategory' => $filterCategory, 'filteredItems' => $filteredItems, 'totalItems' => count($filteredItems), 'totalValue' => array_sum(array_map(fn ($item) => $item['quantity'] * $item['unit_price'], $filteredItems)), 'lowStock' => count(array_filter($filteredItems, fn ($item) => $item['available_quantity'] <= $item['reorder_level'])), 'tab' => $tab, 'movements' => $movements, 'submissionToken' => $submissionToken, 'inventoryNameSuggestions' => $inventoryNameSuggestions, 'existingInventoryNames' => $existingInventoryNames]);
     }
     public function store(Request $request): RedirectResponse
     {
@@ -169,6 +193,6 @@ class InventoryController extends Controller
 
     private function recordMovement(Inventory $item, int $quantityChange, string $type, string $remarks): void
     {
-        DB::table('inventory_stock_movements')->insert(['inventory_id' => $item->id, 'quantity_change' => $quantityChange, 'balance_after' => $item->quantity, 'movement_type' => $type, 'remarks' => $remarks, 'performed_by' => auth()->id(), 'created_at' => now()]);
+        StockMovements::record($item->id, $quantityChange, (int) $item->quantity, $type, $remarks, auth()->id());
     }
 }

@@ -23,8 +23,8 @@
     <div class="main-content">
         <div class="top-bar">
             <div>
-                <h1 class="page-title">NAP Boxes</h1>
-                <p style="color: var(--text-muted); font-size: 0.85rem;">{{ $canManage ? 'The NAP boxes of your branch and what is connected to each port' : 'The NAP boxes of every branch and what is connected to each port' }}</p>
+                <h1 class="page-title">Inventory · NAP Boxes</h1>
+                <p style="color: var(--text-muted); font-size: 0.85rem;">{{ $canManage ? 'The NAP boxes of your branch, counted in your inventory, and what is connected to each port' : 'The NAP boxes of every branch, counted in the inventory, and what is connected to each port' }}</p>
             </div>
             <div style="display:flex;gap:.65rem;flex-wrap:wrap;align-items:center;">
                 @if (! \App\Support\BranchScope::isRestricted())
@@ -41,6 +41,7 @@
                 @else
                 <span class="badge badge-info">{{ $ownBranch ?: 'No branch assigned' }} branch</span>
                 @endif
+                <a class="btn btn-secondary" href="inventory.php{{ $branch && ! \App\Support\BranchScope::isRestricted() ? '?branch=' . urlencode($branch) : '' }}">Back to Inventory</a>
                 @if ($canManage && ! $showArchived)
                 <button class="btn btn-success" type="button" onclick="openBoxModal()">+ Add NAP Box</button>
                 @endif
@@ -59,6 +60,7 @@
             <div class="stat-card"><div class="stat-value">{{ number_format($stats['ports']) }}</div><div class="stat-label">Total Ports</div></div>
             <div class="stat-card"><div class="stat-value" style="color: var(--accent);">{{ number_format($stats['occupied']) }}</div><div class="stat-label">Occupied Ports</div></div>
             <div class="stat-card"><div class="stat-value" style="color: var(--success);">{{ number_format($stats['available']) }}</div><div class="stat-label">Available Ports</div></div>
+            <a href="inventory.php?category={{ urlencode(\App\Support\NapBoxes::STOCK_CATEGORY) }}{{ $branch && ! \App\Support\BranchScope::isRestricted() ? '&branch=' . urlencode($branch) : '' }}" class="stat-card" style="text-decoration: none; color: inherit;"><div class="stat-value" style="color: var(--warning);">{{ number_format($napInStock) }}</div><div class="stat-label">NAP Boxes in Stock</div></a>
         </div>
 
         <div class="card" style="margin-bottom: 1.5rem;">
@@ -158,6 +160,13 @@
                 </div>
             </div>
             <div class="card-body" style="padding: 0;">
+                @if ($selectedBox['has_photo'])
+                <div class="nap-photo-wrap">
+                    <a href="{{ route('nap-boxes.photo', $selectedBox['id']) }}?v={{ $selectedBox['photo_version'] }}" target="_blank" rel="noopener" title="Open the photo">
+                        <img class="nap-photo" src="{{ route('nap-boxes.photo', $selectedBox['id']) }}?v={{ $selectedBox['photo_version'] }}" alt="Photo of {{ $selectedBox['name'] }}">
+                    </a>
+                </div>
+                @endif
                 <div class="data-table-container">
                     <table class="data-table">
                         <thead><tr><th>Port</th><th>Status</th><th>Client</th><th></th></tr></thead>
@@ -209,6 +218,35 @@
                 </div>
             </div>
         </div>
+
+        <div class="card" style="margin-top: 1.5rem;">
+            <div class="card-header">
+                <span class="card-title">Inventory used on {{ $selectedBox['name'] }}</span>
+                <a class="btn btn-sm btn-secondary" href="inventory.php?tab=movements{{ $branch && ! \App\Support\BranchScope::isRestricted() ? '&branch=' . urlencode($branch) : '' }}">All stock transactions</a>
+            </div>
+            <div class="card-body" style="padding: 0;">
+                <div class="data-table-container">
+                    <table class="data-table">
+                        <thead><tr><th>Date &amp; Time</th><th>Item</th><th>Type</th><th>Qty</th><th>Employee</th><th>Client</th><th>Notes</th></tr></thead>
+                        <tbody>
+                            @forelse ($selectedBox['inventory_used'] as $used)
+                            <tr>
+                                <td>{{ \Carbon\Carbon::parse($used['occurred_at'])->format('M d, Y h:i A') }}</td>
+                                <td><strong>{{ $used['item_name'] }}</strong></td>
+                                <td>{{ $used['type_label'] }}</td>
+                                <td style="font-weight: 700; color: {{ $used['quantity_change'] < 0 ? 'var(--danger)' : ($used['quantity_change'] > 0 ? 'var(--success)' : 'inherit') }};">{{ $used['quantity_change'] === 0 ? '—' : ($used['quantity_change'] > 0 ? '+' : '') . $used['quantity_change'] }}</td>
+                                <td>{{ $used['employee_name'] ?: '—' }}</td>
+                                <td>{{ $used['client_name'] ? $used['client_name'] . ($used['client_code'] ? ' (' . $used['client_code'] . ')' : '') : '—' }}</td>
+                                <td class="cell-wrap">{{ $used['remarks'] ?: '—' }}</td>
+                            </tr>
+                            @empty
+                            <tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:2rem;">No inventory has been used on this NAP box yet.</td></tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
         @endif
     </div>
 
@@ -246,6 +284,19 @@
                         <label class="form-label" for="boxBarangay">Barangay *</label>
                         <input type="text" name="barangay" id="boxBarangay" class="form-input" list="barangaySuggestions" placeholder="Type a barangay" autocomplete="off" required>
                     </div>
+                    <div class="form-group" id="boxStockGroup" style="grid-column: 1 / -1;">
+                        <label class="form-label" for="boxStock">Take from stock *</label>
+                        @if ($napStockItems !== [])
+                        <select name="stock_item_id" id="boxStock" class="form-select">
+                            @foreach ($napStockItems as $stockItem)
+                            <option value="{{ $stockItem['id'] }}" {{ $stockItem['quantity'] < 1 ? 'disabled' : '' }}>{{ $stockItem['item_name'] }} — {{ $stockItem['quantity'] }} in stock</option>
+                            @endforeach
+                        </select>
+                        <small style="color: var(--text-muted);">Installing a NAP box takes one unit out of your inventory.</small>
+                        @else
+                        <p style="margin: 0; color: var(--warning);" id="boxNoStock">There is no NAP Box in your stock. <a href="inventory.php">Add an item in Inventory</a> with the category "{{ \App\Support\NapBoxes::STOCK_CATEGORY }}" first.</p>
+                        @endif
+                    </div>
                     <div class="form-group" id="boxStatusGroup" style="display:none;">
                         <label class="form-label" for="boxStatus">Status</label>
                         <select name="status" id="boxStatus" class="form-select">
@@ -257,10 +308,20 @@
                         <label class="form-label" for="boxLocation">Location</label>
                         <input type="text" name="location" id="boxLocation" class="form-input" maxlength="255" placeholder="Purok 2, near the chapel">
                     </div>
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <label class="form-label" for="boxPhoto">Photo of the NAP box</label>
+                        <input type="file" id="boxPhoto" class="form-input" accept="image/jpeg,image/png,image/webp" onchange="choosePhoto(this)">
+                        <input type="hidden" name="photo_data" id="boxPhotoData">
+                        <img id="boxPhotoPreview" class="nap-photo nap-photo-preview" alt="Photo of the NAP box" hidden>
+                        <label id="boxPhotoRemoveGroup" class="nap-photo-remove" hidden>
+                            <input type="checkbox" name="remove_photo" value="1" id="boxPhotoRemove" onchange="document.getElementById('boxPhotoPreview').hidden = this.checked"> Remove the current photo
+                        </label>
+                        <small style="color: var(--text-muted);">So the technician can recognise the box on the pole. The picture is made smaller before it is saved.</small>
+                    </div>
                 </div>
                 <div style="display:flex;gap:1rem;justify-content:flex-end;flex-wrap:wrap;">
                     <button type="button" class="btn btn-secondary" onclick="closeModal('boxModal')">Cancel</button>
-                    <button type="submit" class="btn btn-success">Save NAP Box</button>
+                    <button type="submit" class="btn btn-success" id="boxSave">Save NAP Box</button>
                 </div>
             </form>
         </div>
@@ -278,7 +339,56 @@
         document.getElementById('boxLocation').value = editing ? (box.location || '') : '';
         document.getElementById('boxStatus').value = editing ? box.status : 'active';
         document.getElementById('boxStatusGroup').style.display = editing ? '' : 'none';
+        // A new box is taken from the stock; an existing one is only changed.
+        document.getElementById('boxStockGroup').style.display = editing ? 'none' : '';
+        const stockSelect = document.getElementById('boxStock');
+        if (stockSelect) stockSelect.disabled = editing;
+        document.getElementById('boxSave').disabled = !editing && !stockSelect;
+
+        // The photo: nothing is chosen yet; an existing one is shown and can be removed.
+        const preview = document.getElementById('boxPhotoPreview');
+        document.getElementById('boxPhoto').value = '';
+        document.getElementById('boxPhotoData').value = '';
+        document.getElementById('boxPhotoRemove').checked = false;
+        const hasPhoto = editing && box.has_photo;
+        preview.hidden = !hasPhoto;
+        preview.src = hasPhoto ? '{{ url('/nap-boxes') }}/' + box.id + '/photo?v=' + box.photo_version : '';
+        document.getElementById('boxPhotoRemoveGroup').hidden = !hasPhoto;
         openModal('boxModal');
+    }
+
+    // The chosen picture is shrunk in the browser (longest side 1000 px, JPEG) and sent as text, so a phone photo of several
+    // megabytes is saved as a few hundred kilobytes.
+    function choosePhoto(input) {
+        const data = document.getElementById('boxPhotoData');
+        const preview = document.getElementById('boxPhotoPreview');
+        data.value = '';
+        document.getElementById('boxPhotoRemove').checked = false;
+        const file = input.files && input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function() {
+            const image = new Image();
+            image.onload = function() {
+                const scale = Math.min(1, 1000 / Math.max(image.width, image.height));
+                const canvas = document.createElement('canvas');
+                canvas.width = Math.max(1, Math.round(image.width * scale));
+                canvas.height = Math.max(1, Math.round(image.height * scale));
+                const context = canvas.getContext('2d');
+                context.fillStyle = '#ffffff';
+                context.fillRect(0, 0, canvas.width, canvas.height);
+                context.drawImage(image, 0, 0, canvas.width, canvas.height);
+                data.value = canvas.toDataURL('image/jpeg', 0.82);
+                preview.src = data.value;
+                preview.hidden = false;
+            };
+            image.onerror = function() {
+                input.value = '';
+                alert('That file is not a picture. Choose a JPEG, PNG or WebP photo.');
+            };
+            image.src = reader.result;
+        };
+        reader.readAsDataURL(file);
     }
     </script>
     <script src="{{ asset('js/jftech-main.js') }}?{{ $mainJsVersion ?? 1 }}"></script>

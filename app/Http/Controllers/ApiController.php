@@ -43,7 +43,10 @@ class ApiController extends Controller
             ->where('inventory.status', 'active')
             ->where('inventory.archived', 0)
             ->orderBy('inventory.item_name')
-            ->get();
+            ->get()
+            // NAP boxes are installed by the branch admin from the stock (they are not handed out to an employee), so the app never offers them.
+            ->reject(fn ($item) => \App\Support\NapBoxes::isStockItem($item))
+            ->values();
 
         // For an item-out request only stock that is left is offered; a return can be of any item of the branch.
         $out = $items->filter(fn ($item) => (int) $item->available_quantity > 0)->values();
@@ -137,6 +140,9 @@ class ApiController extends Controller
                 }
                 if (strcasecmp(trim((string) $inv->branch_name), trim((string) $employee->branch_name)) !== 0) {
                     throw new \DomainException("{$inv->item_name} is stocked by another branch. Please refresh the inventory list.");
+                }
+                if (\App\Support\NapBoxes::isStockItem($inv)) {
+                    throw new \DomainException("{$inv->item_name} is a NAP box. Your admin installs NAP boxes from the stock, so it cannot be requested.");
                 }
 
                 if ($type === 'out') {

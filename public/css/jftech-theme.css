@@ -2100,3 +2100,73 @@ html[data-theme="light"] body .client-record-actions summary:hover {
 .location-suggestion-option[aria-selected="true"] {
     background: rgba(41, 121, 255, 0.12);
 }
+
+/* ===== PAGES (see the pagination script at the end of js/jftech-main.js) ===== */
+.pager-hidden {
+    display: none !important;
+}
+
+.pager {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.pager[hidden] {
+    display: none;
+}
+
+.pager-info {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+}
+
+.pager-buttons {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.pager-btn {
+    min-width: 32px;
+    height: 32px;
+    padding: 0 0.55rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--card-bg);
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+
+.pager-btn:hover:not(:disabled):not(.active) {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.pager-btn.active {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: #ffffff;
+    font-weight: 700;
+}
+
+.pager-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.pager-gap {
+    padding: 0 0.2rem;
+    color: var(--text-muted);
+}
+
+@media print {
+    .pager {
+        display: none !important;
+    }
+}

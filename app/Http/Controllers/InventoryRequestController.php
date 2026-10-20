@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Support\BranchScope;
+use App\Support\StockMovements;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -52,15 +53,11 @@ class InventoryRequestController extends Controller
                     $balance = $inventory->quantity + $requestRecord->quantity;
                     DB::table('inventory')->where('id', $inventory->id)->update(['quantity' => $balance]);
                     $condition = $requestRecord->item_condition ? " Condition: {$requestRecord->item_condition}." : '';
-                    DB::table('inventory_stock_movements')->insert([
-                        'inventory_id' => $inventory->id,
-                        'quantity_change' => (int) $requestRecord->quantity,
-                        'balance_after' => $balance,
-                        'movement_type' => 'stock_returned',
-                        'remarks' => "Returned by {$requestRecord->employee_name} through request #{$requestRecord->id}.{$condition}",
-                        'performed_by' => auth()->id(),
-                        'created_at' => now(),
-                    ]);
+                    StockMovements::record(
+                        $inventory->id, (int) $requestRecord->quantity, (int) $balance, 'stock_returned',
+                        "Returned by {$requestRecord->employee_name} through request #{$requestRecord->id}.{$condition}", auth()->id(),
+                        ['employee_id' => (int) $requestRecord->employee_id],
+                    );
                     DB::table('inventory_requests')->where('id', $requestRecord->id)->update([
                         'status' => 'approved', 'approved_by' => auth()->id(), 'approved_at' => now(), 'updated_at' => now(),
                     ]);
@@ -73,15 +70,11 @@ class InventoryRequestController extends Controller
 
                 $balance = $inventory->quantity - $requestRecord->quantity;
                 DB::table('inventory')->where('id', $inventory->id)->update(['quantity' => $balance]);
-                DB::table('inventory_stock_movements')->insert([
-                    'inventory_id' => $inventory->id,
-                    'quantity_change' => -$requestRecord->quantity,
-                    'balance_after' => $balance,
-                    'movement_type' => 'employee_release',
-                    'remarks' => "Released to {$requestRecord->employee_name} through request #{$requestRecord->id}.",
-                    'performed_by' => auth()->id(),
-                    'created_at' => now(),
-                ]);
+                StockMovements::record(
+                    $inventory->id, -(int) $requestRecord->quantity, (int) $balance, 'employee_release',
+                    "Released to {$requestRecord->employee_name} through request #{$requestRecord->id}.", auth()->id(),
+                    ['employee_id' => (int) $requestRecord->employee_id],
+                );
                 DB::table('inventory_requests')->where('id', $requestRecord->id)->update([
                     'status' => 'approved', 'approved_by' => auth()->id(), 'approved_at' => now(), 'updated_at' => now(),
                 ]);

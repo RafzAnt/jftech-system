@@ -29,19 +29,9 @@
                 <p class="dashboard-subtitle">View client activity, payments received, and your team in one place.</p>
             </div>
             <div class="top-bar-actions">
-                @if (auth()->user()?->isSuperAdmin())
-                <form method="GET" action="" class="dashboard-branch-form">
-                    <label class="form-label" for="dashboardBranch" style="margin:0;">Branch</label>
-                    <select name="branch" id="dashboardBranch" class="form-select" onchange="this.form.submit()" style="width:auto;min-width:170px;">
-                        <option value="">All branches</option>
-                        @foreach ($dashboardBranches as $dashboardBranch)
-                        <option value="{{ $dashboardBranch }}" {{ $branch === $dashboardBranch ? 'selected' : '' }}>{{ $dashboardBranch }}</option>
-                        @endforeach
-                    </select>
-                </form>
-                @else
+                @unless (auth()->user()?->isSuperAdmin())
                 <span class="badge badge-info">{{ $branchScopeLabel ?: 'No branch assigned' }} branch</span>
-                @endif
+                @endunless
                 <span class="dashboard-date">{{ date('D, M j, Y') }}</span>
             </div>
         </div>

@@ -402,6 +402,59 @@ class WorkRequestApiTest extends TestCase
         $this->assertSame(['stock_returned', 'job_used', 'job_damaged'], $movements->pluck('movement_type')->all());
         $this->assertSame([1, 0, 0], $movements->pluck('quantity_change')->map(fn ($v) => (int) $v)->all());
         $this->assertSame([11, 11, 11], $movements->pluck('balance_after')->map(fn ($v) => (int) $v)->all());
+
+        // Every one of them says which employee, client and NAP box the job was for.
+        foreach (DB::table('inventory_stock_movements')->where('work_request_id', $id)->get() as $movement) {
+            $this->assertSame(1, (int) $movement->employee_id);
+            $this->assertSame((int) $client->id, (int) $movement->client_id);
+            $this->assertSame(1, (int) $movement->nap_box_id);
+        }
+        $this->assertSame(3, DB::table('inventory_stock_movements')->where('work_request_id', $id)->count());
+    }
+
+    public function test_the_stock_transactions_show_the_employee_and_the_client_and_nap_of_the_job(): void
+    {
+        $id = $this->approvedInstallation();
+        $this->report($id)->assertOk();
+        WorkRequestService::confirm($id, 2, ['internet_plan_id' => 1]);
+
+        $this->signIn(2);
+        $rows = $this->get('/inventory?tab=movements')->assertOk()->viewData('movements');
+        $job = collect($rows)->firstWhere('movement_type', 'job_used');
+        $this->assertSame('Eli Santos', $job->employee_name);
+        $this->assertSame('Nina Reyes', $job->client_name);
+        $this->assertSame('NAP-01', $job->nap_box_name);
+
+        $html = $this->get('/inventory?tab=movements')->getContent();
+        $this->assertStringContainsString('Client / NAP', $html);
+        $this->assertStringContainsString('Nina Reyes (', $html);
+        $this->assertStringContainsString('· NAP-01', $html);
+        $this->assertStringContainsString('Used on Job', $html);
+
+        // And the NAP box lists the same materials under "Inventory used".
+        $used = $this->getJson('/backend/api/nap_box.php?nap_box_id=1', $this->appHeaders(1))->assertOk()->json('data.inventory_used');
+        $this->assertSame(['Router', 'Router', 'Router'], array_column($used, 'item_name'));
+        $this->assertContains('Used on Job', array_column($used, 'type_label'));
+        $this->assertSame('Nina Reyes', $used[0]['client_name']);
+        $this->assertSame('Eli Santos', $used[0]['employee_name']);
+    }
+
+    public function test_nap_boxes_are_never_offered_to_the_app_as_stock_or_material(): void
+    {
+        DB::table('inventory')->insert(['id' => 60, 'item_name' => 'NAP Box 8-port', 'sku' => 'SKU-60', 'category' => 'NAP Box', 'quantity' => 4, 'unit_price' => 900, 'reorder_level' => 1, 'branch_name' => 'Balilihan']);
+        $headers = $this->appHeaders(1);
+
+        $items = $this->getJson('/backend/api/inventory_items.php', $headers)->assertOk();
+        $this->assertNotContains('NAP Box 8-port', array_column($items->json('data'), 'item_name'));
+        $this->assertNotContains('NAP Box 8-port', array_column($items->json('all_items'), 'item_name'));
+
+        $request = $this->postJson('/backend/api/inventory_request_create.php', ['items' => [['inventory_id' => 60, 'quantity' => 1]]], $headers);
+        $request->assertStatus(422);
+        $this->assertStringContainsString('is a NAP box', $request->json('message'));
+
+        $pending = $this->approvedInstallation();
+        $this->report($pending, ['materials' => [['inventory_id' => 60, 'used_quantity' => 1]]])->assertStatus(422);
+        $this->assertSame(4, (int) DB::table('inventory')->where('id', 60)->value('quantity'));
     }
 
     public function test_a_new_client_needs_a_plan_to_be_confirmed(): void

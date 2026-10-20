@@ -136,10 +136,18 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!targetTable) return;
 
             const rows = targetTable.querySelectorAll('tbody tr');
+            // A table with pages lets the pager hide the rows (it counts only the rows that match); a short one hides them itself.
+            const pager = targetTable.jftechPager;
             rows.forEach(row => {
                 const text = row.textContent.toLowerCase();
-                row.style.display = text.includes(searchTerm) ? '' : 'none';
+                const matches = text.includes(searchTerm);
+                if (pager) {
+                    row.toggleAttribute('data-filtered-out', !matches);
+                } else {
+                    row.style.display = matches ? '' : 'none';
+                }
             });
+            if (pager) pager.refresh(true);
         });
     });
 
@@ -397,3 +405,132 @@ document.addEventListener('DOMContentLoaded', function() {
         );
     });
 });
+
+// ---- Pages ---------------------------------------------------------------------------------------------------
+// A table with more than one page of rows (or a list marked data-paginate-list) shows 20 rows at a time, with the page buttons under it,
+// so a long list needs no long scroll. It starts by itself on every page. A table (or a whole page, on <body>) that must always show
+// everything has data-no-pagination, like the login history. data-page-size sets another size.
+(function () {
+    const TABLE_PAGE_SIZE = 20;
+    const LIST_PAGE_SIZE = 5;
+    const pagers = [];
+
+    // The numbers to show: all of them when there are few, else the first, the last and the ones around the current page (null is the "…").
+    function pageNumbers(current, total) {
+        if (total <= 7) return Array.from({ length: total }, (_, index) => index + 1);
+        if (current <= 4) return [1, 2, 3, 4, 5, null, total];
+        if (current >= total - 3) return [1, null, total - 4, total - 3, total - 2, total - 1, total];
+        return [1, null, current - 1, current, current + 1, null, total];
+    }
+
+    function storageKey(index) {
+        return 'jftech-pager:' + location.pathname + location.search + ':' + index;
+    }
+
+    function createPager(anchor, getItems, pageSize, index) {
+        const nav = document.createElement('nav');
+        nav.className = 'pager';
+        nav.setAttribute('aria-label', 'Pages');
+        nav.hidden = true;
+        const info = document.createElement('span');
+        info.className = 'pager-info';
+        info.setAttribute('aria-live', 'polite');
+        const buttons = document.createElement('div');
+        buttons.className = 'pager-buttons';
+        nav.append(info, buttons);
+        anchor.insertAdjacentElement('afterend', nav);
+
+        let page = 1;
+        try {
+            page = parseInt(sessionStorage.getItem(storageKey(index)), 10) || 1;
+        } catch (error) {
+            page = 1;
+        }
+
+        function button(label, target, options) {
+            const element = document.createElement('button');
+            element.type = 'button';
+            element.className = 'pager-btn' + (options.active ? ' active' : '');
+            element.textContent = label;
+            element.setAttribute('aria-label', options.label || ('Page ' + target));
+            if (options.active) element.setAttribute('aria-current', 'page');
+            element.disabled = !!options.disabled;
+            element.addEventListener('click', () => {
+                page = target;
+                refresh(false);
+                // The top of the list may have scrolled away while the buttons at its end were used.
+                if (anchor.getBoundingClientRect().top < 0) anchor.scrollIntoView({ block: 'start' });
+            });
+            return element;
+        }
+
+        function refresh(toFirstPage) {
+            const items = getItems();
+            const matching = items.filter(item => !item.hasAttribute('data-filtered-out'));
+            const pages = Math.max(1, Math.ceil(matching.length / pageSize));
+            if (toFirstPage) page = 1;
+            page = Math.min(Math.max(1, page), pages);
+
+            const first = (page - 1) * pageSize;
+            const shown = new Set(pages === 1 ? matching : matching.slice(first, first + pageSize));
+            items.forEach(item => item.classList.toggle('pager-hidden', !shown.has(item)));
+
+            nav.hidden = pages <= 1;
+            info.textContent = matching.length === 0 ? '' : 'Showing ' + (first + 1) + '–' + Math.min(first + pageSize, matching.length) + ' of ' + matching.length;
+            buttons.replaceChildren();
+            if (pages > 1) {
+                buttons.append(button('‹', page - 1, { label: 'Previous page', disabled: page === 1 }));
+                pageNumbers(page, pages).forEach(number => {
+                    if (number === null) {
+                        const gap = document.createElement('span');
+                        gap.className = 'pager-gap';
+                        gap.textContent = '…';
+                        buttons.append(gap);
+                    } else {
+                        buttons.append(button(String(number), number, { active: number === page }));
+                    }
+                });
+                buttons.append(button('›', page + 1, { label: 'Next page', disabled: page === pages }));
+            }
+            try {
+                sessionStorage.setItem(storageKey(index), String(page));
+            } catch (error) {
+                // Remembering the page is only a convenience.
+            }
+        }
+
+        const pager = {
+            refresh,
+            // A page is printed whole: every row, not only the ones of the current page.
+            showAll: () => getItems().forEach(item => item.classList.remove('pager-hidden')),
+        };
+        pagers.push(pager);
+        refresh(false);
+
+        return pager;
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        if (document.body.hasAttribute('data-no-pagination')) return;
+        let index = 0;
+
+        document.querySelectorAll('table.data-table').forEach(table => {
+            if (table.hasAttribute('data-no-pagination') || table.closest('[data-no-pagination], .modal-overlay')) return;
+            const pageSize = parseInt(table.dataset.pageSize, 10) || TABLE_PAGE_SIZE;
+            const getRows = () => Array.from(table.querySelectorAll(':scope > tbody > tr'));
+            if (getRows().length <= pageSize) return;
+            table.jftechPager = createPager(table.closest('.data-table-container') || table, getRows, pageSize, index++);
+        });
+
+        document.querySelectorAll('[data-paginate-list]').forEach(list => {
+            if (list.hasAttribute('data-no-pagination') || list.closest('[data-no-pagination], .modal-overlay')) return;
+            const pageSize = parseInt(list.dataset.pageSize, 10) || LIST_PAGE_SIZE;
+            const getItems = () => Array.from(list.children);
+            if (getItems().length <= pageSize) return;
+            list.jftechPager = createPager(list, getItems, pageSize, index++);
+        });
+    });
+
+    window.addEventListener('beforeprint', () => pagers.forEach(pager => pager.showAll()));
+    window.addEventListener('afterprint', () => pagers.forEach(pager => pager.refresh(false)));
+})();

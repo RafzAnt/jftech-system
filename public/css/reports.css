@@ -1,4 +1,4 @@
-/* Business summary report (on screen). */
+/* Business report (on screen). */
 
 /* ===== HEADER + FILTER ===== */
 .report-heading p {
@@ -158,62 +158,35 @@
     color: var(--text-primary);
 }
 
-/* ===== SUMMARY CARDS ===== */
-.report-summary-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 1rem;
-}
-
-.report-summary-grid--two {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.report-card {
+/* ===== DETAIL TABLES ===== */
+.report-table-card {
     min-width: 0;
+    margin-bottom: 1rem;
 }
 
-.report-list {
-    margin: 0;
-    padding: 0.25rem 1.25rem 0.75rem;
-}
-
-.report-list > div {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 0.65rem 0;
-    border-bottom: 1px dashed var(--border-color);
-}
-
-.report-list > div:last-child {
-    border-bottom: 0;
-}
-
-.report-list dt {
-    color: var(--text-secondary);
-    font-size: 0.85rem;
-}
-
-.report-list dt small {
-    color: var(--text-muted);
-}
-
-.report-list dd {
-    margin: 0;
-    color: var(--text-primary);
-    font-size: 0.92rem;
-    font-weight: 700;
+.report-table .num {
     font-variant-numeric: tabular-nums;
     text-align: right;
-    white-space: nowrap;
 }
 
-.report-empty {
-    padding: 1.25rem 0 !important;
+.report-muted {
+    color: var(--text-muted);
+}
+
+.report-empty-row {
+    padding: 1.5rem 0.8rem !important;
     color: var(--text-muted);
     text-align: center;
+}
+
+/* The total row closes every table, even when there are no records. */
+.data-table.report-table tfoot td {
+    padding: 0.75rem 0.8rem;
+    border-top: 2px solid var(--border-strong);
+    background: var(--bg-muted);
+    color: var(--text-primary);
+    font-weight: 700;
+    white-space: nowrap;
 }
 
 /* ===== RESPONSIVE ===== */
@@ -223,16 +196,8 @@
     }
 }
 
-@media (max-width: 1100px) {
-    .report-summary-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-}
-
 @media (max-width: 700px) {
-    .report-stats,
-    .report-summary-grid,
-    .report-summary-grid--two {
+    .report-stats {
         grid-template-columns: 1fr;
     }
 

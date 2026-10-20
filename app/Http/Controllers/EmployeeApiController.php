@@ -114,6 +114,14 @@ class EmployeeApiController extends Controller
         return $box ? response()->json(['success' => true, 'data' => $box]) : response()->json(['success' => false, 'message' => 'That NAP box was not found.'], 404);
     }
 
+    /** The photo of a NAP box of the employee's branch (the image itself, not JSON); the box says whether it has one. */
+    public function napBoxPhoto(Request $request): \Symfony\Component\HttpFoundation\Response
+    {
+        $employee = $this->employee($request);
+
+        return NapBoxes::photoResponse((int) $request->query('nap_box_id'), (string) $employee->branch_name);
+    }
+
     // ---- work requests ----------------------------------------------------------------------------
 
     public function workRequests(Request $request): JsonResponse

@@ -443,14 +443,14 @@ class PayrollComputationTest extends TestCase
 
     // ---- the payslip --------------------------------------------------------------------------------
 
-    public function test_the_payroll_page_shows_the_automatic_payroll_card_and_the_late_and_undertime_of_a_computed_payslip(): void
+    public function test_the_payroll_page_hides_the_weekly_generator_and_shows_the_late_and_undertime_of_a_computed_payslip(): void
     {
         $this->signIn(2);
         $this->post('/payroll', $this->form(1, ['computation_mode' => 'auto']))->assertOk();
 
         $html = $this->get('/payroll')->assertOk()->getContent();
 
-        $this->assertStringContainsString('Automatic Weekly Payroll', $html);
+        $this->assertStringNotContainsString('Automatic Weekly Payroll', $html);
         $this->assertStringContainsString('payslip-mode-badge', $html);
         $this->assertStringContainsString('AUTOMATIC', $html);
         $this->assertStringContainsString('Late (60 min)', $html);
@@ -469,7 +469,7 @@ class PayrollComputationTest extends TestCase
         $this->assertStringNotContainsString('<tr><td>Undertime</td>', $html);
     }
 
-    public function test_a_branch_admin_without_employees_to_pay_does_not_get_the_automatic_card(): void
+    public function test_a_branch_admin_without_employees_to_pay_does_not_get_the_weekly_generator(): void
     {
         DB::table('employees')->where('id', 1)->update(['position' => 'Admin']);
         $this->signIn(2);

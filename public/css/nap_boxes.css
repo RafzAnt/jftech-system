@@ -69,3 +69,36 @@
     margin: 0;
     min-width: 180px;
 }
+
+/* The photo of a NAP box: on the open box, and as the preview in the form. */
+.nap-photo-wrap {
+    padding: 1rem 1.25rem 0;
+}
+
+.nap-photo {
+    display: block;
+    max-width: 100%;
+    max-height: 240px;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    object-fit: cover;
+}
+
+.nap-photo-preview {
+    margin-top: 0.6rem;
+    max-height: 180px;
+}
+
+.nap-photo-remove {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.5rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+
+.nap-photo[hidden],
+.nap-photo-remove[hidden] {
+    display: none;
+}

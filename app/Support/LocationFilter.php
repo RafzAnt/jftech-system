@@ -93,4 +93,38 @@ final class LocationFilter
 
         return [$sql, $params];
     }
+
+    /**
+     * The same conditions for a query over employees. An employee has a branch but no barangay of their own, only a free-text
+     * address, so a barangay matches when the address mentions it.
+     *
+     * @param array<string, mixed> $filter        from fromRequest()
+     * @param string               $employeeAlias the employees table, for example "e"
+     */
+    public static function employeeConditions(array $filter, string $employeeAlias = 'e'): array
+    {
+        $sql = '';
+        $params = [];
+        $address = "LOWER(COALESCE({$employeeAlias}.address, ''))";
+
+        if ($filter['selectedBranch'] !== '') {
+            $sql .= " AND LOWER(COALESCE({$employeeAlias}.branch_name, '')) = LOWER(?)";
+            $params[] = $filter['selectedBranch'];
+        }
+        if ($filter['selectedBarangays'] !== []) {
+            $sql .= ' AND (' . implode(' OR ', array_fill(0, count($filter['selectedBarangays']), "{$address} LIKE LOWER(?)")) . ')';
+            foreach ($filter['selectedBarangays'] as $barangay) {
+                $params[] = '%' . $barangay . '%';
+            }
+        }
+        if ($filter['searchTerm'] !== '') {
+            $columns = ['full_name', 'employee_code', 'position', 'contact_number', 'address'];
+            $sql .= ' AND (' . implode(' OR ', array_map(static fn (string $column): string => "LOWER(COALESCE({$employeeAlias}.{$column}, '')) LIKE LOWER(?)", $columns)) . ')';
+            foreach ($columns as $unused) {
+                $params[] = '%' . $filter['searchTerm'] . '%';
+            }
+        }
+
+        return [$sql, $params];
+    }
 }

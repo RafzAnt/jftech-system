@@ -73,6 +73,10 @@
                 <div class="stat-value" style="color: var(--warning);">{{ $lowStock }}</div>
                 <div class="stat-label">Low Stock Items</div>
             </div>
+            <a href="nap_boxes.php{{ $branch && ! \App\Support\BranchScope::isRestricted() ? '?branch=' . urlencode($branch) : '' }}" class="stat-card" style="text-decoration: none; color: inherit;">
+                <div class="stat-value" style="color: var(--accent);">{{ $napBoxCount }}</div>
+                <div class="stat-label">NAP Boxes installed · {{ $napInStock }} in stock · {{ $napPortsAvailable }} ports free</div>
+            </a>
         </div>
 
         <!-- Category Quick Filters -->
@@ -103,6 +107,7 @@
                         <a href="inventory.php" class="payslip-view-tab {{ !$showArchived ? 'active' : '' }}">Active</a>
                         <a href="inventory.php?view=archived" class="payslip-view-tab {{ $showArchived ? 'active' : '' }}">Archived ({{ $archivedCount }})</a>
                         @if (!$showArchived)<a href="inventory.php?tab=movements" class="payslip-view-tab">Stock Updates</a>@endif
+                        <a href="nap_boxes.php{{ $branch && ! \App\Support\BranchScope::isRestricted() ? '?branch=' . urlencode($branch) : '' }}" class="payslip-view-tab">NAP Boxes ({{ $napBoxCount }})</a>
                     </div>
                     <a class="btn btn-sm btn-secondary" target="_blank" rel="noopener" href="{{ url('/pages/print_inventory.php?category=' . urlencode($filterCategory) . ($showArchived ? '&archived=1' : '') . (! \App\Support\BranchScope::isRestricted() && $branch ? '&branch=' . urlencode($branch) : '')) }}">Print</a>
                 </div>
@@ -196,21 +201,28 @@
             <div class="card-body" style="padding: 0;">
                 <div class="data-table-container">
                     <table class="data-table">
-                        <thead><tr><th>Date &amp; Time</th><th>Item</th>@if (! \App\Support\BranchScope::isRestricted())<th>Branch</th>@endif<th>Update Type</th><th>Quantity Change</th><th>Stock After</th><th>Handled By</th><th>Notes</th></tr></thead>
+                        <thead><tr><th>Date &amp; Time</th><th>Item</th>@if (! \App\Support\BranchScope::isRestricted())<th>Branch</th>@endif<th>Update Type</th><th>Quantity Change</th><th>Stock After</th><th>Employee</th><th>Client / NAP</th><th>Handled By</th><th>Notes</th></tr></thead>
                         <tbody>
                             @forelse ($movements as $movement)
                             <tr>
                                 <td>{{ \Carbon\Carbon::parse($movement->created_at)->format('M d, Y h:i A') }}</td>
                                 <td><strong>{{ $movement->item_name }}</strong><br><span style="color: var(--text-muted); font-size: .8rem;">{{ $movement->category }}</span></td>
                                 @if (! \App\Support\BranchScope::isRestricted())<td>{{ $movement->branch_name }}</td>@endif
-                                <td>{{ ['stock_received' => 'Stock Received', 'stock_issued' => 'Stock Released', 'stock_returned' => 'Stock Returned', 'damaged' => 'Damaged or Lost', 'stock_count' => 'Stock Counted'][$movement->movement_type] ?? ucwords(str_replace('_', ' ', $movement->movement_type)) }}</td>
+                                <td>{{ \App\Support\StockMovements::label($movement->movement_type) }}</td>
+                                @if (in_array($movement->movement_type, ['job_used', 'job_damaged'], true))
+                                {{-- Used on a job: the items left the stock when they were released, so this line only records where they went. --}}
+                                <td style="color: var(--text-muted);">—</td>
+                                @else
                                 <td style="font-weight: 700; color: {{ $movement->quantity_change >= 0 ? 'var(--success)' : 'var(--danger)' }};">{{ $movement->quantity_change >= 0 ? '+' : '' }}{{ $movement->quantity_change }}</td>
+                                @endif
                                 <td>{{ $movement->balance_after }}</td>
+                                <td>{{ $movement->employee_name ?? '—' }}</td>
+                                <td>{{ \App\Support\StockMovements::target($movement->client_name ?? null, $movement->client_code ?? null, $movement->nap_box_name ?? null) ?? '—' }}</td>
                                 <td>{{ $movement->performed_by_name ?: 'System' }}</td>
                                 <td style="max-width: 260px;">{{ $movement->remarks ?: '—' }}</td>
                             </tr>
                             @empty
-                            <tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2rem;">No stock updates recorded yet.</td></tr>
+                            <tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 2rem;">No stock updates recorded yet.</td></tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -252,7 +264,7 @@
                         <label class="form-label">Category *</label>
                         <select name="category_select" class="form-input" id="categorySelect" required onchange="toggleCustomCategory()">
                             <option value="">Select Category</option>
-                            @foreach ($categories as $cat)
+                            @foreach ($modalCategories as $cat)
                             <option value="{{ htmlspecialchars($cat) }}">{{ htmlspecialchars($cat) }}</option>
                             @endforeach
                             <option value="__other__">Other (add new category)</option>

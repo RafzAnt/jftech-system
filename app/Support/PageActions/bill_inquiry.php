@@ -15,6 +15,8 @@ $paymentToken = session('client_record_payment_token') ?? (string) \Illuminate\S
 session(['client_record_payment_token' => $paymentToken]);
 $paymentSuccess = '';
 $paymentError = '';
+// The branch admin records the payments of their branch's clients; the super admin only sees the bills and the payments.
+$canRecordPayments = auth()->user()?->canRecordPayments() ?? false;
 
 $selectedClient = null;
 $bills = [];
@@ -103,6 +105,7 @@ if ($request->isMethod('post') && $request->has('client_action') && $request->ha
 
 // Record a payment from the Client Records payment modal.
 if ($request->isMethod('post') && $request->has('record_payment')) {
+    abort_unless($canRecordPayments, 403);
     try {
         $data = $request->validate([
             'client_id' => ['required', 'integer', 'exists:clients,id'],

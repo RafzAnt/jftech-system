@@ -14,11 +14,10 @@ $today = now()->toDateString();
 $revenueStart = now()->startOfYear()->toDateString();
 $revenueEnd = now()->startOfYear()->addYear()->toDateString();
 
-// A branch admin always sees their own branch. The super admin sees every branch,
-// or one branch when picked in the branch selector.
+// A branch admin always sees their own branch. The super admin sees every branch
+// (a ?branch= query still narrows it, but the page no longer offers a selector).
 $branch = \App\Support\BranchScope::resolve($request->query('branch'));
 $branchScopeLabel = $branch === null ? 'All branches' : $branch;
-$dashboardBranches = array_keys(config('bohol_branches', []));
 [$clientScope, $clientScopeParams] = \App\Support\BranchScope::clients($branch, 'c');
 [$billScope, $billScopeParams] = \App\Support\BranchScope::viaClient($branch, 'b.client_id');
 [$paymentScope, $paymentScopeParams] = \App\Support\BranchScope::viaClient($branch, 'p.client_id');

@@ -5,6 +5,7 @@ use App\Http\Controllers\ApiController;
 use App\Http\Controllers\EmployeeApiController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\InventoryController;
+use App\Http\Controllers\NapBoxPhotoController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\PriceManagementController;
 use App\Http\Controllers\InventoryRequestController;
@@ -82,6 +83,7 @@ Route::prefix('backend/api')->middleware('throttle:api')->group(function () {
         Route::get('clients_search.php', [EmployeeApiController::class, 'clientsSearch']);
         Route::get('nap_boxes.php', [EmployeeApiController::class, 'napBoxes']);
         Route::get('nap_box.php', [EmployeeApiController::class, 'napBox']);
+        Route::get('nap_box_photo.php', [EmployeeApiController::class, 'napBoxPhoto']);
         Route::get('work_requests.php', [EmployeeApiController::class, 'workRequests']);
         Route::get('work_request.php', [EmployeeApiController::class, 'workRequest']);
         Route::post('work_request_create.php', [EmployeeApiController::class, 'workRequestCreate']);
@@ -112,6 +114,9 @@ Route::middleware(['auth', 'inactivity', 'role:super_admin,admin'])->group(funct
     Route::post('/inventory-requests/{inventoryRequest}/{decision}', [InventoryRequestController::class, 'decide'])
         ->whereIn('decision', ['approve', 'deny'])
         ->name('inventory-requests.decide');
+
+    // The photo of a NAP box (the controller limits a branch admin to their own branch).
+    Route::get('/nap-boxes/{box}/photo', [NapBoxPhotoController::class, 'show'])->whereNumber('box')->name('nap-boxes.photo');
 
     // Price Management: every branch sees the plans, only the super admin changes them.
     Route::get('/price-management', [PriceManagementController::class, 'index'])->name('price.management');

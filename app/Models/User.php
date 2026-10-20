@@ -21,4 +21,7 @@ class User extends Authenticatable
 
     /** Clients are registered by the branch that serves them; the super admin only looks at them. */
     public function canRegisterClients(): bool { return $this->isBranchAdmin(); }
+
+    /** Payments are recorded by the branch that serves the client; the super admin only looks at the bills and payments. */
+    public function canRecordPayments(): bool { return $this->isBranchAdmin(); }
 }
