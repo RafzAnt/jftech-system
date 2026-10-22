@@ -36,7 +36,7 @@ if ($to) {
 if ($where) {
     $sql .= ' WHERE ' . implode(' AND ', $where);
 }
-$sql .= ' ORDER BY p.payment_date DESC';
+$sql .= ' ORDER BY p.payment_date DESC, p.id DESC';
 
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);

@@ -59,7 +59,8 @@ class ClientAccountsFilterTest extends TestCase
 
     public function test_branch_filter_limits_clients(): void
     {
-        $this->assertSame([1, 2], $this->ids(['branch' => 'Balilihan']));
+        // Newest client first.
+        $this->assertSame([2, 1], $this->ids(['branch' => 'Balilihan']));
         $this->assertSame([3], $this->ids(['branch' => 'Loon']));
     }
 
@@ -67,7 +68,7 @@ class ClientAccountsFilterTest extends TestCase
     {
         $this->assertSame([2], $this->ids(['branch' => 'Balilihan', 'barangays' => ['Boyog Sur']]));
         // Barangays only count when they belong to the selected branch.
-        $this->assertSame([1, 2, 3], $this->ids(['barangays' => ['Boyog Sur']]));
+        $this->assertSame([3, 2, 1], $this->ids(['barangays' => ['Boyog Sur']]));
     }
 
     public function test_search_matches_name_code_mobile_branch_and_barangay_and_respects_filters(): void

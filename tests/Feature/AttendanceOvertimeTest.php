@@ -385,7 +385,7 @@ class AttendanceOvertimeTest extends TestCase
         $this->assertStringContainsString('QR-BALILIHAN', $html);
         $this->assertStringNotContainsString('QR-LOON', $html, "another branch's code is not shown");
         $this->assertStringContainsString('Generate Overtime QR', $html);
-        $this->assertStringContainsString('Only for Balilihan.', $html);
+        $this->assertStringNotContainsString('Only for Balilihan.', $html, 'no explanatory note under the QR code');
         $this->assertStringContainsString('id="printOvertimeQr"', $html);
         $this->assertStringContainsString('Overtime · Balilihan', $html);
     }
@@ -413,7 +413,7 @@ class AttendanceOvertimeTest extends TestCase
         $html = $page->getContent();
 
         $this->assertSame(['Balilihan', 'Loon'], array_column($page->viewData('overtimeQrByBranch'), 'branch_name'));
-        $this->assertStringContainsString('Each branch admin makes the overtime QR code of their own branch.', $html);
+        $this->assertStringNotContainsString('Each branch admin makes the overtime QR code', $html, 'no explanatory note, just the list');
         $this->assertStringContainsString('<strong>Loon</strong>', $html);
         $this->assertStringNotContainsString('Generate Overtime QR', $html);
         $this->assertStringNotContainsString('id="overtimeQR"', $html, 'the super admin has no overtime code of their own');

@@ -258,7 +258,7 @@
                             <option value="{{ $itemName }}"></option>
                             @endforeach
                         </datalist>
-                        <small id="itemNameHelp" style="color: var(--text-muted);">Start typing to see common and existing item names.</small>
+                        <small id="itemNameHelp" style="color: var(--danger);"></small>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Category *</label>
@@ -274,7 +274,6 @@
                     <div class="form-group">
                         <label class="form-label" id="itemQuantityLabel">Starting Stock *</label>
                         <input type="number" name="quantity" class="form-input" id="itemQuantity" required min="0">
-                        <small id="itemQuantityHelp" style="display:none;color:var(--text-muted);">This amount will be added to the current stock and saved in the stock update history.</small>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Unit Price (₱)</label>
@@ -310,7 +309,6 @@
                     <div class="form-group"><label class="form-label" id="movementQuantityLabel">Quantity Received *</label><input type="number" name="quantity" id="movementQuantity" class="form-input" min="0" required></div>
                     <div class="form-group" style="grid-column:1/-1;"><label class="form-label">Reference No. / Notes *</label><textarea name="remarks" class="form-input" rows="3" required placeholder="Delivery receipt, job order, or reason for the stock update."></textarea></div>
                 </div>
-                <p style="margin:0;color:var(--text-muted);font-size:.8rem;">Each update changes the item stock and is saved in the history.</p>
                 <div style="display:flex;justify-content:flex-end;gap:1rem;margin-top:1rem;"><button type="button" class="btn btn-secondary" onclick="closeModal('stockMovementModal')">Cancel</button><button type="submit" class="btn btn-success">Save Stock Update</button></div>
             </form>
         </div>
@@ -357,7 +355,6 @@
         document.getElementById('itemQuantity').readOnly = false;
         document.getElementById('itemQuantity').classList.remove('calc-readonly');
         document.getElementById('itemQuantityLabel').textContent = 'Stock to Add';
-        document.getElementById('itemQuantityHelp').style.display = 'block';
         document.getElementById('itemPrice').value = item.unit_price;
         document.getElementById('itemReorder').value = item.reorder_level;
         document.getElementById('itemSupplier').value = item.supplier;
@@ -388,12 +385,10 @@
         document.getElementById('modalTitle').textContent = 'Add Item';
         document.getElementById('itemId').value = '';
         document.getElementById('itemAddQuantity').value = '0';
-        document.getElementById('itemNameHelp').textContent = 'Start typing to see common and existing item names.';
-        document.getElementById('itemNameHelp').style.color = 'var(--text-muted)';
+        document.getElementById('itemNameHelp').textContent = '';
         document.getElementById('itemQuantity').readOnly = false;
         document.getElementById('itemQuantity').classList.remove('calc-readonly');
         document.getElementById('itemQuantityLabel').textContent = 'Starting Stock *';
-        document.getElementById('itemQuantityHelp').style.display = 'none';
         toggleCustomCategory();
         openModal('inventoryModal');
     }
@@ -438,8 +433,7 @@
         input.setCustomValidity(duplicate ? 'This inventory item already exists.' : '');
         help.textContent = duplicate
             ? 'This item is already listed. Choose it from the suggestions or select Update Stock to add more.'
-            : 'Start typing to see common and existing item names.';
-        help.style.color = duplicate ? 'var(--danger)' : 'var(--text-muted)';
+            : '';
         saveButton.disabled = duplicate;
         return !duplicate;
     }

@@ -120,9 +120,16 @@ foreach ($employeeBranches as $branchOption) {
 if (!in_array($selectedListBranch, $employeeBranches, true)) {
     $selectedListBranch = '';
 }
-$listedEmployees = $selectedListBranch === ''
-    ? $employees
-    : array_values(array_filter($employees, static fn (array $employee): bool => strcasecmp((string) $employee['branch_name'], $selectedListBranch) === 0));
+// The table shows the newest hire first; $employees stays in name order for the dropdowns.
+$listEmployees = static function (array $employees) use ($selectedListBranch): array {
+    $listed = $selectedListBranch === ''
+        ? $employees
+        : array_values(array_filter($employees, static fn (array $employee): bool => strcasecmp((string) $employee['branch_name'], $selectedListBranch) === 0));
+    usort($listed, static fn (array $a, array $b): int => [(string) ($b['created_at'] ?? ''), (int) $b['id']] <=> [(string) ($a['created_at'] ?? ''), (int) $a['id']]);
+
+    return $listed;
+};
+$listedEmployees = $listEmployees($employees);
 
 // Get the selected date or month attendance view.
 $attendanceView = 'date';
@@ -377,7 +384,7 @@ if ($selectedAttendanceBranch !== '' && in_array($selectedAttendanceBranch, $emp
 $attendanceQuery .= " ORDER BY e.full_name";
 $stmt = $pdo->prepare($attendanceQuery);
 $stmt->execute($attendanceParams);
-$attendanceRecords = $stmt->fetchAll();
+$attendanceRecords = \App\Support\AttendanceOrder::latestFirst($stmt->fetchAll());
 
 // Get today's attendance count
 [$attendanceScope, $attendanceScopeParams] = \App\Support\BranchScope::attendance($scopeBranch, 'a');
@@ -568,6 +575,9 @@ if ($request->isMethod('post') && $request->has('save_employee')) {
         if ($contactNumber !== '' && ! preg_match('/^\d{11}$/', $contactNumber)) {
             throw new Exception('Mobile number must contain exactly 11 digits.');
         }
+        if (! $employeeId && blank($dateHired)) {
+            throw new Exception('Date hired is required for a new employee.');
+        }
 
         $pdo->beginTransaction();
 
@@ -589,6 +599,7 @@ if ($request->isMethod('post') && $request->has('save_employee')) {
         $stmt = $pdo->prepare($employeeListSql);
         $stmt->execute($employeeScopeParams);
         $employees = $stmt->fetchAll();
+        $listedEmployees = $listEmployees($employees);
     } catch (Exception $e) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
@@ -641,9 +652,9 @@ if ($request->isMethod('post') && $request->has('mark_absent')) {
         $success = 'Employee marked as absent for ' . $session . ' session!';
 
         // Refresh attendance records
-        $stmt = $pdo->prepare("SELECT a.*, e.full_name as employee_name, e.position FROM attendance a JOIN employees e ON a.employee_id = e.id WHERE a.attendance_date = ? ORDER BY a.morning_time_in DESC");
+        $stmt = $pdo->prepare("SELECT a.*, e.full_name as employee_name, e.position FROM attendance a JOIN employees e ON a.employee_id = e.id WHERE a.attendance_date = ?");
         $stmt->execute([$selectedDate]);
-        $attendanceRecords = $stmt->fetchAll();
+        $attendanceRecords = \App\Support\AttendanceOrder::latestFirst($stmt->fetchAll());
     } catch (Exception $e) {
         $error = 'Error: ' . $e->getMessage();
     }

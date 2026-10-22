@@ -30,7 +30,7 @@ if ($searchTerm) {
     $params[] = "%$searchTerm%";
 }
 
-$query .= " ORDER BY c.full_name ASC";
+$query .= " ORDER BY c.created_at DESC, c.id DESC";
 $stmt = $pdo->prepare($query);
 $stmt->execute($params);
 $clients = $stmt->fetchAll();

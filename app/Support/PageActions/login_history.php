@@ -27,7 +27,7 @@ if ($searchUser) {
     $params[] = "%$searchUser%";
 }
 
-$query .= " ORDER BY login_time DESC LIMIT 100";
+$query .= " ORDER BY login_time DESC, id DESC LIMIT 100";
 $stmt = $pdo->prepare($query);
 $stmt->execute($params);
 $loginHistory = $stmt->fetchAll();

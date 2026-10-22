@@ -203,13 +203,6 @@
                         <option value="{{ $choice['label'] }}"></option>
                         @endforeach
                     </datalist>
-                    <small class="form-help">
-                        @if (count($employeeChoices))
-                        Only employees without an account are listed. Their details come from Employees.
-                        @else
-                        Every active employee already has an account. Add the employee in Employees first.
-                        @endif
-                    </small>
                 </div>
                 <dl class="account-preview" id="createAccountPreview" hidden>
                     <div><dt>Name</dt><dd id="previewName"></dd></div>

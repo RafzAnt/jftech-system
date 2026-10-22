@@ -47,10 +47,10 @@ if ($selectedEnd) {
     $params[] = $selectedEnd;
 }
 
-$query .= " ORDER BY a.attendance_date DESC, a.morning_time_in DESC";
+$query .= " ORDER BY a.attendance_date DESC, a.id DESC";
 $stmt = $pdo->prepare($query);
 $stmt->execute($params);
-$attendanceRecords = $stmt->fetchAll();
+$attendanceRecords = \App\Support\AttendanceOrder::latestFirst($stmt->fetchAll());
 
 // Include today's active attendance QR codes in the printable report so staff
 // can scan them directly from the same printed attendance sheet.

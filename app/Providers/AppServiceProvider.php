@@ -26,7 +26,15 @@ class AppServiceProvider extends ServiceProvider
     {
         RateLimiter::for('login', function (Request $request): Limit {
             $username = strtolower(trim((string) $request->input('username', '')));
-            return Limit::perMinute(5)->by($username . '|' . $request->ip());
+            return Limit::perMinute(5)->by($username . '|' . $request->ip())->response(function (Request $request, array $headers) {
+                // Say so on the login form (and in JSON for the employee app) instead of a bare 429 page.
+                $message = 'Too many login attempts. Try again in ' . (int) ($headers['Retry-After'] ?? 60) . ' seconds.';
+                if ($request->is('backend/api/*') || $request->expectsJson()) {
+                    return response()->json(['message' => $message], 429, $headers);
+                }
+
+                return back()->withInput($request->only('username'))->withErrors(['username' => $message]);
+            });
         });
 
         RateLimiter::for('api', function (Request $request): Limit {

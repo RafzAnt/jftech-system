@@ -139,7 +139,6 @@
                                 </option>
                                 @endforeach
                             </select>
-                            <small style="display:block;margin-top:.4rem;color:var(--text-muted);">Changing the plan uses its current price. Saving other client details keeps the recorded installation price.</small>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Monthly Rate (₱)</label>

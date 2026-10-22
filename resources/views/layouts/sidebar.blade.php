@@ -202,25 +202,85 @@ document.querySelectorAll('[data-submenu-target]').forEach(function (toggle) {
         document.getElementById('logout-confirmation')?.close();
     });
 
-    // Browser-side timer gives an immediate logout at two minutes; the
-    // inactivity middleware independently enforces the same rule on server requests.
+    // Logs out after five minutes without a click, key, scroll or mouse move. The last-activity time is kept in
+    // localStorage so every open tab shares one clock (a quiet tab must not log out someone working in another),
+    // and a heartbeat tells the server about activity that never leaves the page, such as typing in a form;
+    // the inactivity middleware enforces the same five minutes on its side.
     (() => {
-        const timeoutMs = 2 * 60 * 1000;
         const logoutForm = document.getElementById('logout-form');
-        let timeoutId;
+        if (!logoutForm) return;
+
+        const timeoutMs = {{ \App\Http\Middleware\EnforceInactivityTimeout::TIMEOUT_SECONDS }} * 1000;
+        const heartbeatMs = 30 * 1000;
+        const storageKey = 'jftech-last-activity';
+        const csrfToken = logoutForm.querySelector('input[name="_token"]')?.value ?? '';
+        let lastActivity = Date.now();
+        let lastHeartbeat = lastActivity;
+        let heartbeatTimer = null;
+        let idleTimer = null;
+        let leaving = false;
+
+        const remember = (time) => {
+            lastActivity = time;
+            try { localStorage.setItem(storageKey, String(time)); } catch (error) { /* private mode: this tab keeps its own clock */ }
+        };
+
+        const lastActivityInAnyTab = () => {
+            try { return Math.max(lastActivity, Number(localStorage.getItem(storageKey)) || 0); } catch (error) { return lastActivity; }
+        };
+
+        const post = (url, body) => fetch(url, {
+            method: 'POST',
+            credentials: 'same-origin',
+            redirect: 'manual',
+            keepalive: true,
+            headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+            body,
+        });
+
+        const toLogin = () => window.location.replace('/?timeout=1');
 
         const logoutForInactivity = () => {
-            if (logoutForm) logoutForm.requestSubmit();
+            if (leaving) return;
+            leaving = true;
+            // A form submit would fail with "Page Expired" if the server already dropped the session (laptop asleep), so post it ourselves and go to the login page either way.
+            post(logoutForm.action, new URLSearchParams()).catch(() => {}).finally(toLogin);
         };
 
-        const resetInactivityTimer = () => {
-            window.clearTimeout(timeoutId);
-            timeoutId = window.setTimeout(logoutForInactivity, timeoutMs);
+        const checkIdle = () => {
+            window.clearTimeout(idleTimer);
+            const idleFor = Date.now() - lastActivityInAnyTab();
+            if (idleFor >= timeoutMs) return logoutForInactivity();
+            idleTimer = window.setTimeout(checkIdle, timeoutMs - idleFor);
         };
 
-        ['pointerdown', 'keydown', 'scroll', 'touchstart'].forEach((eventName) => {
-            window.addEventListener(eventName, resetInactivityTimer, { passive: true });
+        const heartbeat = () => {
+            heartbeatTimer = null;
+            lastHeartbeat = Date.now();
+            const idle = Math.floor((lastHeartbeat - lastActivityInAnyTab()) / 1000);
+            post('{{ route('session.keepalive') }}', new URLSearchParams({ idle: String(idle) }))
+                // 401 or a 419 "Page Expired" means the session is gone; a redirect (type "opaqueredirect") is the login page.
+                .then((response) => { if (response.type === 'opaqueredirect' || response.status === 401 || response.status === 419) toLogin(); })
+                .catch(() => {});
+        };
+
+        const onActivity = () => {
+            const now = Date.now();
+            if (leaving || now - lastActivity < 1000) return;
+            // Coming back to a tab that sat idle past the limit (or woke from sleep) logs out instead of reviving the session.
+            if (now - lastActivityInAnyTab() >= timeoutMs) return logoutForInactivity();
+            remember(now);
+            if (!heartbeatTimer) heartbeatTimer = window.setTimeout(heartbeat, Math.max(0, heartbeatMs - (now - lastHeartbeat)));
+        };
+
+        ['pointerdown', 'pointermove', 'keydown', 'wheel', 'touchstart', 'scroll'].forEach((eventName) => {
+            // Capture so scrolling inside a panel counts too (scroll events do not bubble).
+            window.addEventListener(eventName, onActivity, { capture: true, passive: true });
         });
-        resetInactivityTimer();
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) checkIdle(); });
+
+        // Opening a page is a request, so it counts as activity.
+        remember(lastActivity);
+        checkIdle();
     })();
 </script>

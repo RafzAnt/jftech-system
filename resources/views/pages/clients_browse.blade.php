@@ -229,13 +229,11 @@
                         <label class="form-label" for="registerBarangay">Barangay *</label>
                         <input type="text" name="registered_barangay_name" id="registerBarangay" class="form-input" placeholder="Select a branch first" autocomplete="off" required value="{{ old('registered_barangay_name') }}" aria-autocomplete="list" aria-controls="registerBarangaySuggestions" aria-expanded="false" disabled>
                         <div id="registerBarangaySuggestions" class="location-suggestions" role="listbox" hidden></div>
-                        <small id="registerBarangayHelp" class="location-input-help" aria-live="polite">Type and select a branch to see barangay suggestions.</small>
                     </div>
                     <div class="form-group location-field">
                         <label class="form-label" for="registerExactAddress">House No. / Street / Purok / Sitio *</label>
                         <input type="text" name="exact_address" id="registerExactAddress" class="form-input" placeholder="Purok 1, Sitio name" autocomplete="off" aria-autocomplete="list" aria-controls="registerAddressSuggestions" aria-expanded="false" required value="{{ old('exact_address') }}">
                         <div id="registerAddressSuggestions" class="location-suggestions" role="listbox" hidden></div>
-                        <small id="registerAddressHelp" class="location-input-help" aria-live="polite">Choose a purok or type a sitio name.</small>
                     </div>
                 </div>
                 <div style="display:flex;gap:1rem;justify-content:flex-end;margin-top:1rem;">
@@ -294,7 +292,6 @@
     const branchInput = document.getElementById('registerBranch');
     const barangayInput = document.getElementById('registerBarangay');
     const barangaySuggestions = document.getElementById('registerBarangaySuggestions');
-    const barangayHelp = document.getElementById('registerBarangayHelp');
     const addressInput = document.getElementById('registerExactAddress');
     const addressSuggestions = document.getElementById('registerAddressSuggestions');
     const oldBranchValue = branchInput.value.trim();
@@ -353,7 +350,6 @@
             barangayInput.value = '';
             barangayInput.disabled = true;
             barangayInput.placeholder = 'Select a branch first';
-            barangayHelp.textContent = 'Type and select a branch to see barangay suggestions.';
             return;
         }
 
@@ -371,9 +367,6 @@
         }
         barangayInput.disabled = availableBarangays.length === 0;
         barangayInput.placeholder = availableBarangays.length ? 'Type a barangay name' : 'No barangays listed';
-        barangayHelp.textContent = availableBarangays.length
-            ? `Barangays in ${branch.name}. Type one letter to see suggestions.`
-            : `No barangays listed for ${branch.name}.`;
     }
 
     function closeAddressSuggestions() {

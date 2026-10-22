@@ -292,7 +292,6 @@
                             <option value="{{ $stockItem['id'] }}" {{ $stockItem['quantity'] < 1 ? 'disabled' : '' }}>{{ $stockItem['item_name'] }} — {{ $stockItem['quantity'] }} in stock</option>
                             @endforeach
                         </select>
-                        <small style="color: var(--text-muted);">Installing a NAP box takes one unit out of your inventory.</small>
                         @else
                         <p style="margin: 0; color: var(--warning);" id="boxNoStock">There is no NAP Box in your stock. <a href="inventory.php">Add an item in Inventory</a> with the category "{{ \App\Support\NapBoxes::STOCK_CATEGORY }}" first.</p>
                         @endif
@@ -316,7 +315,6 @@
                         <label id="boxPhotoRemoveGroup" class="nap-photo-remove" hidden>
                             <input type="checkbox" name="remove_photo" value="1" id="boxPhotoRemove" onchange="document.getElementById('boxPhotoPreview').hidden = this.checked"> Remove the current photo
                         </label>
-                        <small style="color: var(--text-muted);">So the technician can recognise the box on the pole. The picture is made smaller before it is saved.</small>
                     </div>
                 </div>
                 <div style="display:flex;gap:1rem;justify-content:flex-end;flex-wrap:wrap;">

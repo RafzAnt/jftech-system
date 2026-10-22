@@ -83,8 +83,8 @@ final class NapBoxes
                     ->orWhereRaw("LOWER(COALESCE(location, '')) LIKE LOWER(?)", [$like])
                     ->orWhereRaw('LOWER(barangay_name) LIKE LOWER(?)', [$like]);
             }))
-            ->orderBy('barangay_name')
-            ->orderBy('name')
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
             ->get();
 
         $result = self::withCounts($boxes->all(), self::reservedPorts($branch === '' ? null : $branch));

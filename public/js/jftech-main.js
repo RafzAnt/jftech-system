@@ -225,8 +225,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (form && form.classList.contains('was-validated')) validationMessage(field);
     });
 
-    // Auto-hide alerts after 5 seconds
-    const alerts = document.querySelectorAll('.alert');
+    // Auto-hide alerts after 5 seconds (data-persist keeps one on screen, e.g. the login error)
+    const alerts = document.querySelectorAll('.alert:not([data-persist])');
     alerts.forEach(alert => {
         setTimeout(() => {
             alert.style.opacity = '0';

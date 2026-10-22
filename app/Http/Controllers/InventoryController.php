@@ -23,8 +23,8 @@ class InventoryController extends Controller
             ->selectRaw("COALESCE((SELECT SUM(requests.quantity) FROM inventory_requests AS requests WHERE requests.inventory_id = inventory.id AND requests.status = 'pending' AND requests.request_type = 'out'), 0) AS reserved_quantity")
             ->selectRaw("GREATEST(inventory.quantity - COALESCE((SELECT SUM(requests.quantity) FROM inventory_requests AS requests WHERE requests.inventory_id = inventory.id AND requests.status = 'pending' AND requests.request_type = 'out'), 0), 0) AS available_quantity")
             ->where('archived', (int) $showArchived)
-            ->orderBy('category')
-            ->orderBy('item_name')
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
             ->get()
             ->map(fn ($item) => $item->toArray())
             ->all();
@@ -45,6 +45,7 @@ class InventoryController extends Controller
             ->addSelect('movement.*', 'item.item_name', 'item.category', 'item.branch_name', 'user.full_name as performed_by_name')
             ->when($filterCategory, fn ($query) => $query->where('item.category', $filterCategory))
             ->latest('movement.created_at')
+            ->orderByDesc('movement.id')
             ->limit(100)
             ->get();
 

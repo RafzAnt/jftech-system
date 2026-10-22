@@ -327,7 +327,6 @@
             <input type="hidden" name="reason" id="deactivateReasonInput" value="Set inactive manually">
             <div style="margin-bottom: 1.5rem;">
                 <p style="color: var(--text-secondary);">Set this price as inactive for <strong id="deactivateProductName"></strong>?</p>
-                <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.5rem;">This will mark the price as inactive. The change will be saved in the price history.</p>
             </div>
             <div class="form-group">
                 <label class="form-label">Reason</label>

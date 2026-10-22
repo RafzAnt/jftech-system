@@ -70,7 +70,6 @@
                         <div class="form-group">
                             <label class="form-label">Currency</label>
                             <input type="text" name="settings[currency]" class="form-input" value="{{ $settings['currency']['setting_value'] ?? 'PHP' }}">
-                            <small style="color:var(--text-muted);">Use PHP for the Philippine peso.</small>
                         </div>
                     </div>
                     @if($canEditSettings)<div class="settings-form-actions"><button type="submit" class="btn btn-primary">Save Settings</button></div>@endif
@@ -83,16 +82,15 @@
                 <span class="card-title">Payroll Computation</span>
             </div>
             <div class="card-body">
-                <p style="margin:0 0 1rem;color:var(--text-muted);font-size:.85rem;">Pay is worked out from each employee’s daily rate and attendance. Late is deducted and overtime is added by the minute from the hourly rate (daily rate ÷ working hours). SSS, PhilHealth and Pag-IBIG are the employee’s monthly share from the contribution tables, divided by the payrolls in a month. The admin reviews each payroll and marks it paid when the pay is released.</p>
                 <form method="POST" action="" class="settings-form">
                     <fieldset{{ $canEditSettings ? '' : ' disabled' }} style="border:0;padding:0;margin:0;min-width:0;">
                     @csrf
                     <input type="hidden" name="update_settings" value="1">
                     <div class="form-grid">
-                        <div class="form-group"><label class="form-label">Working days in a month</label><input type="number" name="settings[payroll_days_per_month]" class="form-input" step="1" min="1" max="31" value="{{ $settings['payroll_days_per_month']['setting_value'] ?? '24' }}"><small style="color:var(--text-muted);">Monthly salary = daily rate × this.</small></div>
-                        <div class="form-group"><label class="form-label">Payrolls in a month</label><input type="number" name="settings[payroll_weeks_per_month]" class="form-input" step="1" min="1" max="5" value="{{ $settings['payroll_weeks_per_month']['setting_value'] ?? '4' }}"><small style="color:var(--text-muted);">Each contribution is the monthly share ÷ this.</small></div>
-                        <div class="form-group"><label class="form-label">Working hours in a day</label><input type="number" name="settings[payroll_hours_per_day]" class="form-input" step="0.5" min="1" max="24" value="{{ $settings['payroll_hours_per_day']['setting_value'] ?? '8' }}"><small style="color:var(--text-muted);">Hourly rate = daily rate ÷ this.</small></div>
-                        <div class="form-group"><label class="form-label">Overtime multiplier</label><input type="number" name="settings[payroll_overtime_rate]" class="form-input" step="0.01" min="1" max="3" value="{{ $settings['payroll_overtime_rate']['setting_value'] ?? '1.25' }}"><small style="color:var(--text-muted);">Overtime pay = hourly rate × this × hours.</small></div>
+                        <div class="form-group"><label class="form-label">Working days in a month</label><input type="number" name="settings[payroll_days_per_month]" class="form-input" step="1" min="1" max="31" value="{{ $settings['payroll_days_per_month']['setting_value'] ?? '24' }}"></div>
+                        <div class="form-group"><label class="form-label">Payrolls in a month</label><input type="number" name="settings[payroll_weeks_per_month]" class="form-input" step="1" min="1" max="5" value="{{ $settings['payroll_weeks_per_month']['setting_value'] ?? '4' }}"></div>
+                        <div class="form-group"><label class="form-label">Working hours in a day</label><input type="number" name="settings[payroll_hours_per_day]" class="form-input" step="0.5" min="1" max="24" value="{{ $settings['payroll_hours_per_day']['setting_value'] ?? '8' }}"></div>
+                        <div class="form-group"><label class="form-label">Overtime multiplier</label><input type="number" name="settings[payroll_overtime_rate]" class="form-input" step="0.01" min="1" max="3" value="{{ $settings['payroll_overtime_rate']['setting_value'] ?? '1.25' }}"></div>
                     </div>
                     @if($canEditSettings)<div class="settings-form-actions"><button type="submit" class="btn btn-primary">Save Payroll Rules</button></div>@endif
                 </fieldset></form>
@@ -180,12 +178,10 @@
                                 <input type="time" id="overtimeEndTime" name="settings[qr_overtime_end]" class="form-input" value="{{ substr($settings['qr_overtime_end']['setting_value'] ?? '22:00', 0, 5) }}">
                                 <button type="button" class="time-picker-button" onclick="openTimePicker('overtimeEndTime')" aria-label="Choose overtime QR end time"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><path d="M12 8v4l3 2"></path></svg></button>
                             </div>
-                            <small style="color: var(--text-muted);">Employees can scan the overtime QR code between these times, once to start the overtime and once to end it.</small>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Mark as Late After (minutes)</label>
                             <input type="number" name="settings[late_threshold_minutes]" class="form-input" value="{{ $settings['late_threshold_minutes']['setting_value'] ?? '30' }}" min="1" max="120">
-                            <small style="color: var(--text-muted);">Status stays blank until this many minutes after the session starts. It becomes absent after the session ends when there is no time in or time out.</small>
                         </div>
                     </div>
                     @if($canEditSettings)<div class="settings-form-actions"><button type="submit" class="btn btn-primary">Save Time Settings</button></div>@endif

@@ -203,7 +203,6 @@ $overtimeQR = null;
                                     @else
                                     <p style="color: var(--warning);">No active QR code</p>
                                     @endif
-                                    <p style="margin-top: 0.5rem; font-size: 0.75rem; color: var(--text-muted);">Only for {{ $overtimeQrBranch }}. Generate it on the days your branch approves overtime.</p>
                                     <form method="POST" action="?tab=attendance" style="margin-top: 0.75rem;">
             @csrf
                                         <input type="hidden" name="qr_type" value="overtime">
@@ -211,7 +210,6 @@ $overtimeQR = null;
                                     </form>
                                 @else
                                     {{-- The super admin does not make overtime codes; it sees which branches have one today. --}}
-                                    <p style="font-size: 0.8rem; color: var(--text-muted);">Each branch admin makes the overtime QR code of their own branch.</p>
                                     @if ($overtimeQrByBranch)
                                     <ul class="overtime-qr-branches" style="list-style: none; margin: 0.75rem 0 0; padding: 0; font-size: 0.8rem;">
                                         @foreach ($overtimeQrByBranch as $branchQr)
@@ -371,7 +369,6 @@ $overtimeQR = null;
             </div>
             <form method="POST" action="?tab=attendance">
                 @csrf
-                <p style="margin: 0 0 1rem; color: var(--text-muted); font-size: 0.85rem;">Record attendance by hand when an employee could not scan the QR code. Saving a day that already has a record updates the sessions you fill in. "Auto" sets Present or Late from the time in.@if (\App\Support\BranchScope::isRestricted()) Attendance for Admin employees is recorded by the super admin.@endif</p>
                 <div class="form-grid">
                     <div class="form-group">
                         <label class="form-label" for="manualEmployee">Employee *</label>
@@ -413,7 +410,7 @@ $overtimeQR = null;
                 </div>
                 @endforeach
                 <div class="manual-session" data-session="overtime">
-                    <div class="manual-session__title">Overtime <small>after the afternoon session; the minutes go to the payroll</small></div>
+                    <div class="manual-session__title">Overtime</div>
                     <div class="form-grid manual-session__grid">
                         <div class="form-group">
                             <label class="form-label" for="manual_overtime_in">Overtime in</label>
@@ -473,7 +470,6 @@ $overtimeQR = null;
                             <option value="{{ $position }}">{{ $position }}</option>
                             @endforeach
                         </select>
-                        <small style="color: var(--text-muted);">{{ $canAssignAdminPosition ? 'The super admin adds Admin employees only. Branch admins add the technicians of their branch.' : 'You add the technicians of your branch. The super admin adds Admin employees.' }}</small>
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="empBranch">Branch *</label>
@@ -495,12 +491,11 @@ $overtimeQR = null;
                     </div>
                     <div class="form-group">
                         <label class="form-label">Daily Rate (₱)</label>
-                        <input type="number" name="daily_rate" class="form-input" id="empDailyRate" step="0.01" readonly aria-describedby="dailyRateHelp">
-                        <small id="dailyRateHelp" style="color: var(--text-muted);">Set automatically from the selected position.</small>
+                        <input type="number" name="daily_rate" class="form-input" id="empDailyRate" step="0.01" readonly>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Date Hired</label>
-                        <input type="date" name="date_hired" class="form-input" id="empDateHired">
+                        <label class="form-label" for="empDateHired">Date Hired <span id="empDateHiredStar">*</span></label>
+                        <input type="date" name="date_hired" class="form-input" id="empDateHired" required>
                     </div>
                 </div>
                 <div class="form-group">
@@ -579,6 +574,12 @@ $overtimeQR = null;
     document.addEventListener('DOMContentLoaded', openManualAttendance);
     @endif
 
+    // A new employee needs a date hired; an older record that never had one can still be edited without it.
+    function setDateHiredRequired(isRequired) {
+        document.getElementById('empDateHired').required = isRequired;
+        document.getElementById('empDateHiredStar').hidden = !isRequired;
+    }
+
     function openEmployeeModal() {
         document.getElementById('modalTitle').textContent = 'Add Employee';
         document.getElementById('employeeId').value = '';
@@ -594,6 +595,7 @@ $overtimeQR = null;
         document.getElementById('empEmail').value = '';
         syncPositionRate();
         document.getElementById('empDateHired').value = '';
+        setDateHiredRequired(true);
         document.getElementById('empAddress').value = '';
         openModal('employeeModal');
     }
@@ -631,6 +633,7 @@ $overtimeQR = null;
         document.getElementById('empEmail').value = emp.email;
         syncPositionRate();
         document.getElementById('empDateHired').value = emp.date_hired;
+        setDateHiredRequired(false);
         document.getElementById('empAddress').value = emp.address;
         openModal('employeeModal');
     }

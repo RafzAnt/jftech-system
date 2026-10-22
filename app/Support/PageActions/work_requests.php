@@ -57,7 +57,7 @@ return function (Request $request): array {
             abort_unless(WorkRequestService::detail($id, null, $branch), 404);
             $adminId = (int) auth()->id();
             $remarks = (string) $request->input('remarks', '');
-
+  
             switch ((string) $request->input('action')) {
                 case 'approve':
                     WorkRequestService::approve($id, $adminId, $remarks);

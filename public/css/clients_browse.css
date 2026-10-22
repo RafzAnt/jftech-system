@@ -338,13 +338,6 @@
     padding: 0.5rem 0;
 }
 
-.location-input-help {
-    display: block;
-    margin-top: 0.35rem;
-    color: var(--text-muted);
-    font-size: 0.75rem;
-}
-
 .client-filter-controls {
     display: grid;
     grid-template-columns: minmax(170px, 1fr) minmax(170px, 1fr) minmax(220px, 1.3fr) auto;

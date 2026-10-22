@@ -177,6 +177,19 @@ html[data-theme="dark"] .corporate-login-card {
     box-shadow: 0 0 0 4px var(--accent-glow);
 }
 
+/* Wrong username or password: both fields go red, matching the "Invalid" message above. */
+.field-control.is-invalid input {
+    border-color: var(--danger) !important;
+}
+
+.field-control.is-invalid input:focus {
+    box-shadow: 0 0 0 4px var(--danger-soft);
+}
+
+.field-control.is-invalid .field-icon {
+    stroke: var(--danger);
+}
+
 .field-icon {
     position: absolute;
     z-index: 1;
@@ -263,7 +276,8 @@ html[data-theme="dark"] .corporate-login-card {
     stroke-width: 2;
 }
 
-.alert.alert-danger {
+.alert.alert-danger,
+.alert.alert-info {
     width: 100%;
     max-width: 330px;
     margin: 0 auto 1.25rem;

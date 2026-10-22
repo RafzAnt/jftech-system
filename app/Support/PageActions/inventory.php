@@ -42,7 +42,7 @@ function ensureInventoryTable(PDO $pdo): void
 
 function loadInventoryData(PDO $pdo, bool $showArchived): array
 {
-    $stmt = $pdo->prepare("SELECT * FROM inventory WHERE archived = ? ORDER BY category, item_name");
+    $stmt = $pdo->prepare("SELECT * FROM inventory WHERE archived = ? ORDER BY created_at DESC, id DESC");
     $stmt->execute([$showArchived ? 1 : 0]);
     $inventoryItems = $stmt->fetchAll();
     $categories = array_unique(array_filter(array_column($inventoryItems, 'category')));

@@ -93,6 +93,7 @@ Route::prefix('backend/api')->middleware('throttle:api')->group(function () {
         Route::get('transactions.php', [EmployeeApiController::class, 'transactions']);
     });
 });
+Route::post('/session/keepalive', [AuthController::class, 'keepAlive'])->middleware(['auth', 'inactivity'])->name('session.keepalive');
 Route::post('/logout', [AuthController::class, 'destroy'])->middleware('auth')->name('logout');
 Route::post('/pages/logout.php', [AuthController::class, 'destroy'])->middleware('auth');
 

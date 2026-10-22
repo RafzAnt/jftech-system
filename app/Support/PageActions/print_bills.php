@@ -40,7 +40,7 @@ if ($selectedEnd) {
     $params[] = $selectedEnd;
 }
 
-$query .= " ORDER BY b.billing_period_start DESC, b.due_date DESC";
+$query .= " ORDER BY b.billing_period_start DESC, b.due_date DESC, b.id DESC";
 $stmt = $pdo->prepare($query);
 $stmt->execute($params);
 $bills = $stmt->fetchAll();

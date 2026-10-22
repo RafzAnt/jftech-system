@@ -188,7 +188,7 @@ if ($request->has('client_id') && $request->query('client_id')) {
              LEFT JOIN bills b ON p.bill_id = b.id
              LEFT JOIN users u ON p.received_by = u.id
              WHERE p.client_id = ?
-             ORDER BY p.payment_date DESC");
+             ORDER BY p.payment_date DESC, p.id DESC");
         $stmt->execute([$request->query('client_id')]);
         $payments = $stmt->fetchAll();
 
@@ -209,13 +209,13 @@ if ($request->has('client_id') && $request->query('client_id')) {
 // Search clients. Branch, barangay, and search terms can be used together.
 $searchResults = [];
 if ($searchTerm !== '') {
-    $stmt = $pdo->prepare('SELECT c.*, COALESCE(c.registered_barangay_name, b.barangay_name) AS barangay_name FROM clients c LEFT JOIN barangays b ON c.barangay_id = b.id WHERE ' . $archivedSql . $locationSql . $searchSql . $overdueSql . ' ORDER BY c.full_name LIMIT 20');
+    $stmt = $pdo->prepare('SELECT c.*, COALESCE(c.registered_barangay_name, b.barangay_name) AS barangay_name FROM clients c LEFT JOIN barangays b ON c.barangay_id = b.id WHERE ' . $archivedSql . $locationSql . $searchSql . $overdueSql . ' ORDER BY c.id DESC LIMIT 20');
     $stmt->execute([...$locationParams, ...$searchParams]);
     $searchResults = $stmt->fetchAll();
 }
 
 // Get clients for quick select, optionally limited to a branch and barangays.
-$stmt = $pdo->prepare('SELECT c.id, c.full_name, c.contact_number, c.email, c.wifi_plan, c.status, c.branch_name, COALESCE(c.registered_barangay_name, b.barangay_name) AS barangay_name FROM clients c LEFT JOIN barangays b ON c.barangay_id = b.id WHERE ' . $archivedSql . $locationSql . $overdueSql . ' ORDER BY c.full_name');
+$stmt = $pdo->prepare('SELECT c.id, c.full_name, c.contact_number, c.email, c.wifi_plan, c.status, c.branch_name, COALESCE(c.registered_barangay_name, b.barangay_name) AS barangay_name FROM clients c LEFT JOIN barangays b ON c.barangay_id = b.id WHERE ' . $archivedSql . $locationSql . $overdueSql . ' ORDER BY c.id DESC');
 $stmt->execute($locationParams);
 $allClients = $stmt->fetchAll();
 [$archivedScope, $archivedScopeParams] = \App\Support\BranchScope::clients($scopeBranch, 'c');

@@ -34,7 +34,7 @@ if ($searchTerm) {
     $params[] = "%$searchTerm%";
 }
 
-$query .= " ORDER BY category ASC, item_name ASC";
+$query .= " ORDER BY created_at DESC, id DESC";
 $stmt = $pdo->prepare($query);
 $stmt->execute($params);
 $inventoryItems = $stmt->fetchAll();

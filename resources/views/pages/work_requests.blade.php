@@ -181,7 +181,6 @@
                 </tbody>
             </table>
         </div>
-        <p style="color: var(--text-muted); margin-top: 0.5rem;">When you confirm, the returned items go back in stock and the used and damaged items are recorded in the stock history.</p>
         @else
         <p style="color: var(--text-muted);">No materials were reported.</p>
         @endif

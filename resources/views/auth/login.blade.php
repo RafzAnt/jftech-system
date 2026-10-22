@@ -34,24 +34,29 @@
                 <h2>Welcome back</h2>
                 <p>Log in to manage your business.</p>
             </div>
-            @if ($errors->any())
-                <div class="alert alert-danger" role="alert">{{ $errors->first() }}</div>
+            @php($notice = session('status') ?: (request()->boolean('timeout') ? 'You were logged out after 5 minutes of inactivity.' : null))
+            @if ($notice)
+                <div class="alert alert-info" role="status" data-persist>{{ $notice }}</div>
             @endif
+            @if ($errors->any())
+                <div class="alert alert-danger" role="alert" data-persist>{{ $errors->first() }}</div>
+            @endif
+            @php($invalid = session('invalid_credentials', false))
 
             <form method="POST" action="{{ route('login.store') }}" class="corporate-login-form">
                 @csrf
                 <div class="form-group">
                     <label for="username">Username</label>
-                    <div class="field-control">
+                    <div class="field-control{{ $invalid ? ' is-invalid' : '' }}">
                         <svg class="field-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.25"/><path d="M5.5 19.5c.8-3.1 3.1-4.7 6.5-4.7s5.7 1.6 6.5 4.7"/></svg>
-                        <input id="username" name="username" type="text" value="{{ old('username') }}" required autofocus autocomplete="username">
+                        <input id="username" name="username" type="text" value="{{ old('username') }}" required autofocus autocomplete="username"@if ($invalid) aria-invalid="true"@endif>
                     </div>
                 </div>
                 <div class="form-group">
                     <label for="password">Password</label>
-                    <div class="field-control">
+                    <div class="field-control{{ $invalid ? ' is-invalid' : '' }}">
                         <svg class="field-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7.5a4 4 0 0 1 8 0V10"/></svg>
-                        <input id="password" name="password" type="password" required autocomplete="current-password">
+                        <input id="password" name="password" type="password" required autocomplete="current-password"@if ($invalid) aria-invalid="true"@endif>
                         <button class="password-toggle" type="button" aria-label="Show password" aria-pressed="false">
                             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-5 9.5-5 9.5 5 9.5 5-3.5 5-9.5 5-9.5-5-9.5-5Z"/><circle cx="12" cy="12" r="2.5"/></svg>
                         </button>

@@ -177,7 +177,7 @@ class PeriodReport
                 'clients.client_code', 'clients.full_name AS client_name',
                 DB::raw('(SELECT COALESCE(SUM(p.amount), 0) FROM payments p WHERE p.bill_id = bills.id) AS received')
             )
-            ->orderBy('clients.full_name')->orderBy('bills.billing_period_start')->orderBy('bills.id')
+            ->orderByDesc('bills.billing_period_start')->orderByDesc('bills.id')
             ->get()
             ->map(function ($row) {
                 $row = (array) $row;
@@ -194,14 +194,14 @@ class PeriodReport
             ->leftJoin('bills', 'bills.id', '=', 'payments.bill_id'), $clientScope)
             ->whereBetween('payments.payment_date', [$start, $end])
             ->select('payments.payment_date', 'payments.payment_method', 'payments.reference_number', 'payments.amount', 'clients.client_code', 'clients.full_name AS client_name', 'bills.bill_number')
-            ->orderBy('payments.payment_date')->orderBy('payments.id')
+            ->orderByDesc('payments.payment_date')->orderByDesc('payments.id')
             ->get()
             ->map(fn ($row) => ['amount' => (float) $row->amount] + (array) $row)->all();
 
         $clients = self::inBranch(DB::table('clients'), $clientScope)
             ->whereBetween('clients.installation_date', [$start, $end])
             ->select('clients.client_code', 'clients.full_name', 'clients.branch_name', 'clients.registered_barangay_name', 'clients.wifi_plan', 'clients.monthly_rate', 'clients.installation_date')
-            ->orderBy('clients.installation_date')->orderBy('clients.id')
+            ->orderByDesc('clients.installation_date')->orderByDesc('clients.id')
             ->get()
             ->map(fn ($row) => ['monthly_rate' => (float) $row->monthly_rate] + (array) $row)->all();
 
@@ -217,7 +217,7 @@ class PeriodReport
                 COALESCE(SUM(CASE WHEN attendance.status_morning = 'absent' AND attendance.status_afternoon = 'absent' THEN 1 ELSE 0 END), 0) AS absent,
                 COALESCE(SUM(attendance.total_hours), 0) AS hours
             ")
-            ->orderBy('employees.full_name')
+            ->orderByRaw('MAX(attendance.attendance_date) DESC')->orderBy('employees.full_name')
             ->get()
             ->map(fn ($row) => [
                 'employee_code' => $row->employee_code, 'full_name' => $row->full_name, 'position' => $row->position,
@@ -229,7 +229,7 @@ class PeriodReport
             ->where('payroll.archived', 0)
             ->whereBetween('payroll.payroll_period_end', [$start, $end])
             ->select('employees.employee_code', 'employees.full_name', 'employees.position', 'payroll.payroll_period_start', 'payroll.payroll_period_end', 'payroll.total_days_worked', 'payroll.gross_pay', 'payroll.deductions', 'payroll.net_pay', 'payroll.status')
-            ->orderBy('employees.full_name')->orderBy('payroll.payroll_period_start')->orderBy('payroll.id')
+            ->orderByDesc('payroll.payroll_period_end')->orderByDesc('payroll.id')
             ->get()
             ->map(fn ($row) => (array) $row)->all();
 
@@ -237,7 +237,7 @@ class PeriodReport
         $requests = $branch !== null ? null : DB::table('inventory_requests')
             ->whereDate('created_at', '>=', $start)->whereDate('created_at', '<=', $end)
             ->select('created_at', 'employee_name', 'item_name', 'quantity', 'status')
-            ->orderBy('created_at')->orderBy('id')
+            ->orderByDesc('created_at')->orderByDesc('id')
             ->get()
             ->map(fn ($row) => (array) $row)->all();
 

@@ -136,7 +136,7 @@
                             <td><strong>{{ $row['client_name'] }}</strong> <small class="report-muted">{{ $row['client_code'] }}</small></td>
                             <td>{{ $row['bill_number'] ?: '—' }}</td>
                             <td>{{ ucwords(str_replace('_', ' ', $row['payment_method'])) }}</td>
-                            <td>{{ $row['reference_number'] ?: '—' }}</td>
+                            <td>{{ $row['referen ce_number'] ?: '—' }}</td>
                             <td class="num">{{ $peso($row['amount']) }}</td>
                         </tr>
                         @empty

@@ -23,7 +23,7 @@ class PriceManagementController extends Controller
         $plans = InternetPlan::query()->where('archived', (int) $showArchived)
             ->when($search, fn ($query) => $query->where('plan_name', 'like', "%{$search}%"))
             ->withCount(['clients as active_clients_count' => fn ($query) => $inBranch($query->where('status', 'active'))])
-            ->orderBy('monthly_price')->get();
+            ->orderByDesc('created_at')->orderByDesc('id')->get();
         $history = InternetPlanPriceHistory::query()->whereIn('internet_plan_id', $plans->pluck('id'))
             ->leftJoin('internet_plans', 'internet_plan_price_histories.internet_plan_id', '=', 'internet_plans.id')
             ->leftJoin('users', 'internet_plan_price_histories.changed_by', '=', 'users.id')

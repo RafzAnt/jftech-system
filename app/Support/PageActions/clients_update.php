@@ -33,7 +33,7 @@ $plans = $stmt->fetchAll();
 // Search clients
 if ($request->has('search') && $request->query('search')) {
     $search = '%' . $request->query('search') . '%';
-    $stmt = $pdo->prepare("SELECT c.*, COALESCE(c.registered_barangay_name, b.barangay_name) AS barangay_name FROM clients c LEFT JOIN barangays b ON c.barangay_id = b.id WHERE (c.full_name LIKE ? OR c.client_code LIKE ? OR c.contact_number LIKE ?)" . $branchScope . " ORDER BY c.full_name");
+    $stmt = $pdo->prepare("SELECT c.*, COALESCE(c.registered_barangay_name, b.barangay_name) AS barangay_name FROM clients c LEFT JOIN barangays b ON c.barangay_id = b.id WHERE (c.full_name LIKE ? OR c.client_code LIKE ? OR c.contact_number LIKE ?)" . $branchScope . " ORDER BY c.created_at DESC, c.id DESC");
     $stmt->execute([$search, $search, $search, ...$branchScopeParams]);
     $searchResults = $stmt->fetchAll();
 }

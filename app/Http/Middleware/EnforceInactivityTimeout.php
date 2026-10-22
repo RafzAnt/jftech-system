@@ -10,7 +10,8 @@ use Symfony\Component\HttpFoundation\Response;
 
 class EnforceInactivityTimeout
 {
-    private const TIMEOUT_SECONDS = 300;
+    // The sidebar script reads this too, so the browser and the server always count the same five minutes.
+    public const TIMEOUT_SECONDS = 300;
 
     public function handle(Request $request, Closure $next): Response
     {

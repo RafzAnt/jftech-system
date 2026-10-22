@@ -28,7 +28,7 @@ return function (\Illuminate\Http\Request $request): array {
                     $pdo->prepare("DELETE FROM clients WHERE id = ?")->execute([$cid]);
                 });
                 $success = 'Client permanently deleted.';
-            }
+            } 
         } catch (Exception $e) {
             $error = 'Error: ' . $e->getMessage();
         }
@@ -179,7 +179,7 @@ if ($showArchived) {
 
     // Attach billing & payment history per client
     $billStmt = $pdo->prepare("SELECT bill_number, billing_period_start, billing_period_end, amount, status FROM bills WHERE client_id = ? ORDER BY billing_period_start DESC LIMIT 10");
-    $payStmt = $pdo->prepare("SELECT p.payment_date, b.bill_number, p.amount, p.payment_method FROM payments p LEFT JOIN bills b ON p.bill_id = b.id WHERE p.client_id = ? ORDER BY p.payment_date DESC LIMIT 10");
+    $payStmt = $pdo->prepare("SELECT p.payment_date, b.bill_number, p.amount, p.payment_method FROM payments p LEFT JOIN bills b ON p.bill_id = b.id WHERE p.client_id = ? ORDER BY p.payment_date DESC, p.id DESC LIMIT 10");
 
     foreach ($clients as &$client) {
         $billStmt->execute([$client['id']]);

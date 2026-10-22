@@ -161,11 +161,24 @@ class BranchStaffPagesTest extends TestCase
         $this->signIn(2);
         $page = $this->page('employees', [], [
             'save_employee' => 1, 'first_name' => 'New', 'last_name' => 'Hire', 'position' => 'Technician I', 'branch_name' => 'Balilihan',
+            'date_hired' => '2026-10-01',
         ]);
 
         $this->assertStringStartsWith('Employee added successfully', $page['success']);
         $this->assertSame('Balilihan', DB::table('employees')->where('full_name', 'New Hire')->value('branch_name'));
         $this->assertSame([1, 3], $this->ids($page['employees']), 'the new employee is listed, Loon staff is not');
+    }
+
+    public function test_a_new_employee_cannot_be_saved_without_a_date_hired(): void
+    {
+        $this->signIn(2);
+        $page = $this->page('employees', [], [
+            'save_employee' => 1, 'first_name' => 'New', 'last_name' => 'Hire', 'position' => 'Technician I', 'branch_name' => 'Balilihan',
+            'date_hired' => '',
+        ]);
+
+        $this->assertSame('Error: Date hired is required for a new employee.', $page['error']);
+        $this->assertSame(0, DB::table('employees')->where('full_name', 'New Hire')->count());
     }
 
     public function test_a_branch_admin_is_not_offered_the_admin_position(): void
@@ -267,6 +280,7 @@ class BranchStaffPagesTest extends TestCase
         $this->signIn(1);
         $page = $this->page('employees', [], [
             'save_employee' => 1, 'first_name' => 'Gina', 'last_name' => 'Admin', 'position' => 'Admin', 'branch_name' => 'lOOn',
+            'date_hired' => '2026-10-01',
         ]);
 
         $this->assertStringStartsWith('Employee added successfully', $page['success']);
