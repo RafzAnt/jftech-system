@@ -165,6 +165,39 @@
                         </div>
                     </div>
 
+                    <div class="section-title">Installation Details</div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">Mode of Payment (MOP)</label>
+                            <select name="payment_mode" class="form-select">
+                                <option value="">Not set</option>
+                                @foreach (\App\Support\ClientRegistration::PAYMENT_MODES as $modeValue => $modeLabel)
+                                <option value="{{ $modeValue }}" {{ ($client['payment_mode'] ?? '') === $modeValue ? 'selected' : '' }}>{{ $modeLabel }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">IP Address</label>
+                            <input type="text" name="ip_address" class="form-input" maxlength="45" placeholder="192.168.1.20" value="{{ $client['ip_address'] ?? '' }}">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Facebook Account</label>
+                            <input type="text" name="facebook_account" class="form-input" maxlength="150" value="{{ $client['facebook_account'] ?? '' }}">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Google Coordinates</label>
+                            <input type="text" name="coordinates" class="form-input" maxlength="300" placeholder="9.6541, 124.1234" value="{{ \App\Support\Coordinates::format($client['latitude'] ?? null, $client['longitude'] ?? null) }}">
+                            @if ($mapUrl = \App\Support\Coordinates::mapUrl($client['latitude'] ?? null, $client['longitude'] ?? null))
+                            <small><a href="{{ $mapUrl }}" target="_blank" rel="noopener">Open in Google Maps</a></small>
+                            @endif
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">NAP Box / Port</label>
+                            <input type="text" class="form-input" value="{{ $clientNap ? $clientNap->box_name . ' · Port ' . $clientNap->port_number : 'Not connected yet' }}" readonly>
+                            <small style="color: var(--text-muted);">Connect or change it on the NAP Boxes page.</small>
+                        </div>
+                    </div>
+
 
                     <div style="display: flex; gap: 1rem; justify-content: flex-end; flex-wrap: wrap;">
                         <a href="clients_update.php" class="btn btn-secondary">Cancel</a>

@@ -26,11 +26,11 @@ if ($selectedEmployee) {
     $params[] = $selectedEmployee;
 }
 
-$selectedBranch = trim((string) $request->query('branch', ''));
-if ($selectedBranch !== '') {
-    $query .= " AND COALESCE(a.branch_name, e.branch_name) = ?";
-    $params[] = $selectedBranch;
-}
+// The same search box as the Attendance tab (a branch, a barangay or an employee); a branch admin's branch is always their own.
+$location = \App\Support\LocationFilter::fromRequest($request);
+[$locationSql, $locationParams] = \App\Support\LocationFilter::employeeConditions($location, 'e', ["NULLIF(a.branch_name, '')"]);
+$query .= $locationSql;
+array_push($params, ...$locationParams);
 
 if ($selectedDate && !$selectedStart && !$selectedEnd) {
     $query .= " AND a.attendance_date = ?";
@@ -75,13 +75,9 @@ $totalPresent = count(array_filter($attendanceRecords, function($a) { return $a[
 $totalLate = count(array_filter($attendanceRecords, function($a) { return $a['status_morning'] === 'late' || $a['status_afternoon'] === 'late'; }));
 $totalAbsent = count(array_filter($attendanceRecords, function($a) { return $a['status_morning'] === 'absent' && $a['status_afternoon'] === 'absent'; }));
 
-$periodLabel = '';
-if ($selectedStart && $selectedEnd) {
-    $periodLabel = date('M d, Y', strtotime($selectedStart)) . ' to ' . date('M d, Y', strtotime($selectedEnd));
-} elseif ($selectedDate) {
-    $periodLabel = date('M d, Y', strtotime($selectedDate));
-} else {
-    $periodLabel = 'All Dates';
-}
+// The same dates the query above used: the range when one is given, otherwise the single day, otherwise every date.
+$periodLabel = ($selectedStart || $selectedEnd)
+    ? \App\Support\ReportFormat::coverage($selectedStart, $selectedEnd)
+    : \App\Support\ReportFormat::coverage($selectedDate, $selectedDate);
     return get_defined_vars();
 };

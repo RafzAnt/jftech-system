@@ -1,6 +1,7 @@
 <?php
 
 use App\Support\BranchScope;
+use App\Support\Coordinates;
 use App\Support\NapBoxes;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -13,6 +14,7 @@ use Illuminate\Support\Facades\DB;
 return function (Request $request): array {
     $themeCssVersion = @filemtime(public_path('css/jftech-theme.css')) ?: 1;
     $napBoxesCssVersion = @filemtime(public_path('css/nap_boxes.css')) ?: 1;
+    $clientFilterCssVersion = @filemtime(public_path('css/client_filter.css')) ?: 1;
 
     $success = '';
     $error = '';
@@ -24,8 +26,8 @@ return function (Request $request): array {
     $branchBarangays = $ownBranch ? NapBoxes::barangaysOf($ownBranch) : [];
 
     $showArchived = $request->query('view') === 'archived';
-    $filterBarangay = trim((string) $request->query('barangay', ''));
-    $search = trim((string) $request->query('q', ''));
+    // The one search box: a branch, a barangay, a NAP box name or where it hangs (see LocationFilter).
+    $search = trim((string) $request->query('search', ''));
     $selectedBoxId = (int) $request->query('box', 0);
 
     // The branch admin's own box (404 for any other branch's box), or null.
@@ -68,6 +70,8 @@ return function (Request $request): array {
                 if ($totalPorts < 1 || $totalPorts > 96) {
                     throw new DomainException('A NAP box has 1 to 96 ports.');
                 }
+                // Where the box hangs, from Google Maps: the technicians and the next admin need to find it.
+                [$latitude, $longitude] = Coordinates::parse((string) $request->input('coordinates'), 'NAP box');
                 if (! in_array($status, ['active', 'inactive'], true)) {
                     $status = 'active';
                 }
@@ -82,10 +86,10 @@ return function (Request $request): array {
                     throw new DomainException("{$name} already exists in {$ownBranch}.");
                 }
 
-                DB::transaction(function () use ($box, $boxId, $ownBranch, $name, $barangay, $location, $totalPorts, $status, $request, $photoData): void {
+                DB::transaction(function () use ($box, $boxId, $ownBranch, $name, $barangay, $location, $totalPorts, $status, $request, $photoData, $latitude, $longitude): void {
                     if (! $box) {
                         // A new box is installed from the stock: it takes one NAP Box out of the branch's inventory.
-                        $newBoxId = NapBoxes::installFromStock($ownBranch, $name, $barangay, $location, $totalPorts, (int) $request->input('stock_item_id') ?: null, auth()->id());
+                        $newBoxId = NapBoxes::installFromStock($ownBranch, $name, $barangay, $location, $totalPorts, (int) $request->input('stock_item_id') ?: null, auth()->id(), $latitude, $longitude);
                         if ($photoData !== '') {
                             NapBoxes::savePhoto($newBoxId, $photoData);
                         }
@@ -96,10 +100,9 @@ return function (Request $request): array {
                     $current = (int) $box->total_ports;
                     if ($totalPorts < $current) {
                         // Only the highest-numbered ports can go, and only while nobody uses them.
-                        $reserved = NapBoxes::reservedPorts($ownBranch);
                         $doomed = DB::table('nap_ports')->where('nap_box_id', $boxId)->where('port_number', '>', $totalPorts)->get();
                         foreach ($doomed as $port) {
-                            if ($port->status === 'occupied' || isset($reserved[(int) $port->id])) {
+                            if ($port->status === 'occupied') {
                                 throw new DomainException("Port {$port->port_number} is in use, so the box cannot shrink to {$totalPorts} ports.");
                             }
                         }
@@ -108,7 +111,8 @@ return function (Request $request): array {
                         NapBoxes::addPorts($boxId, $current + 1, $totalPorts);
                     }
                     DB::table('nap_boxes')->where('id', $boxId)->update([
-                        'name' => $name, 'barangay_name' => $barangay, 'location' => $location, 'total_ports' => $totalPorts, 'status' => $status, 'updated_at' => now(),
+                        'name' => $name, 'barangay_name' => $barangay, 'location' => $location, 'latitude' => $latitude, 'longitude' => $longitude,
+                        'total_ports' => $totalPorts, 'status' => $status, 'updated_at' => now(),
                     ]);
                     if ($photoData !== '') {
                         NapBoxes::savePhoto($boxId, $photoData);
@@ -120,12 +124,8 @@ return function (Request $request): array {
             } elseif (in_array($action, ['archive_box', 'restore_box'], true)) {
                 $box = $ownBox((int) $request->input('box_id')) ?? abort(404);
                 if ($action === 'archive_box') {
-                    $reservedIds = array_keys(NapBoxes::reservedPorts($ownBranch));
-                    $busy = DB::table('nap_ports')->where('nap_box_id', $box->id)->where(function ($q) use ($reservedIds) {
-                        $q->where('status', 'occupied')->orWhereIn('id', $reservedIds ?: [0]);
-                    })->exists();
-                    if ($busy) {
-                        throw new DomainException("{$box->name} still has connected or reserved ports, so it cannot be archived.");
+                    if (DB::table('nap_ports')->where('nap_box_id', $box->id)->where('status', 'occupied')->exists()) {
+                        throw new DomainException("{$box->name} still has connected ports, so it cannot be archived.");
                     }
                 }
                 DB::table('nap_boxes')->where('id', $box->id)->update(['archived' => $action === 'archive_box', 'updated_at' => now()]);
@@ -136,13 +136,12 @@ return function (Request $request): array {
                     ->first(['nap_ports.*', 'nap_boxes.name as box_name']) ?? abort(404);
                 $selectedBoxId = (int) $port->nap_box_id;
                 $label = "{$port->box_name} port {$port->port_number}";
-                $reserved = NapBoxes::reservedPorts($ownBranch);
                 $do = (string) $request->input('do');
 
-                DB::transaction(function () use ($do, $port, $label, $reserved, $request, $ownBranch, &$success): void {
+                DB::transaction(function () use ($do, $port, $label, $request, $ownBranch, &$success): void {
                     $locked = DB::table('nap_ports')->where('id', $port->id)->lockForUpdate()->first();
                     if ($do === 'faulty') {
-                        if ($locked->status !== 'available' || isset($reserved[(int) $port->id])) {
+                        if ($locked->status !== 'available') {
                             throw new DomainException("{$label} is in use and cannot be marked faulty.");
                         }
                         DB::table('nap_ports')->where('id', $port->id)->update(['status' => 'faulty', 'updated_at' => now()]);
@@ -160,8 +159,11 @@ return function (Request $request): array {
                         DB::table('nap_ports')->where('id', $port->id)->update(['status' => 'available', 'client_id' => null, 'occupied_at' => null, 'updated_at' => now()]);
                         $success = "{$label} is free again.";
                     } elseif ($do === 'assign') {
-                        if ($locked->status !== 'available' || isset($reserved[(int) $port->id])) {
+                        if ($locked->status !== 'available') {
                             throw new DomainException("{$label} is not available.");
+                        }
+                        if (in_array((int) $port->id, NapBoxes::reservedPortIds(), true)) {
+                            throw new DomainException("{$label} is used in an installation report that is waiting for you. Confirm that report in Installations instead.");
                         }
                         // The client is picked by typing, so the label is "Name — CODE".
                         $typed = trim((string) $request->input('client_label'));
@@ -186,7 +188,7 @@ return function (Request $request): array {
     }
 
     // The list of boxes (with counts) and the stats above it.
-    $boxes = NapBoxes::boxes($branch, $filterBarangay ?: null, $search, 'all', true, $showArchived);
+    $boxes = NapBoxes::boxes($branch, null, $search, 'all', true, $showArchived);
     $stats = [
         'boxes' => count($boxes),
         'ports' => array_sum(array_column($boxes, 'total_ports')),

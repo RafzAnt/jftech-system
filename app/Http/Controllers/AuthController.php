@@ -21,8 +21,9 @@ class AuthController extends Controller
             'username' => ['required', 'string', 'max:50'],
             'password' => ['required', 'string', 'max:255'],
         ]);
-        $user = User::where('username', $data['username'])->where('status', 'active')->first();
-        $passwordOk = $user && str_starts_with($user->password, '$2y$') && Hash::check($data['password'], $user->password);
+        $user = User::where('username', $data['username'])->first();
+        // An account that was switched off or archived is treated like one that does not exist.
+        $passwordOk = $user && $user->isActive() && str_starts_with($user->password, '$2y$') && Hash::check($data['password'], $user->password);
         // A branch admin without a branch would see nothing, so say why instead of showing empty pages.
         $noBranch = $passwordOk && $user->isBranchAdmin() && trim((string) $user->branch_name) === '';
         // The employee app accounts have no page here: letting them in only ends on a "403 Forbidden" page.

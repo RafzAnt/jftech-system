@@ -117,7 +117,16 @@ $statusClass = 'status-' . $req['status'];
                                         <span style="color: var(--text-muted);">-</span>
                                     @endif
                                 </td>
-                                <td><span class="status-badge {{ $statusClass }}">{{ ucfirst($req['status']) }}</span></td>
+                                <td>
+                                    <span class="status-badge {{ $statusClass }}">{{ ucfirst($req['status']) }}</span>
+                                    @if ($req['status'] === 'approved' && ($req['request_type'] ?? 'out') === 'out' && strcasecmp((string) ($req['area_used'] ?? ''), 'Installation') === 0)
+                                        <a href="installations.php?status={{ $req['installation_status'] === 'confirmed' ? 'confirmed' : 'submitted' }}" class="request-installation-note">
+                                            @if ($req['installation_status'] === 'confirmed')Installation confirmed
+                                            @elseif ($req['installation_status'] === 'submitted')Installation report waiting
+                                            @else Installation pending: no report yet @endif
+                                        </a>
+                                    @endif
+                                </td>
                                 <td>{{ date('M d, Y h:i A', strtotime($req['created_at'])) }}</td>
                                 <td style="font-size: 0.85rem; color: var(--text-secondary);">{{ $processedBy ?: '-' }}</td>
                                 <td class="actions-column">

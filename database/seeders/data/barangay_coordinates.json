@@ -1,0 +1,2301 @@
+{
+    "Albur": {
+        "Bahi": {
+            "lat": 9.6103538,
+            "lng": 123.9569048,
+            "precision": "town"
+        },
+        "Basacdacu": {
+            "lat": 9.6467834,
+            "lng": 123.9553459,
+            "precision": "barangay"
+        },
+        "Cantiguib": {
+            "lat": 9.6643476,
+            "lng": 123.9624202,
+            "precision": "barangay"
+        },
+        "Dangay": {
+            "lat": 9.6536778,
+            "lng": 123.9692203,
+            "precision": "barangay"
+        },
+        "East Poblacion": {
+            "lat": 9.6085277,
+            "lng": 123.9604327,
+            "precision": "barangay"
+        },
+        "Ponong": {
+            "lat": 9.6103538,
+            "lng": 123.9569048,
+            "precision": "town"
+        },
+        "San Agustin": {
+            "lat": 9.6103538,
+            "lng": 123.9569048,
+            "precision": "town"
+        },
+        "Santa Filomena": {
+            "lat": 9.6071671,
+            "lng": 123.969689,
+            "precision": "barangay"
+        },
+        "Tagbuane": {
+            "lat": 9.6103538,
+            "lng": 123.9569048,
+            "precision": "town"
+        },
+        "Toril": {
+            "lat": 9.6103538,
+            "lng": 123.9569048,
+            "precision": "town"
+        },
+        "West Poblacion": {
+            "lat": 9.6107055,
+            "lng": 123.9544051,
+            "precision": "barangay"
+        }
+    },
+    "Antequera": {
+        "Angilan": {
+            "lat": 9.7809304,
+            "lng": 123.8981433,
+            "precision": "town"
+        },
+        "Bantolinao": {
+            "lat": 9.7923702,
+            "lng": 123.9374581,
+            "precision": "barangay"
+        },
+        "Bicahan": {
+            "lat": 9.7923374,
+            "lng": 123.9233963,
+            "precision": "barangay"
+        },
+        "Bitaugan": {
+            "lat": 9.7648507,
+            "lng": 123.905435,
+            "precision": "barangay"
+        },
+        "Bungahan": {
+            "lat": 9.7751794,
+            "lng": 123.9171756,
+            "precision": "barangay"
+        },
+        "Can-omay": {
+            "lat": 9.7785937,
+            "lng": 123.9055642,
+            "precision": "barangay"
+        },
+        "Canlaas": {
+            "lat": 9.8122658,
+            "lng": 123.8828073,
+            "precision": "barangay"
+        },
+        "Cansibuan": {
+            "lat": 9.8053618,
+            "lng": 123.8768577,
+            "precision": "barangay"
+        },
+        "Celing": {
+            "lat": 9.7809304,
+            "lng": 123.8981433,
+            "precision": "town"
+        },
+        "Danao": {
+            "lat": 9.796668,
+            "lng": 123.9063742,
+            "precision": "barangay"
+        },
+        "Danicop": {
+            "lat": 9.7809304,
+            "lng": 123.8981433,
+            "precision": "town"
+        },
+        "Mag-aso": {
+            "lat": 9.7809304,
+            "lng": 123.8981433,
+            "precision": "town"
+        },
+        "Poblacion": {
+            "lat": 9.7843438,
+            "lng": 123.8975054,
+            "precision": "barangay"
+        },
+        "Quinapon-an": {
+            "lat": 9.8278775,
+            "lng": 123.9018446,
+            "precision": "barangay"
+        },
+        "Santo Rosario": {
+            "lat": 9.7809304,
+            "lng": 123.8981433,
+            "precision": "town"
+        },
+        "Tabuan": {
+            "lat": 9.7809304,
+            "lng": 123.8981433,
+            "precision": "town"
+        },
+        "Tagubaas": {
+            "lat": 9.7809304,
+            "lng": 123.8981433,
+            "precision": "town"
+        },
+        "Tupas": {
+            "lat": 9.7577324,
+            "lng": 123.9168625,
+            "precision": "barangay"
+        },
+        "Ubojan": {
+            "lat": 9.7809304,
+            "lng": 123.8981433,
+            "precision": "town"
+        },
+        "Viga": {
+            "lat": 9.7654893,
+            "lng": 123.9292601,
+            "precision": "barangay"
+        },
+        "Villa Aurora": {
+            "lat": 9.7751784,
+            "lng": 123.8877234,
+            "precision": "barangay"
+        }
+    },
+    "Baclayon": {
+        "Buenaventura": {
+            "lat": 9.6221823,
+            "lng": 123.9131571,
+            "precision": "town"
+        },
+        "Cambanac": {
+            "lat": 9.6352057,
+            "lng": 123.9392921,
+            "precision": "barangay"
+        },
+        "Dasitam": {
+            "lat": 9.6221823,
+            "lng": 123.9131571,
+            "precision": "town"
+        },
+        "Guiwanon": {
+            "lat": 9.6221823,
+            "lng": 123.9131571,
+            "precision": "town"
+        },
+        "Landican": {
+            "lat": 9.6221823,
+            "lng": 123.9131571,
+            "precision": "town"
+        },
+        "Laya": {
+            "lat": 9.6179968,
+            "lng": 123.9287362,
+            "precision": "barangay"
+        },
+        "Libertad": {
+            "lat": 9.6221823,
+            "lng": 123.9131571,
+            "precision": "town"
+        },
+        "Montana": {
+            "lat": 9.6221823,
+            "lng": 123.9131571,
+            "precision": "town"
+        },
+        "Pamilacan": {
+            "lat": 9.6221823,
+            "lng": 123.9131571,
+            "precision": "town"
+        },
+        "Payahan": {
+            "lat": 9.6221823,
+            "lng": 123.9131571,
+            "precision": "town"
+        },
+        "Poblacion": {
+            "lat": 9.622429,
+            "lng": 123.9114428,
+            "precision": "barangay"
+        },
+        "San Isidro": {
+            "lat": 9.6221823,
+            "lng": 123.9131571,
+            "precision": "town"
+        },
+        "San Roque": {
+            "lat": 9.6221823,
+            "lng": 123.9131571,
+            "precision": "town"
+        },
+        "San Vicente": {
+            "lat": 9.625051,
+            "lng": 123.90739,
+            "precision": "barangay"
+        },
+        "Santa Cruz": {
+            "lat": 9.6221823,
+            "lng": 123.9131571,
+            "precision": "town"
+        },
+        "Taguihon": {
+            "lat": 9.6221823,
+            "lng": 123.9131571,
+            "precision": "town"
+        },
+        "Tanday": {
+            "lat": 9.6568209,
+            "lng": 123.9240298,
+            "precision": "barangay"
+        }
+    },
+    "Balilihan": {
+        "Baucan Norte": {
+            "lat": 9.7469098,
+            "lng": 123.9937324,
+            "precision": "barangay"
+        },
+        "Baucan Sur": {
+            "lat": 9.745931,
+            "lng": 123.9880121,
+            "precision": "barangay"
+        },
+        "Boctol": {
+            "lat": 9.7682059,
+            "lng": 123.9930662,
+            "precision": "barangay"
+        },
+        "Boyog Norte": {
+            "lat": 9.756499,
+            "lng": 123.9728153,
+            "precision": "town"
+        },
+        "Boyog Proper": {
+            "lat": 9.756499,
+            "lng": 123.9728153,
+            "precision": "town"
+        },
+        "Boyog Sur": {
+            "lat": 9.756499,
+            "lng": 123.9728153,
+            "precision": "town"
+        },
+        "Cabudburan": {
+            "lat": 9.756499,
+            "lng": 123.9728153,
+            "precision": "town"
+        },
+        "Candasig": {
+            "lat": 9.756499,
+            "lng": 123.9728153,
+            "precision": "town"
+        },
+        "Cantalid": {
+            "lat": 9.756499,
+            "lng": 123.9728153,
+            "precision": "town"
+        },
+        "Cantomimbo": {
+            "lat": 9.7973161,
+            "lng": 123.9763044,
+            "precision": "barangay"
+        },
+        "Cogon": {
+            "lat": 9.756499,
+            "lng": 123.9728153,
+            "precision": "town"
+        },
+        "Datag Norte": {
+            "lat": 9.756499,
+            "lng": 123.9728153,
+            "precision": "town"
+        },
+        "Datag Sur": {
+            "lat": 9.756499,
+            "lng": 123.9728153,
+            "precision": "town"
+        },
+        "Del Carmen Este": {
+            "lat": 9.756499,
+            "lng": 123.9728153,
+            "precision": "town"
+        },
+        "Del Carmen Norte": {
+            "lat": 9.756499,
+            "lng": 123.9728153,
+            "precision": "town"
+        },
+        "Del Carmen Sur": {
+            "lat": 9.756499,
+            "lng": 123.9728153,
+            "precision": "town"
+        },
+        "Del Carmen Weste": {
+            "lat": 9.7563876,
+            "lng": 123.9702249,
+            "precision": "barangay"
+        },
+        "Del Rosario": {
+            "lat": 9.756499,
+            "lng": 123.9728153,
+            "precision": "town"
+        },
+        "Dorol": {
+            "lat": 9.756499,
+            "lng": 123.9728153,
+            "precision": "town"
+        },
+        "Haguilanan Grande": {
+            "lat": 9.756499,
+            "lng": 123.9728153,
+            "precision": "town"
+        },
+        "Hanopol Este": {
+            "lat": 9.7934644,
+            "lng": 124.0484748,
+            "precision": "barangay"
+        },
+        "Hanopol Norte": {
+            "lat": 9.756499,
+            "lng": 123.9728153,
+            "precision": "town"
+        },
+        "Hanopol Weste": {
+            "lat": 9.756499,
+            "lng": 123.9728153,
+            "precision": "town"
+        },
+        "Magsija": {
+            "lat": 9.7386301,
+            "lng": 123.9514256,
+            "precision": "barangay"
+        },
+        "Maslog": {
+            "lat": 9.756499,
+            "lng": 123.9728153,
+            "precision": "town"
+        },
+        "Sagasa": {
+            "lat": 9.7924169,
+            "lng": 123.9879327,
+            "precision": "barangay"
+        },
+        "Sal-ing": {
+            "lat": 9.777745,
+            "lng": 123.977432,
+            "precision": "barangay"
+        },
+        "San Isidro": {
+            "lat": 9.7882398,
+            "lng": 123.9960122,
+            "precision": "barangay"
+        },
+        "San Roque": {
+            "lat": 9.7885244,
+            "lng": 123.9966422,
+            "precision": "barangay"
+        },
+        "Santa Cruz": {
+            "lat": 9.756499,
+            "lng": 123.9728153,
+            "precision": "town"
+        },
+        "Santo Niño": {
+            "lat": 9.7914298,
+            "lng": 124.0475253,
+            "precision": "barangay"
+        },
+        "Tagustusan": {
+            "lat": 9.756499,
+            "lng": 123.9728153,
+            "precision": "town"
+        }
+    },
+    "Batuan": {
+        "Aloja": {
+            "lat": 9.8212178,
+            "lng": 124.1145725,
+            "precision": "barangay"
+        },
+        "Behind The Clouds": {
+            "lat": 9.7840762,
+            "lng": 124.1491353,
+            "precision": "town"
+        },
+        "Cabacnitan": {
+            "lat": 9.7543815,
+            "lng": 124.1747394,
+            "precision": "barangay"
+        },
+        "Cambacay": {
+            "lat": 9.8071309,
+            "lng": 124.1200869,
+            "precision": "barangay"
+        },
+        "Cantigdas": {
+            "lat": 9.787283,
+            "lng": 124.1371447,
+            "precision": "barangay"
+        },
+        "Garcia": {
+            "lat": 9.7840762,
+            "lng": 124.1491353,
+            "precision": "town"
+        },
+        "Janlud": {
+            "lat": 9.7974961,
+            "lng": 124.1160893,
+            "precision": "barangay"
+        },
+        "Poblacion Norte": {
+            "lat": 9.7876215,
+            "lng": 124.1497905,
+            "precision": "barangay"
+        },
+        "Poblacion Sur": {
+            "lat": 9.7748427,
+            "lng": 124.1448628,
+            "precision": "barangay"
+        },
+        "Poblacion Vieja": {
+            "lat": 9.7997585,
+            "lng": 124.1357231,
+            "precision": "barangay"
+        },
+        "Quezon": {
+            "lat": 9.7686163,
+            "lng": 124.1633973,
+            "precision": "barangay"
+        },
+        "Quirino": {
+            "lat": 9.7886257,
+            "lng": 124.129613,
+            "precision": "barangay"
+        },
+        "Rizal": {
+            "lat": 9.7840762,
+            "lng": 124.1491353,
+            "precision": "town"
+        },
+        "Rosariohan": {
+            "lat": 9.7840762,
+            "lng": 124.1491353,
+            "precision": "town"
+        },
+        "Santa Cruz": {
+            "lat": 9.7840762,
+            "lng": 124.1491353,
+            "precision": "town"
+        }
+    },
+    "Bilar": {
+        "Bonifacio": {
+            "lat": 9.7718093,
+            "lng": 124.116898,
+            "precision": "barangay"
+        },
+        "Bugang Norte": {
+            "lat": 9.7622316,
+            "lng": 124.1508872,
+            "precision": "barangay"
+        },
+        "Bugang Sur": {
+            "lat": 9.756979,
+            "lng": 124.1340809,
+            "precision": "barangay"
+        },
+        "Cabacnitan": {
+            "lat": 9.7069602,
+            "lng": 124.1044253,
+            "precision": "town"
+        },
+        "Cambigsi": {
+            "lat": 9.7416417,
+            "lng": 124.160985,
+            "precision": "barangay"
+        },
+        "Campagao": {
+            "lat": 9.7386936,
+            "lng": 124.1193817,
+            "precision": "barangay"
+        },
+        "Cansumbol": {
+            "lat": 9.7413568,
+            "lng": 124.1264525,
+            "precision": "barangay"
+        },
+        "Dagohoy": {
+            "lat": 9.7069602,
+            "lng": 124.1044253,
+            "precision": "town"
+        },
+        "Owac": {
+            "lat": 9.6812917,
+            "lng": 124.1112548,
+            "precision": "barangay"
+        },
+        "Poblacion": {
+            "lat": 9.7026491,
+            "lng": 124.1032814,
+            "precision": "barangay"
+        },
+        "Quezon": {
+            "lat": 9.7069602,
+            "lng": 124.1044253,
+            "precision": "town"
+        },
+        "Riverside": {
+            "lat": 9.7093764,
+            "lng": 124.1119656,
+            "precision": "barangay"
+        },
+        "Rizal": {
+            "lat": 9.6617616,
+            "lng": 124.1242593,
+            "precision": "barangay"
+        },
+        "Roxas": {
+            "lat": 9.7118132,
+            "lng": 124.0994383,
+            "precision": "barangay"
+        },
+        "Subayon": {
+            "lat": 9.6678217,
+            "lng": 124.1036292,
+            "precision": "barangay"
+        },
+        "Villa Aurora": {
+            "lat": 9.6783241,
+            "lng": 124.0949991,
+            "precision": "barangay"
+        },
+        "Villa Suerte": {
+            "lat": 9.7008542,
+            "lng": 124.1762462,
+            "precision": "barangay"
+        },
+        "Yanaya": {
+            "lat": 9.6933399,
+            "lng": 124.1065235,
+            "precision": "barangay"
+        },
+        "Zamora": {
+            "lat": 9.719091,
+            "lng": 124.112811,
+            "precision": "barangay"
+        }
+    },
+    "Carmen": {
+        "Alegria": {
+            "lat": 9.824334,
+            "lng": 124.1983784,
+            "precision": "town"
+        },
+        "Bicao": {
+            "lat": 9.8329327,
+            "lng": 124.2537349,
+            "precision": "barangay"
+        },
+        "Buenavista": {
+            "lat": 9.824334,
+            "lng": 124.1983784,
+            "precision": "town"
+        },
+        "Buenos Aires": {
+            "lat": 9.7929938,
+            "lng": 124.1671474,
+            "precision": "barangay"
+        },
+        "Calatrava": {
+            "lat": 9.9034588,
+            "lng": 124.1504474,
+            "precision": "barangay"
+        },
+        "El Progreso": {
+            "lat": 9.8235453,
+            "lng": 124.1958475,
+            "precision": "barangay"
+        },
+        "El Salvador": {
+            "lat": 9.824334,
+            "lng": 124.1983784,
+            "precision": "town"
+        },
+        "Guadalupe": {
+            "lat": 9.8079255,
+            "lng": 124.2099935,
+            "precision": "barangay"
+        },
+        "Katipunan": {
+            "lat": 9.824334,
+            "lng": 124.1983784,
+            "precision": "town"
+        },
+        "La Libertad": {
+            "lat": 9.8091457,
+            "lng": 124.1937699,
+            "precision": "barangay"
+        },
+        "La Paz": {
+            "lat": 9.8145197,
+            "lng": 124.1779638,
+            "precision": "barangay"
+        },
+        "La Salvacion": {
+            "lat": 9.824334,
+            "lng": 124.1983784,
+            "precision": "town"
+        },
+        "La Victoria": {
+            "lat": 9.875161,
+            "lng": 124.1289126,
+            "precision": "barangay"
+        },
+        "Matin-ao": {
+            "lat": 9.8895964,
+            "lng": 124.1534629,
+            "precision": "barangay"
+        },
+        "Montehermoso": {
+            "lat": 9.7633941,
+            "lng": 124.2288919,
+            "precision": "barangay"
+        },
+        "Montesuerte": {
+            "lat": 9.8766357,
+            "lng": 124.1973768,
+            "precision": "barangay"
+        },
+        "Montesunting": {
+            "lat": 9.7870209,
+            "lng": 124.206722,
+            "precision": "barangay"
+        },
+        "Montevideo": {
+            "lat": 9.7769316,
+            "lng": 124.2151072,
+            "precision": "barangay"
+        },
+        "Nueva Fuerza": {
+            "lat": 9.8413328,
+            "lng": 124.1630821,
+            "precision": "barangay"
+        },
+        "Nueva Vida Este": {
+            "lat": 9.7703322,
+            "lng": 124.1996839,
+            "precision": "barangay"
+        },
+        "Nueva Vida Norte": {
+            "lat": 9.787797,
+            "lng": 124.1901509,
+            "precision": "barangay"
+        },
+        "Nueva Vida Sur": {
+            "lat": 9.7726564,
+            "lng": 124.1831815,
+            "precision": "barangay"
+        },
+        "Poblacion Norte": {
+            "lat": 9.8238948,
+            "lng": 124.1993376,
+            "precision": "barangay"
+        },
+        "Poblacion Sur": {
+            "lat": 9.8170296,
+            "lng": 124.195171,
+            "precision": "barangay"
+        },
+        "Tambo-an": {
+            "lat": 9.8066076,
+            "lng": 124.1647927,
+            "precision": "barangay"
+        },
+        "Vallehermoso": {
+            "lat": 9.7960529,
+            "lng": 124.2387199,
+            "precision": "barangay"
+        },
+        "Villaflor": {
+            "lat": 9.8485616,
+            "lng": 124.1443098,
+            "precision": "barangay"
+        },
+        "Villafuerte": {
+            "lat": 9.824334,
+            "lng": 124.1983784,
+            "precision": "town"
+        },
+        "Villarcayo": {
+            "lat": 9.8318713,
+            "lng": 124.1826925,
+            "precision": "barangay"
+        }
+    },
+    "Catigbian": {
+        "Alegria": {
+            "error": true
+        },
+        "Ambuan": {
+            "error": true
+        },
+        "Baang": {
+            "error": true
+        },
+        "Bagtic": {
+            "error": true
+        },
+        "Bongbong": {
+            "error": true
+        },
+        "Cambailan": {
+            "error": true
+        },
+        "Candumayao": {
+            "error": true
+        },
+        "Causwagan Norte": {
+            "error": true
+        },
+        "Hagbuaya": {
+            "error": true
+        },
+        "Haguilanan": {
+            "error": true
+        },
+        "Kang-iras": {
+            "error": true
+        },
+        "Libertad Sur": {
+            "error": true
+        },
+        "Liboron": {
+            "error": true
+        },
+        "Mahayag Norte": {
+            "error": true
+        },
+        "Mahayag Sur": {
+            "error": true
+        },
+        "Maitum": {
+            "error": true
+        },
+        "Mantasida": {
+            "error": true
+        },
+        "Poblacion": {
+            "error": true
+        },
+        "Poblacion Weste": {
+            "error": true
+        },
+        "Rizal": {
+            "error": true
+        },
+        "Sinakayanan": {
+            "error": true
+        },
+        "Triple Union": {
+            "error": true
+        }
+    },
+    "Clarin": {
+        "Bacani": {
+            "lat": 9.9671126,
+            "lng": 124.0405173,
+            "precision": "barangay"
+        },
+        "Bogtongbod": {
+            "lat": 9.9626104,
+            "lng": 124.0244228,
+            "precision": "town"
+        },
+        "Bonbon": {
+            "lat": 9.9639581,
+            "lng": 124.0178212,
+            "precision": "barangay"
+        },
+        "Bontud": {
+            "lat": 9.9467755,
+            "lng": 124.0345607,
+            "precision": "barangay"
+        },
+        "Buacao": {
+            "lat": 9.9528388,
+            "lng": 124.0031069,
+            "precision": "barangay"
+        },
+        "Buangan": {
+            "lat": 9.9626104,
+            "lng": 124.0244228,
+            "precision": "town"
+        },
+        "Cabog": {
+            "lat": 9.9626104,
+            "lng": 124.0244228,
+            "precision": "town"
+        },
+        "Caboy": {
+            "lat": 9.9491957,
+            "lng": 124.0603959,
+            "precision": "barangay"
+        },
+        "Caluwasan": {
+            "lat": 9.9626104,
+            "lng": 124.0244228,
+            "precision": "town"
+        },
+        "Candajec": {
+            "lat": 9.9493975,
+            "lng": 124.0240177,
+            "precision": "barangay"
+        },
+        "Cantoyoc": {
+            "lat": 9.9645688,
+            "lng": 124.0605364,
+            "precision": "barangay"
+        },
+        "Comaang": {
+            "lat": 9.9643855,
+            "lng": 124.0345708,
+            "precision": "barangay"
+        },
+        "Danahao": {
+            "lat": 9.9626104,
+            "lng": 124.0244228,
+            "precision": "town"
+        },
+        "Katipunan": {
+            "lat": 9.9626104,
+            "lng": 124.0244228,
+            "precision": "town"
+        },
+        "Lajog": {
+            "lat": 9.9626104,
+            "lng": 124.0244228,
+            "precision": "town"
+        },
+        "Mataub": {
+            "lat": 9.9509261,
+            "lng": 124.0529662,
+            "precision": "barangay"
+        },
+        "Nahawan": {
+            "lat": 9.9692989,
+            "lng": 124.0489074,
+            "precision": "barangay"
+        },
+        "Poblacion Centro": {
+            "lat": 9.9621934,
+            "lng": 124.02623,
+            "precision": "barangay"
+        },
+        "Poblacion Norte": {
+            "lat": 9.9651186,
+            "lng": 124.0237998,
+            "precision": "barangay"
+        },
+        "Poblacion Sur": {
+            "lat": 9.9569363,
+            "lng": 124.02623,
+            "precision": "barangay"
+        },
+        "Tangaran": {
+            "lat": 9.9626104,
+            "lng": 124.0244228,
+            "precision": "town"
+        },
+        "Tontunan": {
+            "lat": 9.9626104,
+            "lng": 124.0244228,
+            "precision": "town"
+        },
+        "Tubod": {
+            "lat": 9.921374,
+            "lng": 124.0399195,
+            "precision": "barangay"
+        },
+        "Villaflor": {
+            "lat": 9.9536443,
+            "lng": 124.0655135,
+            "precision": "barangay"
+        }
+    },
+    "Cortes": {
+        "De la Paz": {
+            "lat": 9.6980949,
+            "lng": 123.8680521,
+            "precision": "barangay"
+        },
+        "Fatima": {
+            "lat": 9.7218266,
+            "lng": 123.8788576,
+            "precision": "town"
+        },
+        "Loreto": {
+            "lat": 9.7218266,
+            "lng": 123.8788576,
+            "precision": "town"
+        },
+        "Lourdes": {
+            "lat": 9.699653,
+            "lng": 123.8929322,
+            "precision": "barangay"
+        },
+        "Malayo Norte": {
+            "lat": 9.7218266,
+            "lng": 123.8788576,
+            "precision": "town"
+        },
+        "Malayo Sur": {
+            "lat": 9.7163539,
+            "lng": 123.8935733,
+            "precision": "barangay"
+        },
+        "Monserrat": {
+            "lat": 9.7345454,
+            "lng": 123.9226372,
+            "precision": "barangay"
+        },
+        "New Lourdes": {
+            "lat": 9.7218266,
+            "lng": 123.8788576,
+            "precision": "town"
+        },
+        "Patrocinio": {
+            "lat": 9.7300552,
+            "lng": 123.9408957,
+            "precision": "barangay"
+        },
+        "Poblacion": {
+            "lat": 9.7205313,
+            "lng": 123.8777011,
+            "precision": "barangay"
+        },
+        "Rosario": {
+            "lat": 9.7462373,
+            "lng": 123.9304376,
+            "precision": "barangay"
+        },
+        "Salvador": {
+            "lat": 9.7167874,
+            "lng": 123.8813209,
+            "precision": "barangay"
+        },
+        "San Roque": {
+            "lat": 9.7251653,
+            "lng": 123.9037093,
+            "precision": "barangay"
+        },
+        "Upper de la Paz": {
+            "lat": 9.7218266,
+            "lng": 123.8788576,
+            "precision": "town"
+        }
+    },
+    "Inabanga": {
+        "Anonang": {
+            "lat": 10.0177104,
+            "lng": 124.1333677,
+            "precision": "barangay"
+        },
+        "Badiang": {
+            "lat": 10.0023423,
+            "lng": 124.066204,
+            "precision": "barangay"
+        },
+        "Baguhan": {
+            "lat": 10.0308864,
+            "lng": 124.0656561,
+            "precision": "town"
+        },
+        "Bahan": {
+            "lat": 9.9537819,
+            "lng": 124.0954685,
+            "precision": "barangay"
+        },
+        "Banahao": {
+            "lat": 9.9698122,
+            "lng": 124.0907586,
+            "precision": "barangay"
+        },
+        "Baogo": {
+            "lat": 10.0338078,
+            "lng": 124.1094173,
+            "precision": "barangay"
+        },
+        "Bugang": {
+            "lat": 10.0308864,
+            "lng": 124.0656561,
+            "precision": "town"
+        },
+        "Cagawasan": {
+            "lat": 10.0045521,
+            "lng": 124.0609364,
+            "precision": "barangay"
+        },
+        "Cagayan": {
+            "lat": 10.0304751,
+            "lng": 124.0795363,
+            "precision": "barangay"
+        },
+        "Cambitoon": {
+            "lat": 9.9585584,
+            "lng": 124.1300368,
+            "precision": "barangay"
+        },
+        "Canlinte": {
+            "lat": 9.981244,
+            "lng": 124.1004186,
+            "precision": "barangay"
+        },
+        "Cawayan": {
+            "lat": 9.9918778,
+            "lng": 124.083192,
+            "precision": "barangay"
+        },
+        "Cogon": {
+            "lat": 10.0241469,
+            "lng": 124.069034,
+            "precision": "barangay"
+        },
+        "Cuaming": {
+            "lat": 10.1131568,
+            "lng": 123.9886702,
+            "precision": "barangay"
+        },
+        "Dagnawan": {
+            "lat": 9.9517002,
+            "lng": 124.1124093,
+            "precision": "barangay"
+        },
+        "Dagohoy": {
+            "lat": 9.9942616,
+            "lng": 124.0659994,
+            "precision": "barangay"
+        },
+        "Dait Sur": {
+            "lat": 10.039003,
+            "lng": 124.0961136,
+            "precision": "barangay"
+        },
+        "Datag": {
+            "lat": 9.9950131,
+            "lng": 124.1252035,
+            "precision": "barangay"
+        },
+        "Fatima": {
+            "lat": 10.0433001,
+            "lng": 124.0917959,
+            "precision": "barangay"
+        },
+        "Hambongan": {
+            "lat": 10.0701485,
+            "lng": 124.0236296,
+            "precision": "barangay"
+        },
+        "Ilaud": {
+            "lat": 10.0299026,
+            "lng": 124.0670026,
+            "precision": "barangay"
+        },
+        "Ilaya": {
+            "lat": 9.9961753,
+            "lng": 124.1316408,
+            "precision": "barangay"
+        },
+        "Ilihan": {
+            "lat": 9.9657143,
+            "lng": 124.0748485,
+            "precision": "barangay"
+        },
+        "Lapacan Norte": {
+            "lat": 10.0357006,
+            "lng": 124.1345627,
+            "precision": "barangay"
+        },
+        "Lapacan Sur": {
+            "lat": 10.040344,
+            "lng": 124.1160391,
+            "precision": "barangay"
+        },
+        "Lawis": {
+            "lat": 10.0654736,
+            "lng": 124.0626092,
+            "precision": "barangay"
+        },
+        "Liloan Norte": {
+            "lat": 10.0146036,
+            "lng": 124.105396,
+            "precision": "barangay"
+        },
+        "Liloan Sur": {
+            "lat": 10.0126904,
+            "lng": 124.0968801,
+            "precision": "barangay"
+        },
+        "Lomboy": {
+            "lat": 10.0308864,
+            "lng": 124.0656561,
+            "precision": "town"
+        },
+        "Lonoy Cainsican": {
+            "lat": 10.0023541,
+            "lng": 124.0851693,
+            "precision": "barangay"
+        },
+        "Lonoy Roma": {
+            "lat": 10.0131272,
+            "lng": 124.083965,
+            "precision": "barangay"
+        },
+        "Lutao": {
+            "lat": 10.0141238,
+            "lng": 124.0691225,
+            "precision": "barangay"
+        },
+        "Luyo": {
+            "lat": 10.033113,
+            "lng": 124.0690114,
+            "precision": "barangay"
+        },
+        "Mabuhay": {
+            "lat": 9.9751557,
+            "lng": 124.0756299,
+            "precision": "barangay"
+        },
+        "Maria Rosario": {
+            "lat": 9.9645346,
+            "lng": 124.1185823,
+            "precision": "barangay"
+        },
+        "Nabuad": {
+            "lat": 10.0294287,
+            "lng": 124.0918288,
+            "precision": "barangay"
+        },
+        "Napo": {
+            "lat": 9.9915754,
+            "lng": 124.0929276,
+            "precision": "barangay"
+        },
+        "Ondol": {
+            "lat": 10.0490617,
+            "lng": 124.0590403,
+            "precision": "barangay"
+        },
+        "Poblacion": {
+            "lat": 10.0308864,
+            "lng": 124.0656561,
+            "precision": "town"
+        },
+        "Riverside": {
+            "lat": 9.9612818,
+            "lng": 124.1243399,
+            "precision": "barangay"
+        },
+        "Saa": {
+            "lat": 10.0308864,
+            "lng": 124.0656561,
+            "precision": "town"
+        },
+        "San Isidro": {
+            "lat": 10.036974,
+            "lng": 124.0820958,
+            "precision": "barangay"
+        },
+        "San Jose": {
+            "lat": 10.0308864,
+            "lng": 124.0656561,
+            "precision": "town"
+        },
+        "Santo Niño": {
+            "lat": 10.0308864,
+            "lng": 124.0656561,
+            "precision": "town"
+        },
+        "Santo Rosario": {
+            "lat": 9.9886567,
+            "lng": 124.0641622,
+            "precision": "barangay"
+        },
+        "Sua": {
+            "lat": 10.0308864,
+            "lng": 124.0656561,
+            "precision": "town"
+        },
+        "Tambook": {
+            "lat": 10.0308864,
+            "lng": 124.0656561,
+            "precision": "town"
+        },
+        "Tungod": {
+            "lat": 10.0347567,
+            "lng": 124.0592822,
+            "precision": "barangay"
+        },
+        "U-og": {
+            "lat": 9.9839063,
+            "lng": 124.0597004,
+            "precision": "barangay"
+        },
+        "Ubujan": {
+            "lat": 9.9785639,
+            "lng": 124.0554398,
+            "precision": "barangay"
+        }
+    },
+    "Loboc": {
+        "Agape": {
+            "lat": 9.6119925,
+            "lng": 124.0235688,
+            "precision": "barangay"
+        },
+        "Alegria": {
+            "lat": 9.6370754,
+            "lng": 124.0308694,
+            "precision": "town"
+        },
+        "Bagumbayan": {
+            "lat": 9.6570807,
+            "lng": 124.0364296,
+            "precision": "barangay"
+        },
+        "Bahian": {
+            "lat": 9.6370754,
+            "lng": 124.0308694,
+            "precision": "town"
+        },
+        "Bonbon Lower": {
+            "lat": 9.6600048,
+            "lng": 124.0503046,
+            "precision": "barangay"
+        },
+        "Bonbon Upper": {
+            "lat": 9.6604279,
+            "lng": 124.0629646,
+            "precision": "barangay"
+        },
+        "Buenavista": {
+            "lat": 9.6297201,
+            "lng": 124.0531086,
+            "precision": "barangay"
+        },
+        "Bugho": {
+            "lat": 9.6516962,
+            "lng": 124.0600767,
+            "precision": "barangay"
+        },
+        "Cabadiangan": {
+            "lat": 9.6370754,
+            "lng": 124.0308694,
+            "precision": "town"
+        },
+        "Calunasan Norte": {
+            "lat": 9.6431938,
+            "lng": 124.005931,
+            "precision": "barangay"
+        },
+        "Calunasan Sur": {
+            "lat": 9.6293214,
+            "lng": 124.0115637,
+            "precision": "barangay"
+        },
+        "Camayaan": {
+            "lat": 9.6370754,
+            "lng": 124.0308694,
+            "precision": "town"
+        },
+        "Cambance": {
+            "lat": 9.6370754,
+            "lng": 124.0308694,
+            "precision": "town"
+        },
+        "Candabong": {
+            "lat": 9.6653583,
+            "lng": 124.0693676,
+            "precision": "barangay"
+        },
+        "Candasag": {
+            "lat": 9.6370754,
+            "lng": 124.0308694,
+            "precision": "town"
+        },
+        "Canlasid": {
+            "lat": 9.6229186,
+            "lng": 124.0137058,
+            "precision": "barangay"
+        },
+        "Gon-ob": {
+            "lat": 9.6370754,
+            "lng": 124.0308694,
+            "precision": "town"
+        },
+        "Gotozon": {
+            "lat": 9.6515692,
+            "lng": 124.0303401,
+            "precision": "barangay"
+        },
+        "Jimilian": {
+            "lat": 9.6370754,
+            "lng": 124.0308694,
+            "precision": "town"
+        },
+        "Oy": {
+            "lat": 9.6551723,
+            "lng": 124.0037249,
+            "precision": "barangay"
+        },
+        "Poblacion Ondol": {
+            "lat": 9.6340589,
+            "lng": 124.0330408,
+            "precision": "barangay"
+        },
+        "Poblacion Sawang": {
+            "lat": 9.6400434,
+            "lng": 124.0296397,
+            "precision": "barangay"
+        },
+        "Quinoguitan": {
+            "lat": 9.6676851,
+            "lng": 124.0511256,
+            "precision": "barangay"
+        },
+        "Taytay": {
+            "lat": 9.627666,
+            "lng": 124.0350933,
+            "precision": "barangay"
+        },
+        "Tigbao": {
+            "lat": 9.6697079,
+            "lng": 124.0345671,
+            "precision": "barangay"
+        },
+        "Ugpong": {
+            "lat": 9.6291416,
+            "lng": 124.0166759,
+            "precision": "barangay"
+        },
+        "Valladolid": {
+            "lat": 9.6346631,
+            "lng": 124.0241459,
+            "precision": "barangay"
+        },
+        "Villaflor": {
+            "lat": 9.6370754,
+            "lng": 124.0308694,
+            "precision": "town"
+        }
+    },
+    "Loon": {
+        "Agsoso": {
+            "lat": 9.7997626,
+            "lng": 123.7945228,
+            "precision": "town"
+        },
+        "Badbad Occidental": {
+            "lat": 9.7997626,
+            "lng": 123.7945228,
+            "precision": "town"
+        },
+        "Badbad Oriental": {
+            "lat": 9.7997626,
+            "lng": 123.7945228,
+            "precision": "town"
+        },
+        "Bagacay Katipunan": {
+            "lat": 9.7997626,
+            "lng": 123.7945228,
+            "precision": "town"
+        },
+        "Bagacay Kawayan": {
+            "lat": 9.7997626,
+            "lng": 123.7945228,
+            "precision": "town"
+        },
+        "Bagacay Saong": {
+            "lat": 9.7997626,
+            "lng": 123.7945228,
+            "precision": "town"
+        },
+        "Bahi": {
+            "lat": 9.7997626,
+            "lng": 123.7945228,
+            "precision": "town"
+        },
+        "Basac": {
+            "lat": 9.8190577,
+            "lng": 123.8022387,
+            "precision": "barangay"
+        },
+        "Basdacu": {
+            "lat": 9.7824793,
+            "lng": 123.7863325,
+            "precision": "barangay"
+        },
+        "Basdio": {
+            "lat": 9.8520063,
+            "lng": 123.7868703,
+            "precision": "barangay"
+        },
+        "Biasong": {
+            "lat": 9.8241056,
+            "lng": 123.8114011,
+            "precision": "barangay"
+        },
+        "Bongco": {
+            "lat": 9.7997626,
+            "lng": 123.7945228,
+            "precision": "town"
+        },
+        "Bugho": {
+            "lat": 9.7997626,
+            "lng": 123.7945228,
+            "precision": "town"
+        },
+        "Cabacongan": {
+            "lat": 9.8709775,
+            "lng": 123.7653003,
+            "precision": "barangay"
+        },
+        "Cabadug": {
+            "lat": 9.7997626,
+            "lng": 123.7945228,
+            "precision": "town"
+        },
+        "Cabug": {
+            "lat": 9.7749048,
+            "lng": 123.8009727,
+            "precision": "barangay"
+        },
+        "Calayugan Norte": {
+            "lat": 9.846888,
+            "lng": 123.7989086,
+            "precision": "barangay"
+        },
+        "Calayugan Sur": {
+            "lat": 9.8448106,
+            "lng": 123.7941741,
+            "precision": "barangay"
+        },
+        "Cambaquiz": {
+            "lat": 9.8864517,
+            "lng": 123.7914787,
+            "precision": "barangay"
+        },
+        "Campatud": {
+            "lat": 9.8140308,
+            "lng": 123.8767075,
+            "precision": "barangay"
+        },
+        "Candaigan": {
+            "lat": 9.7997626,
+            "lng": 123.7945228,
+            "precision": "town"
+        },
+        "Canhangdon Occidental": {
+            "lat": 9.8384681,
+            "lng": 123.8111978,
+            "precision": "barangay"
+        },
+        "Canhangdon Oriental": {
+            "lat": 9.8337177,
+            "lng": 123.8136215,
+            "precision": "barangay"
+        },
+        "Canigaan": {
+            "lat": 9.8515501,
+            "lng": 123.8101084,
+            "precision": "barangay"
+        },
+        "Canmaag": {
+            "lat": 9.7997626,
+            "lng": 123.7945228,
+            "precision": "town"
+        },
+        "Canmanoc": {
+            "lat": 9.7997626,
+            "lng": 123.7945228,
+            "precision": "town"
+        },
+        "Cansuagwit": {
+            "lat": 9.7997626,
+            "lng": 123.7945228,
+            "precision": "town"
+        },
+        "Cansubayon": {
+            "lat": 9.8088876,
+            "lng": 123.8667284,
+            "precision": "barangay"
+        },
+        "Cantam-is Bago": {
+            "lat": 9.7997626,
+            "lng": 123.7945228,
+            "precision": "town"
+        },
+        "Cantam-is Baslay": {
+            "lat": 9.7997626,
+            "lng": 123.7945228,
+            "precision": "town"
+        },
+        "Cantaongon": {
+            "lat": 9.7997626,
+            "lng": 123.7945228,
+            "precision": "town"
+        },
+        "Cantumocad": {
+            "lat": 9.8594965,
+            "lng": 123.8382078,
+            "precision": "barangay"
+        },
+        "Catagbacan Handig": {
+            "lat": 9.7997626,
+            "lng": 123.7945228,
+            "precision": "town"
+        },
+        "Catagbacan Norte": {
+            "lat": 9.8529302,
+            "lng": 123.8252011,
+            "precision": "barangay"
+        },
+        "Catagbacan Sur": {
+            "lat": 9.7997626,
+            "lng": 123.7945228,
+            "precision": "town"
+        },
+        "Cogon Norte": {
+            "lat": 9.8052259,
+            "lng": 123.8001841,
+            "precision": "barangay"
+        },
+        "Cogon Sur": {
+            "lat": 9.7997626,
+            "lng": 123.7945228,
+            "precision": "town"
+        },
+        "Cuasi": {
+            "lat": 9.7997626,
+            "lng": 123.7945228,
+            "precision": "town"
+        },
+        "Genomoan": {
+            "lat": 9.7997626,
+            "lng": 123.7945228,
+            "precision": "town"
+        },
+        "Lintuan": {
+            "lat": 9.790618,
+            "lng": 123.7883247,
+            "precision": "barangay"
+        },
+        "Looc": {
+            "lat": 9.8897715,
+            "lng": 123.7740551,
+            "precision": "barangay"
+        },
+        "Mocpoc Norte": {
+            "lat": 9.8623108,
+            "lng": 123.7926817,
+            "precision": "barangay"
+        },
+        "Mocpoc Sur": {
+            "lat": 9.8562012,
+            "lng": 123.78927,
+            "precision": "barangay"
+        },
+        "Moto Norte": {
+            "lat": 9.7997626,
+            "lng": 123.7945228,
+            "precision": "town"
+        },
+        "Moto Sur": {
+            "lat": 9.7965175,
+            "lng": 123.7901057,
+            "precision": "barangay"
+        },
+        "Nagtuang": {
+            "lat": 9.7997626,
+            "lng": 123.7945228,
+            "precision": "town"
+        },
+        "Napo": {
+            "lat": 9.7997626,
+            "lng": 123.7945228,
+            "precision": "town"
+        },
+        "Nueva Vida": {
+            "lat": 9.846202,
+            "lng": 123.8375017,
+            "precision": "barangay"
+        },
+        "Panangquilon": {
+            "lat": 9.7997626,
+            "lng": 123.7945228,
+            "precision": "town"
+        },
+        "Pantudlan": {
+            "lat": 9.8867634,
+            "lng": 123.7637124,
+            "precision": "barangay"
+        },
+        "Pig-ot": {
+            "lat": 9.7997626,
+            "lng": 123.7945228,
+            "precision": "town"
+        },
+        "Pondol": {
+            "lat": 9.860714,
+            "lng": 123.8410597,
+            "precision": "barangay"
+        },
+        "Quinobcoban": {
+            "lat": 9.7997626,
+            "lng": 123.7945228,
+            "precision": "town"
+        },
+        "Sondol": {
+            "lat": 9.8609388,
+            "lng": 123.800468,
+            "precision": "barangay"
+        },
+        "Song-on": {
+            "lat": 9.7997626,
+            "lng": 123.7945228,
+            "precision": "town"
+        },
+        "Talisay": {
+            "lat": 9.8724685,
+            "lng": 123.7774513,
+            "precision": "barangay"
+        },
+        "Tan-awan": {
+            "lat": 9.7997626,
+            "lng": 123.7945228,
+            "precision": "town"
+        },
+        "Tangnan": {
+            "lat": 9.7646831,
+            "lng": 123.7863359,
+            "precision": "barangay"
+        },
+        "Taytay": {
+            "lat": 9.7997626,
+            "lng": 123.7945228,
+            "precision": "town"
+        },
+        "Ticugan": {
+            "lat": 9.8183969,
+            "lng": 123.816162,
+            "precision": "barangay"
+        },
+        "Tiwi": {
+            "lat": 9.7869949,
+            "lng": 123.8085875,
+            "precision": "barangay"
+        },
+        "Tontonan": {
+            "lat": 9.7997626,
+            "lng": 123.7945228,
+            "precision": "town"
+        },
+        "Tubodacu": {
+            "lat": 9.7997626,
+            "lng": 123.7945228,
+            "precision": "town"
+        },
+        "Tubodio": {
+            "lat": 9.7997626,
+            "lng": 123.7945228,
+            "precision": "town"
+        },
+        "Tubuan": {
+            "lat": 9.7997626,
+            "lng": 123.7945228,
+            "precision": "town"
+        },
+        "Ubayon": {
+            "lat": 9.7997626,
+            "lng": 123.7945228,
+            "precision": "town"
+        },
+        "Ubojan": {
+            "lat": 9.8537187,
+            "lng": 123.8101733,
+            "precision": "barangay"
+        }
+    },
+    "Maribojoc": {
+        "Agahay": {
+            "lat": 9.7398537,
+            "lng": 123.890857,
+            "precision": "barangay"
+        },
+        "Aliguay": {
+            "lat": 9.7408052,
+            "lng": 123.866983,
+            "precision": "barangay"
+        },
+        "Anislag": {
+            "lat": 9.7386874,
+            "lng": 123.8514599,
+            "precision": "barangay"
+        },
+        "Bayacabac": {
+            "lat": 9.7519633,
+            "lng": 123.8558203,
+            "precision": "barangay"
+        },
+        "Bood": {
+            "lat": 9.7409309,
+            "lng": 123.8429701,
+            "precision": "town"
+        },
+        "Busao": {
+            "lat": 9.7476845,
+            "lng": 123.9011688,
+            "precision": "barangay"
+        },
+        "Cabawan": {
+            "lat": 9.7409309,
+            "lng": 123.8429701,
+            "precision": "town"
+        },
+        "Candavid": {
+            "lat": 9.7409309,
+            "lng": 123.8429701,
+            "precision": "town"
+        },
+        "Dipatlong": {
+            "lat": 9.7409309,
+            "lng": 123.8429701,
+            "precision": "town"
+        },
+        "Guiwanon": {
+            "lat": 9.7353753,
+            "lng": 123.8126024,
+            "precision": "barangay"
+        },
+        "Jandig": {
+            "lat": 9.7529293,
+            "lng": 123.844411,
+            "precision": "barangay"
+        },
+        "Lagtangon": {
+            "lat": 9.7399933,
+            "lng": 123.8251474,
+            "precision": "barangay"
+        },
+        "Lincod": {
+            "lat": 9.7409309,
+            "lng": 123.8429701,
+            "precision": "town"
+        },
+        "Pagnitoan": {
+            "lat": 9.7619238,
+            "lng": 123.8480586,
+            "precision": "barangay"
+        },
+        "Poblacion": {
+            "lat": 9.7422033,
+            "lng": 123.8446069,
+            "precision": "barangay"
+        },
+        "Punsod": {
+            "lat": 9.7409309,
+            "lng": 123.8429701,
+            "precision": "town"
+        },
+        "Punta Cruz": {
+            "lat": 9.7409309,
+            "lng": 123.8429701,
+            "precision": "town"
+        },
+        "San Isidro": {
+            "lat": 9.7682727,
+            "lng": 123.8562933,
+            "precision": "barangay"
+        },
+        "San Roque": {
+            "lat": 9.7409309,
+            "lng": 123.8429701,
+            "precision": "town"
+        },
+        "San Vicente": {
+            "lat": 9.7332567,
+            "lng": 123.8564255,
+            "precision": "barangay"
+        },
+        "Tinibgan": {
+            "lat": 9.7711183,
+            "lng": 123.8631141,
+            "precision": "barangay"
+        },
+        "Toril": {
+            "lat": 9.7542213,
+            "lng": 123.8951968,
+            "precision": "barangay"
+        }
+    },
+    "Sagbayan": {
+        "Calangahan": {
+            "lat": 9.9141721,
+            "lng": 124.0651677,
+            "precision": "barangay"
+        },
+        "Canmano": {
+            "lat": 9.8991116,
+            "lng": 124.1240106,
+            "precision": "barangay"
+        },
+        "Canmaya Centro": {
+            "lat": 9.934937,
+            "lng": 124.0809233,
+            "precision": "barangay"
+        },
+        "Canmaya Diot": {
+            "lat": 9.9379592,
+            "lng": 124.0938681,
+            "precision": "barangay"
+        },
+        "Dagnawan": {
+            "lat": 9.9479593,
+            "lng": 124.1077638,
+            "precision": "barangay"
+        },
+        "Kabasacan": {
+            "lat": 9.875203,
+            "lng": 124.1049689,
+            "precision": "barangay"
+        },
+        "Kagawasan": {
+            "lat": 9.9490669,
+            "lng": 124.085653,
+            "precision": "barangay"
+        },
+        "Katipunan": {
+            "lat": 9.9271927,
+            "lng": 124.1322144,
+            "precision": "barangay"
+        },
+        "Langtad": {
+            "lat": 9.934762,
+            "lng": 124.1320415,
+            "precision": "barangay"
+        },
+        "Libertad Norte": {
+            "lat": 9.913182,
+            "lng": 124.0932027,
+            "precision": "town"
+        },
+        "Libertad Sur": {
+            "lat": 9.913182,
+            "lng": 124.0932027,
+            "precision": "town"
+        },
+        "Mantalongon": {
+            "lat": 9.9358129,
+            "lng": 124.1173495,
+            "precision": "barangay"
+        },
+        "Poblacion": {
+            "lat": 9.9140556,
+            "lng": 124.0921721,
+            "precision": "barangay"
+        },
+        "Sagbayan Sur": {
+            "lat": 9.913182,
+            "lng": 124.0932027,
+            "precision": "town"
+        },
+        "San Agustin": {
+            "lat": 9.913182,
+            "lng": 124.0932027,
+            "precision": "town"
+        },
+        "San Antonio": {
+            "lat": 9.8987307,
+            "lng": 124.0597455,
+            "precision": "barangay"
+        },
+        "San Isidro": {
+            "lat": 9.9213056,
+            "lng": 124.1197485,
+            "precision": "barangay"
+        },
+        "San Ramon": {
+            "lat": 9.913182,
+            "lng": 124.0932027,
+            "precision": "town"
+        },
+        "San Roque": {
+            "lat": 9.8719275,
+            "lng": 124.0913848,
+            "precision": "barangay"
+        },
+        "San Vicente Norte": {
+            "lat": 9.9024761,
+            "lng": 124.1058017,
+            "precision": "barangay"
+        },
+        "San Vicente Sur": {
+            "lat": 9.8934892,
+            "lng": 124.0989593,
+            "precision": "barangay"
+        },
+        "Santa Catalina": {
+            "lat": 9.8798363,
+            "lng": 124.0733223,
+            "precision": "barangay"
+        },
+        "Santa Cruz": {
+            "lat": 9.9192481,
+            "lng": 124.0779283,
+            "precision": "barangay"
+        },
+        "Ubojan": {
+            "lat": 9.8842018,
+            "lng": 124.0930304,
+            "precision": "barangay"
+        }
+    },
+    "Sevilla": {
+        "Bayawahan": {
+            "lat": 9.7032416,
+            "lng": 124.0457161,
+            "precision": "town"
+        },
+        "Cabancalan": {
+            "lat": 9.7032416,
+            "lng": 124.0457161,
+            "precision": "town"
+        },
+        "Calinga-an": {
+            "lat": 9.7220577,
+            "lng": 124.0535182,
+            "precision": "barangay"
+        },
+        "Calinginan Norte": {
+            "lat": 9.7032416,
+            "lng": 124.0457161,
+            "precision": "town"
+        },
+        "Calinginan Sur": {
+            "lat": 9.7032416,
+            "lng": 124.0457161,
+            "precision": "town"
+        },
+        "Cambagui": {
+            "lat": 9.7032416,
+            "lng": 124.0457161,
+            "precision": "town"
+        },
+        "Ewon": {
+            "lat": 9.6798112,
+            "lng": 124.0494738,
+            "precision": "barangay"
+        },
+        "Guinob-an": {
+            "lat": 9.6882234,
+            "lng": 124.0480363,
+            "precision": "barangay"
+        },
+        "Lagtangan": {
+            "lat": 9.7088958,
+            "lng": 124.0430501,
+            "precision": "barangay"
+        },
+        "Licolico": {
+            "lat": 9.698376,
+            "lng": 124.0604442,
+            "precision": "barangay"
+        },
+        "Lobgob": {
+            "lat": 9.6948226,
+            "lng": 124.0408909,
+            "precision": "barangay"
+        },
+        "Magsaysay": {
+            "lat": 9.7561754,
+            "lng": 124.054027,
+            "precision": "barangay"
+        },
+        "Poblacion": {
+            "lat": 9.7026062,
+            "lng": 124.0464216,
+            "precision": "barangay"
+        }
+    },
+    "Sikatuna": {
+        "Abucay Norte": {
+            "lat": 9.6878902,
+            "lng": 123.9740416,
+            "precision": "town"
+        },
+        "Abucay Sur": {
+            "lat": 9.6786342,
+            "lng": 123.9650012,
+            "precision": "barangay"
+        },
+        "Badiang": {
+            "lat": 9.7005863,
+            "lng": 123.9954852,
+            "precision": "barangay"
+        },
+        "Bahaybahay": {
+            "lat": 9.6878902,
+            "lng": 123.9740416,
+            "precision": "town"
+        },
+        "Cambuac Norte": {
+            "lat": 9.6852699,
+            "lng": 123.9946989,
+            "precision": "barangay"
+        },
+        "Cambuac Sur": {
+            "lat": 9.6784271,
+            "lng": 124.0009826,
+            "precision": "barangay"
+        },
+        "Canagong": {
+            "lat": 9.6878902,
+            "lng": 123.9740416,
+            "precision": "town"
+        },
+        "Libjo": {
+            "lat": 9.6878902,
+            "lng": 123.9740416,
+            "precision": "town"
+        },
+        "Poblacion I": {
+            "lat": 9.6878902,
+            "lng": 123.9740416,
+            "precision": "town"
+        },
+        "Poblacion II": {
+            "lat": 9.6878902,
+            "lng": 123.9740416,
+            "precision": "town"
+        }
+    },
+    "Tagbilaran": {
+        "Bool": {
+            "error": true
+        },
+        "Booy": {
+            "error": true
+        },
+        "Cabawan": {
+            "error": true
+        },
+        "Cogon": {
+            "error": true
+        },
+        "Dampas": {
+            "error": true
+        },
+        "Dao": {
+            "error": true
+        },
+        "Manga": {
+            "error": true
+        },
+        "Mansasa": {
+            "error": true
+        },
+        "Poblacion I": {
+            "error": true
+        },
+        "Poblacion II": {
+            "error": true
+        },
+        "Poblacion III": {
+            "error": true
+        },
+        "San Isidro": {
+            "error": true
+        },
+        "Taloto": {
+            "error": true
+        },
+        "Tiptip": {
+            "error": true
+        },
+        "Ubujan": {
+            "error": true
+        }
+    },
+    "Tubigon": {
+        "Bagongbanwa": {
+            "lat": 9.9515287,
+            "lng": 123.9618897,
+            "precision": "town"
+        },
+        "Banlasan": {
+            "lat": 9.9022502,
+            "lng": 123.9431587,
+            "precision": "barangay"
+        },
+        "Batasan": {
+            "lat": 10.0158685,
+            "lng": 123.9877048,
+            "precision": "barangay"
+        },
+        "Bilangbilangan": {
+            "lat": 9.9515287,
+            "lng": 123.9618897,
+            "precision": "town"
+        },
+        "Bosongon": {
+            "lat": 9.9515287,
+            "lng": 123.9618897,
+            "precision": "town"
+        },
+        "Buenos Aires": {
+            "lat": 9.9024206,
+            "lng": 124.0082753,
+            "precision": "barangay"
+        },
+        "Bunacan": {
+            "lat": 9.9515287,
+            "lng": 123.9618897,
+            "precision": "town"
+        },
+        "Cabulihan": {
+            "lat": 9.9515287,
+            "lng": 123.9618897,
+            "precision": "town"
+        },
+        "Cahayag": {
+            "lat": 9.9191773,
+            "lng": 123.9268996,
+            "precision": "barangay"
+        },
+        "Cawayanan": {
+            "lat": 9.9515287,
+            "lng": 123.9618897,
+            "precision": "town"
+        },
+        "Centro": {
+            "lat": 9.9527014,
+            "lng": 123.9641958,
+            "precision": "barangay"
+        },
+        "Genonocan": {
+            "lat": 9.9297957,
+            "lng": 123.9614369,
+            "precision": "barangay"
+        },
+        "Guiwanon": {
+            "lat": 9.9515287,
+            "lng": 123.9618897,
+            "precision": "town"
+        },
+        "Ilihan Norte": {
+            "lat": 9.9193592,
+            "lng": 123.9399687,
+            "precision": "barangay"
+        },
+        "Ilihan Sur": {
+            "lat": 9.9149552,
+            "lng": 123.9511442,
+            "precision": "barangay"
+        },
+        "Libertad": {
+            "lat": 9.9515287,
+            "lng": 123.9618897,
+            "precision": "town"
+        },
+        "Macaas": {
+            "lat": 9.9515287,
+            "lng": 123.9618897,
+            "precision": "town"
+        },
+        "Matabao": {
+            "lat": 9.9306703,
+            "lng": 123.9122066,
+            "precision": "barangay"
+        },
+        "Mocaboc Island": {
+            "lat": 9.9515287,
+            "lng": 123.9618897,
+            "precision": "town"
+        },
+        "Panadtaran": {
+            "lat": 9.9108423,
+            "lng": 123.9360046,
+            "precision": "barangay"
+        },
+        "Panaytayon": {
+            "lat": 9.9329485,
+            "lng": 123.9331967,
+            "precision": "barangay"
+        },
+        "Pandan": {
+            "lat": 9.9305907,
+            "lng": 123.9236453,
+            "precision": "barangay"
+        },
+        "Pangapasan": {
+            "lat": 9.9515287,
+            "lng": 123.9618897,
+            "precision": "town"
+        },
+        "Pinayagan Norte": {
+            "lat": 9.9386425,
+            "lng": 123.9446627,
+            "precision": "barangay"
+        },
+        "Pinayagan Sur": {
+            "lat": 9.929338,
+            "lng": 123.94629,
+            "precision": "barangay"
+        },
+        "Pooc Occidental": {
+            "lat": 9.9505695,
+            "lng": 123.9610147,
+            "precision": "barangay"
+        },
+        "Pooc Oriental": {
+            "lat": 9.9485009,
+            "lng": 123.9635709,
+            "precision": "barangay"
+        },
+        "Potohan": {
+            "lat": 9.9515287,
+            "lng": 123.9618897,
+            "precision": "town"
+        },
+        "Talenceras": {
+            "lat": 9.9515287,
+            "lng": 123.9618897,
+            "precision": "town"
+        },
+        "Tan-awan": {
+            "lat": 9.9152078,
+            "lng": 123.9737514,
+            "precision": "barangay"
+        },
+        "Tinangnan": {
+            "lat": 9.9515287,
+            "lng": 123.9618897,
+            "precision": "town"
+        },
+        "Ubay Island": {
+            "lat": 10.0245024,
+            "lng": 123.9664327,
+            "precision": "barangay"
+        },
+        "Ubojan": {
+            "lat": 9.9385636,
+            "lng": 123.9727905,
+            "precision": "barangay"
+        },
+        "Villanueva": {
+            "lat": 9.9078638,
+            "lng": 123.9315371,
+            "precision": "barangay"
+        }
+    }
+}

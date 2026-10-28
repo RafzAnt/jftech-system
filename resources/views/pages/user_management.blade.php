@@ -68,15 +68,7 @@
         <!-- Actions -->
         <div style="display: flex; justify-content: flex-end; margin-bottom: 1.5rem;">
             <form method="GET" action="" style="display: flex; gap: 0.5rem; width: min(100%, 400px); align-items: center;">
-                @if (! $isBranchAdminView)
-                <select name="branch" class="form-select" onchange="this.form.submit()" style="width:auto; min-width:150px;" aria-label="Branch">
-                    <option value="">All branches</option>
-                    @foreach ($branches as $branchOption)
-                    <option value="{{ $branchOption }}" {{ $scopeBranch === $branchOption ? 'selected' : '' }}>{{ $branchOption }}</option>
-                    @endforeach
-                </select>
-                @endif
-                <input type="text" name="search" class="form-input" placeholder="Search users..." value="{{ htmlspecialchars(request()->query('search') ?? '') }}" style="flex:1; min-width:0;">
+                <input type="text" name="search" class="form-input" placeholder="{{ \App\Support\LocationFilter::placeholder($scopeBranch, 'Users', false) }}" aria-label="Search users" value="{{ htmlspecialchars(request()->query('search') ?? '') }}" style="flex:1; min-width:0;" autocomplete="off" data-suggest="users" data-suggest-url="{{ route('search.suggestions') }}">
                 <button type="submit" class="btn btn-sm btn-primary" style="white-space:nowrap;">Search</button>
             </form>
         </div>
@@ -435,6 +427,7 @@
     }
     document.getElementById('editRole').addEventListener('change', toggleEditPosition);
     </script>
+    <script src="{{ asset('js/search_suggest.js') }}?{{ @filemtime(public_path('js/search_suggest.js')) ?: 1 }}"></script>
     <script src="{{ asset('js/jftech-main.js') }}?{{ $mainJsVersion }}"></script>
 </body>
 </html>

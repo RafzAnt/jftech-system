@@ -1,0 +1,60 @@
+/**
+ * JFTECH search suggestions (public/js/search_suggest.js)
+ * The list hangs under the one search box of a list page; the script puts it in the body and places it under the box.
+ */
+
+.search-suggest {
+    position: absolute;
+    z-index: 3000;
+    max-height: 340px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color, #d1d5db);
+    border-radius: 8px;
+    background: var(--surface, #fff);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+.search-suggest[hidden] {
+    display: none;
+}
+
+.search-suggest-group {
+    padding: 0.4rem 0.75rem 0.2rem;
+    color: var(--text-muted, #64748b);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.search-suggest-option {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 0;
+    background: transparent;
+    color: var(--text-primary, #222);
+    text-align: left;
+    cursor: pointer;
+}
+
+.search-suggest-option:hover,
+.search-suggest-option[aria-selected="true"] {
+    background: rgba(41, 121, 255, 0.12);
+}
+
+.search-suggest-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.search-suggest-detail {
+    flex: 0 0 auto;
+    color: var(--text-muted, #64748b);
+    font-size: 0.8rem;
+}

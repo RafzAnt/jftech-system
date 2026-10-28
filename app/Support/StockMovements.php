@@ -36,16 +36,17 @@ final class StockMovements
     }
 
     /**
-     * @param array{employee_id?: ?int, client_id?: ?int, nap_box_id?: ?int, work_request_id?: ?int} $links
+     * @param array{employee_id?: ?int, client_id?: ?int, nap_box_id?: ?int} $links
+     * @param \DateTimeInterface|null $at when it happened (now when left out; the sample data loaders write the past)
      */
-    public static function record(int $inventoryId, int $change, int $balance, string $type, ?string $remarks, ?int $performedBy, array $links = []): void
+    public static function record(int $inventoryId, int $change, int $balance, string $type, ?string $remarks, ?int $performedBy, array $links = [], ?\DateTimeInterface $at = null): void
     {
         $row = [
             'inventory_id' => $inventoryId, 'quantity_change' => $change, 'balance_after' => $balance, 'movement_type' => $type,
-            'remarks' => $remarks, 'performed_by' => $performedBy, 'created_at' => now(),
+            'remarks' => $remarks, 'performed_by' => $performedBy, 'created_at' => $at ?? now(),
         ];
         if (self::linked()) {
-            foreach (['employee_id', 'client_id', 'nap_box_id', 'work_request_id'] as $column) {
+            foreach (['employee_id', 'client_id', 'nap_box_id'] as $column) {
                 $row[$column] = $links[$column] ?? null;
             }
         }

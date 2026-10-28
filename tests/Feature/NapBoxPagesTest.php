@@ -3,19 +3,17 @@
 namespace Tests\Feature;
 
 use App\Support\NapBoxes;
-use App\Support\WorkRequestService;
 use Illuminate\Support\Facades\DB;
 use Tests\Concerns\BranchTestData;
 use Tests\TestCase;
 
 /**
- * The admin side of the field work: the NAP Boxes page and the Work Requests page.
- * A branch admin keeps and decides their own branch; the super admin only looks (and can pick a branch).
+ * The NAP Boxes page. A branch admin keeps their own branch's boxes; the super admin only looks (and can pick a branch).
  *
  * Seed: NAP-01 (box 1, Boctol, Balilihan, ports 1-4) and NAP-02 (box 2, Agsoso, Loon, ports 5-6); port 2 is
  * occupied by client 1. Users: 1 super admin, 2 Balilihan admin, 3 Loon admin. Employees: 1 (Balilihan), 2 (Loon).
  */
-class NapAndWorkRequestPagesTest extends TestCase
+class NapBoxPagesTest extends TestCase
 {
     use BranchTestData;
 
@@ -67,6 +65,27 @@ class NapAndWorkRequestPagesTest extends TestCase
         $this->assertSame(['NAP-02'], $this->names($this->get('/nap-boxes?branch=Loon')->viewData('boxes')));
     }
 
+    public function test_the_nap_boxes_are_searched_in_one_box_by_branch_barangay_or_name(): void
+    {
+        $this->signIn(1);
+
+        $find = fn (string $search) => $this->names($this->get('/nap-boxes?search=' . urlencode($search))->assertOk()->viewData('boxes'));
+        $this->assertSame(['NAP-02'], $find('Loon'), 'a branch');
+        $this->assertSame(['NAP-01'], $find('boctol'), 'a barangay');
+        $this->assertSame(['NAP-01'], $find('Balilihan NAP'), 'a branch and a name');
+        $this->assertSame(['NAP-01'], $find('Purok'), 'where it hangs');
+        $this->assertSame([], $find('Loon Boctol'), 'words narrow each other');
+        $this->assertSame(['NAP-01', 'NAP-02'], $find(''));
+
+        $html = $this->get('/nap-boxes')->getContent();
+        $this->assertStringContainsString('placeholder="Branch, Barangay, NAP Boxes"', $html);
+        $this->assertStringNotContainsString('id="filterBarangay"', $html);
+
+        $this->signIn(2);
+        $this->assertStringContainsString('placeholder="Barangay, NAP Boxes"', $this->get('/nap-boxes')->getContent());
+        $this->assertSame([], $this->names($this->get('/nap-boxes?search=Loon')->viewData('boxes')), 'another branch finds nothing');
+    }
+
     public function test_nap_boxes_are_counted_in_the_inventory_of_their_branch(): void
     {
         $this->signIn(2);
@@ -99,7 +118,7 @@ class NapAndWorkRequestPagesTest extends TestCase
     public function test_a_branch_admin_adds_a_box_with_its_numbered_ports(): void
     {
         $this->signIn(2);
-        $page = $this->post('/nap-boxes', ['action' => 'save_box', 'name' => 'NAP-03', 'barangay' => 'boctol', 'location' => 'Near the school', 'total_ports' => 8])->assertOk();
+        $page = $this->post('/nap-boxes', ['action' => 'save_box', 'coordinates' => '9.6541, 124.1234', 'name' => 'NAP-03', 'barangay' => 'boctol', 'location' => 'Near the school', 'total_ports' => 8])->assertOk();
 
         $this->assertSame('NAP-03 was added with 8 ports. One NAP Box was taken from your inventory.', $page->viewData('success'));
         $box = DB::table('nap_boxes')->where('name', 'NAP-03')->first();
@@ -112,7 +131,7 @@ class NapAndWorkRequestPagesTest extends TestCase
 
     private function newBox(array $extra = []): \Illuminate\Testing\TestResponse
     {
-        return $this->post('/nap-boxes', ['action' => 'save_box', 'name' => 'NAP-03', 'barangay' => 'Boctol', 'location' => 'Near the school', 'total_ports' => 8] + $extra);
+        return $this->post('/nap-boxes', ['action' => 'save_box', 'coordinates' => '9.6541, 124.1234', 'name' => 'NAP-03', 'barangay' => 'Boctol', 'location' => 'Near the school', 'total_ports' => 8] + $extra);
     }
 
     public function test_installing_a_nap_box_takes_one_from_the_branchs_stock_and_says_so_in_the_history(): void
@@ -179,7 +198,7 @@ class NapAndWorkRequestPagesTest extends TestCase
     public function test_changing_or_archiving_a_box_does_not_touch_the_stock(): void
     {
         $this->signIn(2);
-        $this->post('/nap-boxes', ['action' => 'save_box', 'box_id' => 1, 'name' => 'NAP-01', 'barangay' => 'Boctol', 'total_ports' => 6, 'status' => 'active'])->assertOk();
+        $this->post('/nap-boxes', ['action' => 'save_box', 'coordinates' => '9.6541, 124.1234', 'box_id' => 1, 'name' => 'NAP-01', 'barangay' => 'Boctol', 'total_ports' => 6, 'status' => 'active'])->assertOk();
         $this->post('/nap-boxes', ['action' => 'port', 'port_id' => 2, 'do' => 'free'])->assertOk();
         $this->post('/nap-boxes', ['action' => 'archive_box', 'box_id' => 1])->assertOk();
 
@@ -211,23 +230,26 @@ class NapAndWorkRequestPagesTest extends TestCase
             'no name' => [['name' => '', 'barangay' => 'Boctol', 'total_ports' => 4], 'Enter the NAP box name'],
             'no ports' => [['name' => 'NAP-09', 'barangay' => 'Boctol', 'total_ports' => 0], '1 to 96 ports'],
             'too many ports' => [['name' => 'NAP-09', 'barangay' => 'Boctol', 'total_ports' => 97], '1 to 96 ports'],
+            'no coordinates' => [['name' => 'NAP-09', 'barangay' => 'Boctol', 'total_ports' => 4, 'coordinates' => ''], 'Enter the Google coordinates'],
+            'coordinates outside the country' => [['name' => 'NAP-09', 'barangay' => 'Boctol', 'total_ports' => 4, 'coordinates' => '40.7128, -74.0060'], 'outside the Philippines'],
+            'coordinates swapped' => [['name' => 'NAP-09', 'barangay' => 'Boctol', 'total_ports' => 4, 'coordinates' => '124.1234, 9.6541'], 'outside the Philippines'],
         ];
         foreach ($cases as $name => [$input, $message]) {
-            $error = $this->post('/nap-boxes', ['action' => 'save_box'] + $input)->viewData('error');
+            $error = $this->post('/nap-boxes', $input + ['action' => 'save_box', 'coordinates' => '9.6541, 124.1234'])->viewData('error');
             $this->assertStringContainsString($message, $error, $name);
         }
         $this->assertSame(1, DB::table('nap_boxes')->where('branch_name', 'Balilihan')->count());
 
         // The same name is fine in another branch.
         $this->signIn(3);
-        $this->post('/nap-boxes', ['action' => 'save_box', 'name' => 'NAP-01', 'barangay' => 'Agsoso', 'total_ports' => 4])->assertOk();
+        $this->post('/nap-boxes', ['action' => 'save_box', 'coordinates' => '9.6541, 124.1234', 'name' => 'NAP-01', 'barangay' => 'Agsoso', 'total_ports' => 4])->assertOk();
         $this->assertSame(2, DB::table('nap_boxes')->where('name', 'NAP-01')->count());
     }
 
     public function test_the_super_admin_cannot_add_or_change_a_box(): void
     {
         $this->signIn(1);
-        $page = $this->post('/nap-boxes', ['action' => 'save_box', 'name' => 'NAP-09', 'barangay' => 'Boctol', 'total_ports' => 4])->assertOk();
+        $page = $this->post('/nap-boxes', ['action' => 'save_box', 'coordinates' => '9.6541, 124.1234', 'name' => 'NAP-09', 'barangay' => 'Boctol', 'total_ports' => 4])->assertOk();
 
         $this->assertSame('Only a branch admin keeps the NAP boxes of their branch.', $page->viewData('error'));
         $this->assertSame(2, DB::table('nap_boxes')->count());
@@ -236,7 +258,7 @@ class NapAndWorkRequestPagesTest extends TestCase
     public function test_a_box_can_grow_and_shrink_but_never_over_a_port_that_is_in_use(): void
     {
         $this->signIn(2);
-        $edit = ['action' => 'save_box', 'box_id' => 1, 'name' => 'NAP-01', 'barangay' => 'Boctol', 'status' => 'active'];
+        $edit = ['action' => 'save_box', 'coordinates' => '9.6541, 124.1234', 'box_id' => 1, 'name' => 'NAP-01', 'barangay' => 'Boctol', 'status' => 'active'];
 
         $this->post('/nap-boxes', $edit + ['total_ports' => 6])->assertOk();
         $this->assertSame(6, DB::table('nap_ports')->where('nap_box_id', 1)->count());
@@ -251,25 +273,11 @@ class NapAndWorkRequestPagesTest extends TestCase
         $this->assertSame(3, DB::table('nap_ports')->where('nap_box_id', 1)->count());
     }
 
-    public function test_a_reserved_port_cannot_be_removed_or_marked_faulty(): void
-    {
-        $employee = DB::table('employees')->where('id', 1)->first();
-        WorkRequestService::create($employee, ['work_type' => 'installation', 'new_client' => ['name' => 'Nina Reyes', 'phone' => '09171234567', 'address' => 'Purok 3'], 'barangay' => 'Boctol', 'nap_box_id' => 1, 'nap_port_id' => 4]);
-
-        $this->signIn(2);
-        $shrink = $this->post('/nap-boxes', ['action' => 'save_box', 'box_id' => 1, 'name' => 'NAP-01', 'barangay' => 'Boctol', 'total_ports' => 3, 'status' => 'active'])->viewData('error');
-        $this->assertStringContainsString('Port 4 is in use', $shrink);
-
-        $faulty = $this->post('/nap-boxes', ['action' => 'port', 'port_id' => 4, 'do' => 'faulty'])->viewData('error');
-        $this->assertStringContainsString('cannot be marked faulty', $faulty);
-        $this->assertSame('available', DB::table('nap_ports')->where('id', 4)->value('status'));
-    }
-
     public function test_a_box_in_use_cannot_be_archived_but_an_empty_one_can_be_archived_and_restored(): void
     {
         $this->signIn(2);
         $busy = $this->post('/nap-boxes', ['action' => 'archive_box', 'box_id' => 1])->viewData('error');
-        $this->assertStringContainsString('still has connected or reserved ports', $busy);
+        $this->assertStringContainsString('still has connected ports', $busy);
 
         DB::table('nap_ports')->where('id', 2)->update(['status' => 'available', 'client_id' => null]);
         $this->post('/nap-boxes', ['action' => 'archive_box', 'box_id' => 1])->assertOk();
@@ -316,172 +324,28 @@ class NapAndWorkRequestPagesTest extends TestCase
     {
         $this->signIn(2);
 
-        $this->post('/nap-boxes', ['action' => 'save_box', 'box_id' => 2, 'name' => 'Hacked', 'barangay' => 'Boctol', 'total_ports' => 2])->assertNotFound();
+        $this->post('/nap-boxes', ['action' => 'save_box', 'coordinates' => '9.6541, 124.1234', 'box_id' => 2, 'name' => 'Hacked', 'barangay' => 'Boctol', 'total_ports' => 2])->assertNotFound();
         $this->post('/nap-boxes', ['action' => 'archive_box', 'box_id' => 2])->assertNotFound();
         $this->post('/nap-boxes', ['action' => 'port', 'port_id' => 5, 'do' => 'faulty'])->assertNotFound();
         $this->assertSame('NAP-02', DB::table('nap_boxes')->where('id', 2)->value('name'));
         $this->assertSame('available', DB::table('nap_ports')->where('id', 5)->value('status'));
     }
 
-    // ---- the Work Requests page -------------------------------------------------------------------
-
-    private function submit(int $employeeId, array $extra = []): int
-    {
-        $employee = DB::table('employees')->where('id', $employeeId)->first();
-
-        return WorkRequestService::create($employee, $extra + [
-            'work_type' => 'installation',
-            'new_client' => ['name' => 'Nina Reyes', 'phone' => '09171234567', 'address' => 'Purok 3'],
-            'barangay' => $employee->branch_name === 'Loon' ? 'Agsoso' : 'Boctol',
-            'nap_box_id' => $employee->branch_name === 'Loon' ? 2 : 1,
-            'nap_port_id' => $employee->branch_name === 'Loon' ? 5 : 1,
-        ]);
-    }
-
-    public function test_a_branch_admin_sees_their_branchs_requests_and_the_super_admin_all_of_them(): void
-    {
-        $this->submit(1);
-        $this->submit(2);
-
-        $this->signIn(2);
-        $page = $this->get('/work-requests')->assertOk();
-        $this->assertCount(1, $page->viewData('requests'));
-        $this->assertSame('Balilihan', $page->viewData('requests')[0]['branch_name']);
-        $this->assertSame(1, $page->viewData('tabCounts')['pending']);
-        $this->assertSame(1, $page->viewData('tabCounts')['all']);
-        $page->assertSee('Pending Approval');
-
-        $this->signIn(1);
-        $this->assertCount(2, $this->get('/work-requests')->viewData('requests'));
-        $this->assertCount(1, $this->get('/work-requests?branch=Loon')->viewData('requests'));
-        $this->assertFalse($this->get('/work-requests')->viewData('canReview'));
-    }
-
-    public function test_the_tabs_filter_by_status(): void
-    {
-        $first = $this->submit(1);
-        $second = $this->submit(1, ['nap_port_id' => 3]);
-        WorkRequestService::approve($second, 2);
-
-        $this->signIn(2);
-        $this->assertSame([$first], array_column($this->get('/work-requests?status=pending')->viewData('requests'), 'id'));
-        $this->assertSame([$second], array_column($this->get('/work-requests?status=approved')->viewData('requests'), 'id'));
-        $this->assertCount(2, $this->get('/work-requests?status=all')->viewData('requests'));
-        $this->assertSame([], $this->get('/work-requests?status=confirmed')->viewData('requests'));
-        $this->assertSame('pending', $this->get('/work-requests?status=nonsense')->viewData('tab'));
-    }
-
-    public function test_a_branch_admin_approves_returns_and_rejects_from_the_page(): void
-    {
-        $approve = $this->submit(1);
-        $return = $this->submit(1, ['nap_port_id' => 3]);
-        $reject = $this->submit(1, ['nap_port_id' => 4]);
-        $this->signIn(2);
-
-        $this->post('/work-requests', ['request_id' => $approve, 'action' => 'approve', 'remarks' => 'Go ahead'])->assertOk();
-        $this->assertSame('approved', DB::table('work_requests')->where('id', $approve)->value('status'));
-
-        $this->assertSame('Write what the employee has to correct.', $this->post('/work-requests', ['request_id' => $return, 'action' => 'return', 'remarks' => ''])->viewData('error'));
-        $this->post('/work-requests', ['request_id' => $return, 'action' => 'return', 'remarks' => 'Wrong port'])->assertOk();
-        $this->assertSame('returned', DB::table('work_requests')->where('id', $return)->value('status'));
-        $this->assertSame('Wrong port', DB::table('work_requests')->where('id', $return)->value('admin_remarks'));
-
-        $this->post('/work-requests', ['request_id' => $reject, 'action' => 'reject', 'remarks' => 'Out of coverage'])->assertOk();
-        $this->assertSame('rejected', DB::table('work_requests')->where('id', $reject)->value('status'));
-    }
-
-    public function test_the_super_admin_and_other_branches_cannot_decide_a_request(): void
-    {
-        $id = $this->submit(1);
-
-        $this->signIn(1);
-        $this->assertSame('Only a branch admin reviews the requests of their branch.', $this->post('/work-requests', ['request_id' => $id, 'action' => 'approve'])->viewData('error'));
-
-        $this->signIn(3);
-        $this->post('/work-requests', ['request_id' => $id, 'action' => 'approve'])->assertNotFound();
-        $this->assertSame('pending_approval', DB::table('work_requests')->where('id', $id)->value('status'));
-    }
-
-    public function test_confirming_from_the_page_saves_the_new_client_and_occupies_the_port(): void
-    {
-        $id = $this->submit(1);
-        WorkRequestService::approve($id, 2);
-        WorkRequestService::complete(DB::table('employees')->where('id', 1)->first(), $id, [
-            'completion_notes' => 'Done', 'actual_nap_box_id' => 1, 'actual_nap_port_id' => 1,
-            'materials' => [['inventory_id' => 1, 'used_quantity' => 1, 'returned_quantity' => 2]],
-        ]);
-
-        $this->signIn(2);
-        $page = $this->get('/work-requests?status=awaiting')->assertOk();
-        $page->assertSee('Confirm completion')->assertSee('Internet plan *');
-
-        $this->assertSame('Choose the internet plan of the new client.', $this->post('/work-requests', ['request_id' => $id, 'action' => 'confirm'])->viewData('error'));
-
-        $done = $this->post('/work-requests', ['request_id' => $id, 'action' => 'confirm', 'internet_plan_id' => 1, 'installation_date' => '2026-10-15', 'email' => 'nina@example.com']);
-        $this->assertStringContainsString('The work was confirmed', $done->viewData('success'));
-        $this->assertSame('confirmed', DB::table('work_requests')->where('id', $id)->value('status'));
-        $this->assertSame('occupied', DB::table('nap_ports')->where('id', 1)->value('status'));
-        $client = DB::table('clients')->where('full_name', 'Nina Reyes')->first();
-        $this->assertSame('2026-10-15', $client->installation_date);
-        $this->assertSame('nina@example.com', $client->email);
-        $this->assertSame(12, (int) DB::table('inventory')->where('id', 1)->value('quantity'));
-    }
-
-    public function test_a_report_can_be_returned_from_the_page(): void
-    {
-        $id = $this->submit(1);
-        WorkRequestService::approve($id, 2);
-        WorkRequestService::complete(DB::table('employees')->where('id', 1)->first(), $id, ['completion_notes' => 'Done', 'actual_nap_box_id' => 1, 'actual_nap_port_id' => 1]);
-
-        $this->signIn(2);
-        $this->post('/work-requests', ['request_id' => $id, 'action' => 'return_completion', 'remarks' => 'Add the materials'])->assertOk();
-
-        $this->assertSame('approved', DB::table('work_requests')->where('id', $id)->value('status'));
-        $this->assertSame('Add the materials', DB::table('work_requests')->where('id', $id)->value('admin_remarks'));
-    }
-
-    public function test_the_review_shows_the_completion_report_and_materials(): void
-    {
-        $id = $this->submit(1);
-        WorkRequestService::approve($id, 2);
-        WorkRequestService::complete(DB::table('employees')->where('id', 1)->first(), $id, [
-            'completion_notes' => 'Connected, 40 Mbps tested', 'actual_nap_box_id' => 1, 'actual_nap_port_id' => 3,
-            'materials' => [['inventory_id' => 1, 'used_quantity' => 2, 'damaged_quantity' => 1]],
-        ]);
-
-        $this->signIn(2);
-        $html = $this->get('/work-requests?status=awaiting')->assertOk()->getContent();
-        $this->assertStringContainsString('Connected, 40 Mbps tested', $html);
-        $this->assertStringContainsString('NAP-01 · port 3', $html);
-        $this->assertStringContainsString('<td>Router</td><td>2</td><td>0</td><td>1</td>', $html);
-    }
-
-    public function test_the_sidebar_counts_the_requests_waiting_for_the_admin_of_that_branch(): void
-    {
-        $first = $this->submit(1);
-        $this->submit(1, ['nap_port_id' => 3]);
-        $this->submit(2);
-        WorkRequestService::approve($first, 2);
-
-        // Balilihan: one still to approve. The approved one waits for the technician, not for the admin.
-        $this->signIn(2);
-        $this->assertStringContainsString('<span class="nav-badge" title="Waiting for you">1</span>', $this->get('/dashboard')->getContent());
-
-        // The super admin sees the total of every branch: Balilihan's one and Loon's one.
-        $this->signIn(1);
-        $this->assertStringContainsString('<span class="nav-badge" title="Waiting for you">2</span>', $this->get('/dashboard')->getContent());
-
-        DB::table('work_requests')->update(['status' => 'confirmed']);
-        $this->assertStringNotContainsString('nav-badge', $this->get('/dashboard')->getContent());
-    }
-
-    public function test_the_sidebar_links_to_both_pages_for_every_admin(): void
+    public function test_the_sidebar_links_to_the_nap_boxes_and_no_longer_to_work_requests(): void
     {
         foreach ([1, 2] as $userId) {
             $this->signIn($userId);
             $html = $this->get('/dashboard')->assertOk()->getContent();
-            $this->assertStringContainsString('work_requests.php', $html);
             $this->assertStringContainsString('nap_boxes.php', $html);
+            $this->assertStringNotContainsString('work_requests.php', $html);
         }
+    }
+
+    public function test_the_work_requests_page_and_its_api_are_gone(): void
+    {
+        $this->signIn(2);
+        $this->get('/work-requests')->assertNotFound();
+        $this->get('/pages/work_requests.php')->assertNotFound();
+        $this->getJson('/backend/api/work_requests.php')->assertNotFound();
     }
 }

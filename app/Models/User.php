@@ -13,6 +13,9 @@ class User extends Authenticatable
     protected $hidden = ['password', 'remember_token'];
     protected function casts(): array { return ['archived' => 'boolean', 'password' => 'hashed']; }
 
+    /** An account can only sign in while it is switched on and not archived. */
+    public function isActive(): bool { return $this->status === 'active' && ! $this->archived; }
+
     /** Sees every branch and manages accounts, settings, pricing and stock. */
     public function isSuperAdmin(): bool { return $this->role === 'super_admin'; }
 

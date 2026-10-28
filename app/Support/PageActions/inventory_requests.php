@@ -15,7 +15,9 @@ return function (Request $request): array {
     $requests = $inBranch(DB::table('inventory_requests as ir')
         ->leftJoin('users as u', 'ir.approved_by', '=', 'u.id'))
         ->leftJoin('employees as emp', 'emp.id', '=', 'ir.employee_id')
-        ->select('ir.*', 'u.username as approved_by_name', 'u.full_name as approved_by_full_name', 'emp.branch_name as employee_branch')
+        // An approved installation request stays "pending" on the job side until the technician's installation report is confirmed.
+        ->leftJoin('client_installations as ci', 'ci.id', '=', 'ir.installation_id')
+        ->select('ir.*', 'u.username as approved_by_name', 'u.full_name as approved_by_full_name', 'emp.branch_name as employee_branch', 'ci.status as installation_status')
         ->when($filterStatus !== 'all', fn ($query) => $query->where('ir.status', $filterStatus))
         ->orderByDesc('ir.created_at')
         ->get()

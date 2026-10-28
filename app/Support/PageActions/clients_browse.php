@@ -44,7 +44,6 @@ $themeCssVersion = filemtime(public_path('css/jftech-theme.css'));
 $clientsBrowseCssVersion = filemtime(public_path('css/clients_browse.css'));
 $mainJsVersion = @filemtime(public_path('js/jftech-main.js')) ?: 1;
 
-$searchTerm = $request->query('search') ?? '';
 $showArchived = $request->query('view') === 'archived';
 
 // Get all barangays for dropdown
@@ -56,54 +55,36 @@ $stmt = $pdo->query("SELECT * FROM internet_plans WHERE status = 'active' AND ar
 $plans = $stmt->fetchAll();
 $branches = config('bohol_branches', []);
 $branchBarangays = config('bohol_barangays', []);
-// A branch admin only works with their own branch: it is the only option and is always selected.
+// A branch admin only works with their own branch: it is the only option and is always selected (the register form needs it).
 $scopeBranch = \App\Support\BranchScope::current();
 if ($scopeBranch !== null) {
     $ownBranches = array_filter(array_keys($branches), static fn (string $name): bool => strcasecmp($name, $scopeBranch) === 0);
     $branches = array_intersect_key($branches, array_flip($ownBranches));
 }
-$selectedBranch = $scopeBranch !== null ? array_key_first($branches) ?? '' : trim((string) $request->query('branch', ''));
-if (!array_key_exists($selectedBranch, $branches)) {
-    $selectedBranch = '';
-}
-$requestedBarangays = $request->query('barangays', []);
-$selectedBarangays = is_array($requestedBarangays) ? $requestedBarangays : [];
-$validBarangaysForBranch = $selectedBranch ? ($branchBarangays[$selectedBranch] ?? []) : [];
-$selectedBarangays = array_values(array_unique(array_filter(array_map('trim', $selectedBarangays), static function ($name) use ($validBarangaysForBranch) {
-    return in_array($name, $validBarangaysForBranch, true);
-})));
+$selectedBranch = $scopeBranch !== null ? array_key_first($branches) ?? '' : '';
+
+// The one search box: a branch, a barangay or a client, several words narrowing each other (see LocationFilter).
+$location = \App\Support\LocationFilter::fromRequest($request);
+$searchTerm = $location['searchTerm'];
 [$filterSql, $filterParams] = \App\Support\BranchScope::clients($scopeBranch, 'c');
-if ($selectedBranch) {
-    $filterSql .= ' AND LOWER(COALESCE(c.branch_name, \'\')) = LOWER(?)';
-    $filterParams[] = $selectedBranch;
-}
-if ($selectedBarangays) {
-    $placeholders = implode(', ', array_fill(0, count($selectedBarangays), '?'));
-    $filterSql .= " AND LOWER(COALESCE(c.registered_barangay_name, b.barangay_name, '')) IN ($placeholders)";
-    array_push($filterParams, ...array_map('strtolower', $selectedBarangays));
-}
-if ($searchTerm !== '') {
-    $filterSql .= " AND (
-        LOWER(COALESCE(c.full_name, '')) LIKE LOWER(?)
-        OR LOWER(COALESCE(c.client_code, '')) LIKE LOWER(?)
-        OR LOWER(COALESCE(c.contact_number, '')) LIKE LOWER(?)
-        OR LOWER(COALESCE(c.branch_name, '')) LIKE LOWER(?)
-        OR LOWER(COALESCE(c.registered_barangay_name, '')) LIKE LOWER(?)
-    )";
-    for ($i = 0; $i < 5; $i++) {
-        $filterParams[] = '%' . $searchTerm . '%';
-    }
-}
+[$searchSql, $searchParams] = \App\Support\LocationFilter::clientConditions($location, 'c', 'b');
+$filterSql .= $searchSql;
+array_push($filterParams, ...$searchParams);
+
+// What was typed in the Register New Client form, so a refused form is shown again with the same values.
+$registerValues = [];
 
 if ($request->isMethod('post') && $request->input('action') === 'register') {
     abort_unless($canRegisterClients, 403);
     $registerClientOpen = true;
+    $registerValues = $request->only([
+        'first_name', 'middle_name', 'last_name', 'contact_number', 'email', 'internet_plan_id', 'installation_date', 'branch_name',
+        'registered_barangay_name', 'exact_address', 'payment_mode', 'ip_address', 'facebook_account', 'coordinates', 'nap_port_id',
+    ]);
     try {
         $firstName = trim((string) $request->input('first_name'));
         $middleName = trim((string) $request->input('middle_name'));
         $lastName = trim((string) $request->input('last_name'));
-        $contactNumber = trim((string) $request->input('contact_number'));
-        $email = trim((string) $request->input('email'));
         $branchInput = trim((string) $request->input('branch_name'));
         $branchName = null;
         foreach (array_keys($branches) as $branchOption) {
@@ -112,51 +93,26 @@ if ($request->isMethod('post') && $request->input('action') === 'register') {
                 break;
             }
         }
-        $barangayName = trim((string) $request->input('registered_barangay_name'));
-        $exactAddress = trim((string) $request->input('exact_address'));
-        $installationDate = trim((string) $request->input('installation_date'));
-        $planId = (int) $request->input('internet_plan_id');
 
-        if ($firstName === '' || $lastName === '' || $contactNumber === '' || $email === '' || ! $branchName || $barangayName === '' || $exactAddress === '' || $installationDate === '') {
+        if ($firstName === '' || $lastName === '' || ! $branchName) {
             throw new \RuntimeException('Please complete all required client registration fields.');
         }
-        if (! preg_match('/^\d{11}$/', $contactNumber)) {
-            throw new \RuntimeException('Mobile number must contain exactly 11 digits.');
-        }
-        if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            throw new \RuntimeException('Please enter a valid email address.');
-        }
-        $date = \DateTime::createFromFormat('Y-m-d', $installationDate);
-        if (! $date || $date->format('Y-m-d') !== $installationDate) {
-            throw new \RuntimeException('Please enter a valid installation date.');
-        }
 
-        $planStmt = $pdo->prepare("SELECT * FROM internet_plans WHERE id = ? AND status = 'active' AND archived = 0");
-        $planStmt->execute([$planId]);
-        $plan = $planStmt->fetch();
-        if (! $plan) {
-            throw new \RuntimeException('Please select an active internet plan.');
-        }
-
-        $fullName = implode(' ', array_filter([$firstName, $middleName, $lastName], fn ($part) => $part !== ''));
-        $clientCode = 'JFT-' . date('Y') . '-' . strtoupper(uniqid());
-        $barangayId = null;
-        if ($branchName === 'Balilihan') {
-            $barangayStmt = $pdo->prepare('SELECT id FROM barangays WHERE barangay_name = ? LIMIT 1');
-            $barangayStmt->execute([$barangayName]);
-            $barangayId = $barangayStmt->fetchColumn() ?: null;
-        }
-        \Illuminate\Support\Facades\DB::transaction(function () use ($pdo, $clientCode, $fullName, $contactNumber, $email, $branchName, $barangayName, $barangayId, $exactAddress, $plan, $installationDate): void {
-            $pdo->prepare("INSERT INTO clients (client_code, full_name, contact_number, email, branch_name, registered_barangay_name, barangay_id, exact_address, wifi_plan, internet_plan_id, monthly_rate, installation_fee, installation_date, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')")
-                ->execute([$clientCode, $fullName, $contactNumber, $email, $branchName, $barangayName, $barangayId, $exactAddress, $plan['plan_name'], $plan['id'], $plan['monthly_price'], $plan['installation_fee'], $installationDate]);
-            $clientId = $pdo->lastInsertId();
-            $billingStart = date('Y-m-d');
-            $pdo->prepare("INSERT INTO bills (client_id, bill_number, billing_period_start, billing_period_end, amount, due_date, status) VALUES (?, ?, ?, ?, ?, ?, 'pending')")
-                ->execute([$clientId, 'BILL-' . date('Ymd') . '-' . strtoupper(uniqid()), $billingStart, date('Y-m-d', strtotime($billingStart . ' +30 days')), $plan['monthly_price'], date('Y-m-d', strtotime($billingStart . ' +30 days'))]);
-        });
+        // The checks and the saving are shared with the confirmation of an installation report from the employee app.
+        $client = \App\Support\ClientRegistration::clean([
+            'full_name' => implode(' ', array_filter([$firstName, $middleName, $lastName], fn ($part) => $part !== '')),
+            'contact_number' => $request->input('contact_number'), 'email' => $request->input('email'),
+            'barangay_name' => $request->input('registered_barangay_name'), 'exact_address' => $request->input('exact_address'),
+            'installation_date' => $request->input('installation_date'), 'internet_plan_id' => $request->input('internet_plan_id'),
+            'payment_mode' => $request->input('payment_mode'), 'ip_address' => $request->input('ip_address'),
+            'facebook_account' => $request->input('facebook_account'), 'coordinates' => $request->input('coordinates'),
+            'nap_port_id' => $request->input('nap_port_id'),
+        ], $branchName, true, false);
+        \App\Support\ClientRegistration::create($client);
 
         $success = 'Client registered successfully!';
         $registerClientOpen = false;
+        $registerValues = [];
     } catch (\Throwable $exception) {
         $error = 'Error: ' . $exception->getMessage();
     }
@@ -169,7 +125,9 @@ if ($showArchived) {
     $archivedCount = count($clients);
 } else {
     // Build client query.
-    $query = "SELECT c.*, COALESCE(c.registered_barangay_name, b.barangay_name) AS barangay_name
+    $query = "SELECT c.*, COALESCE(c.registered_barangay_name, b.barangay_name) AS barangay_name,
+              (SELECT nb.name FROM nap_ports np JOIN nap_boxes nb ON nb.id = np.nap_box_id WHERE np.client_id = c.id LIMIT 1) AS nap_box_name,
+              (SELECT np.port_number FROM nap_ports np WHERE np.client_id = c.id LIMIT 1) AS nap_port_number
               FROM clients c
               LEFT JOIN barangays b ON c.barangay_id = b.id 
               WHERE (c.archived IS NULL OR c.archived = 0) $filterSql ORDER BY c.created_at DESC";

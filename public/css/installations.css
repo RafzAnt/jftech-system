@@ -1,0 +1,75 @@
+/**
+ * JFTECH Installations Page Styles
+ * Page: pages/installations.blade.php (the status tabs and badges come from inventory_requests.css)
+ */
+
+.install-card {
+    margin-bottom: 1rem;
+}
+
+.install-card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.install-meta,
+.install-muted {
+    color: var(--text-muted);
+}
+
+.install-facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 0.75rem 1.5rem;
+    margin: 0 0 1rem;
+}
+
+.install-facts dt {
+    color: var(--text-muted);
+}
+
+.install-facts dd {
+    margin: 0;
+    color: var(--text-primary);
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.install-lists {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1rem 2rem;
+    margin-bottom: 0.75rem;
+}
+
+.install-line {
+    padding: 0.2rem 0;
+    color: var(--text-primary);
+}
+
+.install-return {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.install-return .form-input {
+    width: 90px;
+    flex: 0 0 auto;
+}
+
+.install-note {
+    margin: 0.5rem 0;
+    color: var(--text-secondary);
+}
+
+.install-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}

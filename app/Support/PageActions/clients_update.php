@@ -46,6 +46,11 @@ if ($request->has('id') && $request->query('id')) {
     $client = $stmt->fetch();
 }
 
+// Which NAP box and port the client is connected to (changed on the NAP Boxes page), and the installation details kept with it.
+$napOf = static fn ($clientId) => \Illuminate\Support\Facades\DB::table('nap_ports')->join('nap_boxes', 'nap_boxes.id', '=', 'nap_ports.nap_box_id')
+    ->where('nap_ports.client_id', $clientId)->first(['nap_boxes.name as box_name', 'nap_ports.port_number']);
+$clientNap = $client ? $napOf($client['id']) : null;
+
 // Update client
 if ($request->isMethod('post') && $request->has('update_client')) {
     \App\Support\BranchScope::abortUnlessClient($request->input('client_id'));
@@ -65,6 +70,22 @@ if ($request->isMethod('post') && $request->has('update_client')) {
         if (! preg_match('/^\d{11}$/', $contactNumber)) {
             throw new \RuntimeException('Mobile number must contain exactly 11 digits.');
         }
+        // The installation details are kept when they are left empty here; a filled one must be valid.
+        $paymentMode = strtolower(trim((string) $request->input('payment_mode')));
+        $ipAddress = trim((string) $request->input('ip_address'));
+        $facebookAccount = trim((string) $request->input('facebook_account'));
+        $coordinates = trim((string) $request->input('coordinates'));
+        if ($paymentMode !== '' && ! isset(\App\Support\ClientRegistration::PAYMENT_MODES[$paymentMode])) {
+            throw new \RuntimeException('Choose the mode of payment (' . implode(' or ', \App\Support\ClientRegistration::PAYMENT_MODES) . ').');
+        }
+        if ($ipAddress !== '' && ! filter_var($ipAddress, FILTER_VALIDATE_IP)) {
+            throw new \RuntimeException('The IP address is not valid, for example 192.168.1.20.');
+        }
+        if (mb_strlen($facebookAccount) > 150) {
+            throw new \RuntimeException('The Facebook account is too long (up to 150 characters).');
+        }
+        [$latitude, $longitude] = $coordinates === '' ? [null, null] : \App\Support\Coordinates::parse($coordinates, 'client');
+
         // Load the saved client first. A normal profile update must preserve the
         // original plan-price snapshot even if the plan's current price changed.
         $currentClientStmt = $pdo->prepare("SELECT internet_plan_id, wifi_plan, monthly_rate, installation_fee FROM clients WHERE id = ?");
@@ -88,8 +109,8 @@ if ($request->isMethod('post') && $request->has('update_client')) {
         $monthlyRate = $isPlanChange ? $plan['monthly_price'] : $currentClient['monthly_rate'];
         $installationFee = $isPlanChange ? $plan['installation_fee'] : $currentClient['installation_fee'];
         // Client status is managed from Client Records, not from profile editing.
-        $stmt = $pdo->prepare("UPDATE clients SET full_name = ?, contact_number = ?, email = ?, barangay_id = ?, exact_address = ?, wifi_plan = ?, internet_plan_id = ?, monthly_rate = ?, installation_fee = ? WHERE id = ?");
-        $stmt->execute([$fullName, $contactNumber, $email, $barangayId, $exactAddress, $wifiPlan, $planId, $monthlyRate, $installationFee, $clientId]);
+        $stmt = $pdo->prepare("UPDATE clients SET full_name = ?, contact_number = ?, email = ?, barangay_id = ?, exact_address = ?, wifi_plan = ?, internet_plan_id = ?, monthly_rate = ?, installation_fee = ?, payment_mode = ?, ip_address = ?, facebook_account = ?, latitude = ?, longitude = ? WHERE id = ?");
+        $stmt->execute([$fullName, $contactNumber, $email, $barangayId, $exactAddress, $wifiPlan, $planId, $monthlyRate, $installationFee, $paymentMode === '' ? null : $paymentMode, $ipAddress === '' ? null : $ipAddress, $facebookAccount === '' ? null : $facebookAccount, $latitude, $longitude, $clientId]);
 
         if ($isPlanChange) {
             $historyStmt = $pdo->prepare("INSERT INTO client_plan_change_histories (client_id, previous_internet_plan_id, previous_plan_name, previous_monthly_rate, new_internet_plan_id, new_plan_name, new_monthly_rate, reason, changed_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
@@ -108,6 +129,7 @@ if ($request->isMethod('post') && $request->has('update_client')) {
         $stmt = $pdo->prepare("SELECT c.*, COALESCE(c.registered_barangay_name, b.barangay_name) AS barangay_name FROM clients c LEFT JOIN barangays b ON c.barangay_id = b.id WHERE c.id = ?");
         $stmt->execute([$clientId]);
         $client = $stmt->fetch();
+        $clientNap = $client ? $napOf($client['id']) : null;
     } catch (Exception $e) {
         $error = 'Error: ' . $e->getMessage();
     }

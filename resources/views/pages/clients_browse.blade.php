@@ -6,6 +6,10 @@
     <title>JFTECH - Browse Clients</title>
     <link rel="stylesheet" href="{{ asset('css/jftech-theme.css') }}?{{ $themeCssVersion }}">
     <link rel="stylesheet" href="{{ asset('css/clients_browse.css') }}?{{ $clientsBrowseCssVersion }}">
+    <link rel="stylesheet" href="{{ asset('css/client_filter.css') }}?{{ @filemtime(public_path('css/client_filter.css')) ?: 1 }}">
+    @if ($canRegisterClients)
+    <link rel="stylesheet" href="{{ asset('css/nap_picker.css') }}?{{ @filemtime(public_path('css/nap_picker.css')) ?: 1 }}">
+    @endif
     <style>
         #receiptModal .print-company-brand { display: flex; align-items: flex-start; gap: 8px; }
         #receiptModal .print-company-logo { width: auto; height: 36px; object-fit: contain; }
@@ -42,7 +46,7 @@
         <div class="top-bar">
             <div>
                 <h1 class="page-title">Browse Clients</h1>
-                <p style="color: var(--text-muted); font-size: 0.85rem;">{{ $canRegisterClients ? 'View and manage all registered clients' : 'Every branch’s clients. Pick a branch, then a barangay, to narrow them down.' }}</p>
+                <p style="color: var(--text-muted); font-size: 0.85rem;">{{ $canRegisterClients ? 'View and manage all registered clients' : 'Every branch’s clients. Type a branch, a barangay or a name to narrow them down.' }}</p>
             </div>
             @if ($canRegisterClients)
             <button type="button" class="btn btn-success" onclick="openModal('registerClientModal')">+ Register New Client</button>
@@ -64,35 +68,18 @@
     </div>
 </div>
 
-<!-- Branch, barangay, and client search filters -->
+<!-- One search box: a branch, a barangay or a client -->
 <form method="get" class="filter-bar card client-filter-card" id="clientFilterForm" style="margin-bottom: 1.5rem;">
     @if ($showArchived)<input type="hidden" name="view" value="archived">@endif
-    <div class="card-body client-filter-controls">
-        <div class="form-group client-filter-field client-branch-field">
-            <label class="form-label" for="clientBranchInput">Branch</label>
-            <input type="hidden" id="clientBranchFilter" name="branch" value="{{ $selectedBranch }}">
-            <div class="client-barangay-picker">
-                <input type="text" class="search-input client-barangay-input" id="clientBranchInput" placeholder="Branch" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="clientBranchSuggestions" aria-expanded="false" value="{{ $selectedBranch }}" {{ $scopeBranch !== null ? 'readonly' : '' }}>
-                <div id="clientBranchSuggestions" class="location-suggestions client-filter-suggestions" role="listbox" hidden></div>
-            </div>
-        </div>
-        <div class="form-group client-filter-field client-barangay-field">
-            <label class="form-label" for="clientBarangayInput">Barangay</label>
-            <div class="client-barangay-picker">
-                <input type="text" class="search-input client-barangay-input" id="clientBarangayInput" placeholder="Barangay" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="clientBarangaySuggestions" aria-expanded="false" {{ $selectedBranch ? '' : 'disabled' }}>
-                <div id="clientBarangaySuggestions" class="location-suggestions client-filter-suggestions" role="listbox" hidden></div>
-            </div>
-            <div class="client-barangay-chips" id="clientBarangayChips"></div>
-            <div id="clientBarangayHiddenInputs"></div>
-        </div>
-        <div class="form-group client-filter-field client-search-field">
-            <label class="form-label" for="searchInput">Search Clients</label>
-            <input type="text" class="search-input client-filter-text-input" placeholder="Name, client code, or mobile number" id="searchInput" name="search" value="{{ $searchTerm }}">
-        </div>
-        <div class="client-filter-submit">
-            <button type="submit" class="btn btn-primary">Search</button>
-            <span class="badge badge-info">{{ count($clients) }} Client(s) Found</span>
-        </div>
+    <div class="card-body">
+        @php
+            $filterSubject = 'Clients';
+            $filterSearchLabel = 'Search Clients';
+            $filterIdPrefix = 'client';
+            unset($filterDate);
+        @endphp
+        @include('pages.partials.client_location_filter')
+        <div style="margin-top: 0.75rem;"><span class="badge badge-info">{{ count($clients) }} Client(s) Found</span></div>
     </div>
 </form>
 
@@ -173,11 +160,8 @@
                         <td colspan="10" style="text-align: center; color: var(--text-muted); padding: 2rem;">
                             @if ($showArchived)
                                 No archived clients.
-                            @elseif ($selectedBranch)
-                                No clients found in {{ $selectedBranch }}.
-                                @if ($canRegisterClients)
-                                <button type="button" class="client-register-link" onclick="openModal('registerClientModal')">Register a new client</button>
-                                @endif
+                            @elseif ($searchTerm !== '')
+                                No clients found for “{{ $searchTerm }}”.
                             @else
                                 No clients found.
                                 @if ($canRegisterClients)
@@ -208,17 +192,17 @@
                 @csrf
                 <input type="hidden" name="action" value="register">
                 <div class="form-grid">
-                    <div class="form-group"><label class="form-label">First Name *</label><input type="text" name="first_name" class="form-input" placeholder="Juan" required value="{{ old('first_name') }}"></div>
-                    <div class="form-group"><label class="form-label">Middle Name</label><input type="text" name="middle_name" class="form-input" placeholder="Santos" value="{{ old('middle_name') }}"></div>
-                    <div class="form-group"><label class="form-label">Last Name *</label><input type="text" name="last_name" class="form-input" placeholder="Dela Cruz" required value="{{ old('last_name') }}"></div>
-                    <div class="form-group"><label class="form-label">Mobile Number *</label><input type="text" name="contact_number" class="form-input" placeholder="09123456789" inputmode="numeric" pattern="[0-9]{11}" minlength="11" maxlength="11" required value="{{ old('contact_number') }}"></div>
-                    <div class="form-group"><label class="form-label">Email *</label><input type="email" name="email" class="form-input" placeholder="juan@email.com" required value="{{ old('email') }}"></div>
-                    <div class="form-group"><label class="form-label">WiFi Plan *</label><select name="internet_plan_id" class="form-select" id="registerWifiPlan" required onchange="syncRegisterPlanPrice()"><option value="">Select Plan</option>@foreach ($plans as $plan)<option value="{{ $plan['id'] }}" data-price="{{ $plan['monthly_price'] }}" {{ old('internet_plan_id') == $plan['id'] ? 'selected' : '' }}>{{ $plan['plan_name'] }} ({{ $plan['speed_mbps'] }} Mbps) - ₱{{ number_format($plan['monthly_price'], 2) }}/mo</option>@endforeach</select></div>
+                    <div class="form-group"><label class="form-label">First Name *</label><input type="text" name="first_name" class="form-input" placeholder="Juan" required value="{{ $registerValues['first_name'] ?? '' }}"></div>
+                    <div class="form-group"><label class="form-label">Middle Name</label><input type="text" name="middle_name" class="form-input" placeholder="Santos" value="{{ $registerValues['middle_name'] ?? '' }}"></div>
+                    <div class="form-group"><label class="form-label">Last Name *</label><input type="text" name="last_name" class="form-input" placeholder="Dela Cruz" required value="{{ $registerValues['last_name'] ?? '' }}"></div>
+                    <div class="form-group"><label class="form-label">Mobile Number *</label><input type="text" name="contact_number" class="form-input" placeholder="09123456789" inputmode="numeric" pattern="[0-9]{11}" minlength="11" maxlength="11" required value="{{ $registerValues['contact_number'] ?? '' }}"></div>
+                    <div class="form-group"><label class="form-label">Email *</label><input type="email" name="email" class="form-input" placeholder="juan@email.com" required value="{{ $registerValues['email'] ?? '' }}"></div>
+                    <div class="form-group"><label class="form-label">WiFi Plan *</label><select name="internet_plan_id" class="form-select" id="registerWifiPlan" required onchange="syncRegisterPlanPrice()"><option value="">Select Plan</option>@foreach ($plans as $plan)<option value="{{ $plan['id'] }}" data-price="{{ $plan['monthly_price'] }}" {{ ($registerValues['internet_plan_id'] ?? '') == $plan['id'] ? 'selected' : '' }}>{{ $plan['plan_name'] }} ({{ $plan['speed_mbps'] }} Mbps) - ₱{{ number_format($plan['monthly_price'], 2) }}/mo</option>@endforeach</select></div>
                     <div class="form-group"><label class="form-label">Monthly Rate (₱)</label><input type="number" class="form-input" id="registerMonthlyRate" step="0.01" readonly></div>
-                    <div class="form-group"><label class="form-label">Installation Date *</label><input type="date" name="installation_date" class="form-input" value="{{ old('installation_date', date('Y-m-d')) }}" required></div>
+                    <div class="form-group"><label class="form-label">Installation Date *</label><input type="date" name="installation_date" class="form-input" value="{{ $registerValues['installation_date'] ?? date('Y-m-d') }}" required></div>
                     <div class="form-group">
                         <label class="form-label" for="registerBranch">Branch *</label>
-                        <input type="text" name="branch_name" id="registerBranch" class="form-input" list="registerBranchSuggestions" placeholder="Type a branch name" autocomplete="off" required value="{{ old('branch_name', $scopeBranch !== null ? $selectedBranch : '') }}" {{ $scopeBranch !== null ? 'readonly' : '' }}>
+                        <input type="text" name="branch_name" id="registerBranch" class="form-input" list="registerBranchSuggestions" placeholder="Type a branch name" autocomplete="off" required value="{{ $registerValues['branch_name'] ?? ($scopeBranch !== null ? $selectedBranch : '') }}" {{ $scopeBranch !== null ? 'readonly' : '' }}>
                         <datalist id="registerBranchSuggestions">
                             @foreach ($branches as $branchName => $psgcCode)
                             <option value="{{ $branchName }}"></option>
@@ -227,13 +211,40 @@
                     </div>
                     <div class="form-group location-field">
                         <label class="form-label" for="registerBarangay">Barangay *</label>
-                        <input type="text" name="registered_barangay_name" id="registerBarangay" class="form-input" placeholder="Select a branch first" autocomplete="off" required value="{{ old('registered_barangay_name') }}" aria-autocomplete="list" aria-controls="registerBarangaySuggestions" aria-expanded="false" disabled>
+                        <input type="text" name="registered_barangay_name" id="registerBarangay" class="form-input" placeholder="Select a branch first" autocomplete="off" required value="{{ $registerValues['registered_barangay_name'] ?? '' }}" aria-autocomplete="list" aria-controls="registerBarangaySuggestions" aria-expanded="false" disabled>
                         <div id="registerBarangaySuggestions" class="location-suggestions" role="listbox" hidden></div>
                     </div>
                     <div class="form-group location-field">
                         <label class="form-label" for="registerExactAddress">House No. / Street / Purok / Sitio *</label>
-                        <input type="text" name="exact_address" id="registerExactAddress" class="form-input" placeholder="Purok 1, Sitio name" autocomplete="off" aria-autocomplete="list" aria-controls="registerAddressSuggestions" aria-expanded="false" required value="{{ old('exact_address') }}">
+                        <input type="text" name="exact_address" id="registerExactAddress" class="form-input" placeholder="Purok 1, Sitio name" autocomplete="off" aria-autocomplete="list" aria-controls="registerAddressSuggestions" aria-expanded="false" required value="{{ $registerValues['exact_address'] ?? '' }}">
                         <div id="registerAddressSuggestions" class="location-suggestions" role="listbox" hidden></div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="registerPaymentMode">Mode of Payment (MOP) *</label>
+                        <select name="payment_mode" id="registerPaymentMode" class="form-select" required>
+                            <option value="">Select mode of payment</option>
+                            @foreach (\App\Support\ClientRegistration::PAYMENT_MODES as $modeValue => $modeLabel)
+                            <option value="{{ $modeValue }}" {{ ($registerValues['payment_mode'] ?? '') === $modeValue ? 'selected' : '' }}>{{ $modeLabel }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="registerIpAddress">IP Address</label>
+                        <input type="text" name="ip_address" id="registerIpAddress" class="form-input" placeholder="192.168.1.20" maxlength="45" autocomplete="off" value="{{ $registerValues['ip_address'] ?? '' }}">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="registerFacebook">Facebook Account</label>
+                        <input type="text" name="facebook_account" id="registerFacebook" class="form-input" placeholder="Name or link of the Facebook account" maxlength="150" autocomplete="off" value="{{ $registerValues['facebook_account'] ?? '' }}">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="registerCoordinates">Google Coordinates *</label>
+                        <input type="text" name="coordinates" id="registerCoordinates" class="form-input" placeholder="Fills in by itself when the barangay is chosen" maxlength="300" autocomplete="off" required value="{{ $registerValues['coordinates'] ?? '' }}">
+                        <small id="registerCoordinatesNote" style="color: var(--text-muted);">Fills in by itself from the barangay (and from the NAP box). To make it exact, copy the spot from Google Maps (press and hold) and paste it here.</small>
+                    </div>
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <label class="form-label">NAP Box and Port</label>
+                        <input type="hidden" name="nap_port_id" id="registerNapPort" value="{{ $registerValues['nap_port_id'] ?? '' }}">
+                        <div id="registerNapPicker" class="nap-picker"></div>
                     </div>
                 </div>
                 <div style="display:flex;gap:1rem;justify-content:flex-end;margin-top:1rem;">
@@ -278,6 +289,9 @@
         </div>
     </div>
 
+    @if ($canRegisterClients)
+    <script src="{{ asset('js/nap_picker.js') }}?{{ @filemtime(public_path('js/nap_picker.js')) ?: 1 }}"></script>
+    @endif
     <script>
     // Used by the branch/barangay filters (and by the register form when it exists).
     const registerBarangaysByBranch = @json($branchBarangays, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT);
@@ -301,6 +315,87 @@
     let availableBarangays = [];
     let activeSuggestionIndex = -1;
     let activeAddressSuggestionIndex = -1;
+
+    // After the barangay is chosen, its NAP boxes and ports are offered; a free port can be picked.
+    const napPicker = NapPicker.create({
+        root: document.getElementById('registerNapPicker'),
+        input: document.getElementById('registerNapPort'),
+        lookupUrl: @json(route('nap-boxes.lookup')),
+        getBarangay: () => {
+            const typed = barangayInput.value.trim().toLocaleLowerCase();
+            return availableBarangays.find(name => name.toLocaleLowerCase() === typed) || '';
+        },
+        optional: true,
+        // The client is connected to this box, so its place is the best guess of where the client is.
+        onPick: (box) => {
+            if (box && box.coordinates) setAutoCoordinates(box.coordinates, `Filled in from the NAP box ${box.name} the client is connected to. Move it to the exact house if you can.`);
+        },
+    });
+
+    // The coordinates fill in by themselves from the place: the barangay first, then the NAP box. They are only replaced while they are
+    // empty or were filled in by this page; once somebody types or pastes their own they are left alone.
+    const coordinatesInput = document.getElementById('registerCoordinates');
+    const coordinatesNote = document.getElementById('registerCoordinatesNote');
+    const coordinatesHint = coordinatesNote.textContent;
+    let coordinatesAuto = coordinatesInput.value.trim() === '';
+    let coordinatesFor = '';
+    let coordinatesTicket = 0;
+
+    function setAutoCoordinates(text, note) {
+        if (coordinatesInput.value.trim() !== '' && !coordinatesAuto) return;
+        coordinatesInput.value = text;
+        coordinatesAuto = true;
+        coordinatesNote.textContent = note;
+    }
+
+    function clearAutoCoordinates() {
+        if (!coordinatesAuto) return;
+        coordinatesInput.value = '';
+        coordinatesNote.textContent = coordinatesHint;
+    }
+
+    async function fillCoordinatesFromBarangay() {
+        const typed = barangayInput.value.trim().toLocaleLowerCase();
+        const barangay = availableBarangays.find(name => name.toLocaleLowerCase() === typed) || '';
+        const key = activeBranchName + '|' + barangay;
+        if (key === coordinatesFor) return;
+        coordinatesFor = key;
+        const ticket = ++coordinatesTicket;
+        if (!activeBranchName || !barangay) {
+            clearAutoCoordinates();
+            return;
+        }
+        if (coordinatesInput.value.trim() !== '' && !coordinatesAuto) return;
+
+        coordinatesNote.textContent = 'Looking up ' + barangay + '…';
+        try {
+            const url = new URL(@json(route('locations.geocode')), window.location.href);
+            url.searchParams.set('branch', activeBranchName);
+            url.searchParams.set('barangay', barangay);
+            const response = await fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
+            if (!response.ok) throw new Error('lookup failed');
+            const place = await response.json();
+            if (ticket !== coordinatesTicket) return;
+            if (place.found) {
+                const where = place.precision === 'barangay' ? place.label : place.label + ' (the barangay is not on the map, so this is the town)';
+                setAutoCoordinates(place.coordinates, 'Filled in from ' + where + '. It is near the client, not exact: choose the NAP box or paste the exact spot from Google Maps.');
+            } else {
+                clearAutoCoordinates();
+                coordinatesNote.textContent = place.error ? 'The map could not be asked now. Paste the coordinates from Google Maps.' : 'The place was not found on the map. Paste the coordinates from Google Maps.';
+                if (place.error) coordinatesFor = '';
+            }
+        } catch (error) {
+            if (ticket !== coordinatesTicket) return;
+            coordinatesFor = '';
+            coordinatesNote.textContent = 'The map could not be asked now. Paste the coordinates from Google Maps.';
+        }
+    }
+
+    // Typing in the box is the person's own value (the page itself never fires "input" when it fills the box).
+    coordinatesInput.addEventListener('input', () => {
+        coordinatesAuto = false;
+        coordinatesNote.textContent = coordinatesHint;
+    });
 
     function closeBarangaySuggestions() {
         barangaySuggestions.hidden = true;
@@ -326,6 +421,8 @@
             option.addEventListener('click', () => {
                 barangayInput.value = name;
                 closeBarangaySuggestions();
+                napPicker.refresh();
+                fillCoordinatesFromBarangay();
             });
             barangaySuggestions.appendChild(option);
         });
@@ -367,6 +464,8 @@
         }
         barangayInput.disabled = availableBarangays.length === 0;
         barangayInput.placeholder = availableBarangays.length ? 'Type a barangay name' : 'No barangays listed';
+        napPicker.refresh();
+        fillCoordinatesFromBarangay();
     }
 
     function closeAddressSuggestions() {
@@ -414,7 +513,7 @@
 
     branchInput.addEventListener('input', loadBarangaySuggestions);
     branchInput.addEventListener('change', loadBarangaySuggestions);
-    barangayInput.addEventListener('input', showBarangaySuggestions);
+    barangayInput.addEventListener('input', () => { showBarangaySuggestions(); napPicker.refresh(); fillCoordinatesFromBarangay(); });
     barangayInput.addEventListener('focus', showBarangaySuggestions);
     barangayInput.addEventListener('blur', () => setTimeout(closeBarangaySuggestions, 120));
     barangayInput.addEventListener('keydown', event => {
@@ -459,7 +558,8 @@
     @if ($registerClientOpen)
     document.addEventListener('DOMContentLoaded', () => {
         syncRegisterPlanPrice();
-        openModal('registerClientModal');
+        // openModal() is only defined once jftech-main.js has run its own DOMContentLoaded, which comes after this one.
+        document.getElementById('registerClientModal').classList.add('active');
     });
     @endif
     @endif
@@ -468,175 +568,14 @@
         return [
             'id' => $c['id'], 'name' => $c['full_name'],
             'branch' => $c['branch_name'] ?: 'N/A', 'barangay' => $c['barangay_name'] ?: 'N/A', 'contact' => $c['contact_number'],
-            'plan' => $c['wifi_plan'], 'rate' => $c['monthly_rate'], 'status' => $c['status']
+            'plan' => $c['wifi_plan'], 'rate' => $c['monthly_rate'], 'status' => $c['status'],
+            'nap' => ! empty($c['nap_box_name']) ? $c['nap_box_name'] . ' · Port ' . $c['nap_port_number'] : null,
+            'mop' => \App\Support\ClientRegistration::PAYMENT_MODES[$c['payment_mode'] ?? ''] ?? null,
+            'ip' => $c['ip_address'] ?? null, 'facebook' => $c['facebook_account'] ?? null,
+            'coordinates' => \App\Support\Coordinates::format($c['latitude'] ?? null, $c['longitude'] ?? null) ?: null,
+            'mapUrl' => \App\Support\Coordinates::mapUrl($c['latitude'] ?? null, $c['longitude'] ?? null),
         ];
     }, $clients), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) !!};
-
-    const clientBranchFilter = document.getElementById('clientBranchFilter');
-    const clientBranchInput = document.getElementById('clientBranchInput');
-    const clientBarangayInput = document.getElementById('clientBarangayInput');
-    const clientBarangayHiddenInputs = document.getElementById('clientBarangayHiddenInputs');
-    const clientBarangayChips = document.getElementById('clientBarangayChips');
-    const selectedClientBarangays = @json($selectedBarangays, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT);
-    const clientBranchNames = @json(array_keys($branches), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT);
-
-    // A text box with a suggestion list: type to filter, click / Enter to pick.
-    function createClientCombobox(input, list, getOptions, onPick) {
-        let active = -1;
-
-        function close() {
-            list.hidden = true;
-            input.setAttribute('aria-expanded', 'false');
-            input.removeAttribute('aria-activedescendant');
-            active = -1;
-        }
-
-        function open() {
-            if (input.disabled) return;
-            const query = input.value.trim().toLocaleLowerCase();
-            const options = getOptions()
-                .filter(name => !query || name.toLocaleLowerCase().includes(query))
-                .slice(0, 30);
-            list.replaceChildren();
-            active = -1;
-            options.forEach((name, index) => {
-                const option = document.createElement('button');
-                option.type = 'button';
-                option.className = 'location-suggestion-option';
-                option.id = `${list.id}Option${index}`;
-                option.setAttribute('role', 'option');
-                option.textContent = name;
-                option.addEventListener('mousedown', event => event.preventDefault());
-                option.addEventListener('click', () => {
-                    close();
-                    onPick(name);
-                });
-                list.appendChild(option);
-            });
-            list.hidden = options.length === 0;
-            input.setAttribute('aria-expanded', String(options.length > 0));
-        }
-
-        input.addEventListener('input', open);
-        input.addEventListener('focus', open);
-        input.addEventListener('blur', () => setTimeout(close, 120));
-        input.addEventListener('keydown', event => {
-            const options = list.querySelectorAll('.location-suggestion-option');
-            if (event.key === 'Escape') {
-                close();
-            } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-                if (list.hidden) open();
-                if (!options.length) return;
-                event.preventDefault();
-                active = active === -1
-                    ? (event.key === 'ArrowDown' ? 0 : options.length - 1)
-                    : (active + (event.key === 'ArrowDown' ? 1 : -1) + options.length) % options.length;
-                options.forEach((option, index) => option.setAttribute('aria-selected', String(index === active)));
-                input.setAttribute('aria-activedescendant', options[active].id);
-            } else if (event.key === 'Enter') {
-                if (!list.hidden && active >= 0) {
-                    event.preventDefault();
-                    options[active].click();
-                } else {
-                    // Typed an exact name: accept it instead of submitting the form.
-                    const typed = input.value.trim().toLocaleLowerCase();
-                    const exact = getOptions().find(name => name.toLocaleLowerCase() === typed);
-                    if (exact) {
-                        event.preventDefault();
-                        close();
-                        onPick(exact);
-                    }
-                }
-            }
-        });
-        return { close, open };
-    }
-
-    function renderClientBarangays() {
-        clientBarangayHiddenInputs.replaceChildren();
-        clientBarangayChips.replaceChildren();
-        selectedClientBarangays.forEach(name => {
-            const hidden = document.createElement('input');
-            hidden.type = 'hidden';
-            hidden.name = 'barangays[]';
-            hidden.value = name;
-            clientBarangayHiddenInputs.appendChild(hidden);
-
-            const chip = document.createElement('span');
-            chip.className = 'client-barangay-chip';
-            chip.textContent = name;
-            const remove = document.createElement('button');
-            remove.type = 'button';
-            remove.setAttribute('aria-label', `Remove ${name}`);
-            remove.textContent = '\u00d7';
-            remove.addEventListener('click', () => {
-                selectedClientBarangays.splice(selectedClientBarangays.indexOf(name), 1);
-                renderClientBarangays();
-            });
-            chip.appendChild(remove);
-            clientBarangayChips.appendChild(chip);
-        });
-    }
-
-    function setClientBranch(name) {
-        if (clientBranchFilter.value !== name) {
-            selectedClientBarangays.splice(0);
-            clientBarangayInput.value = '';
-        }
-        clientBranchFilter.value = name;
-        clientBranchInput.value = name;
-        clientBarangayInput.disabled = !name;
-        renderClientBarangays();
-    }
-
-    function addClientBarangay(name) {
-        if (!selectedClientBarangays.some(item => item.toLocaleLowerCase() === name.toLocaleLowerCase())) {
-            selectedClientBarangays.push(name);
-            renderClientBarangays();
-        }
-        clientBarangayInput.value = '';
-        clientBarangayInput.focus();
-    }
-
-    createClientCombobox(
-        clientBranchInput,
-        document.getElementById('clientBranchSuggestions'),
-        () => clientBranchNames,
-        name => {
-            setClientBranch(name);
-            clientBarangayInput.focus();
-        }
-    );
-    createClientCombobox(
-        clientBarangayInput,
-        document.getElementById('clientBarangaySuggestions'),
-        () => (registerBarangaysByBranch[clientBranchFilter.value] || [])
-            .filter(name => !selectedClientBarangays.some(item => item.toLocaleLowerCase() === name.toLocaleLowerCase())),
-        addClientBarangay
-    );
-
-    // Leaving the branch box with text that isn't a real branch resets it to the chosen one.
-    clientBranchInput.addEventListener('blur', () => setTimeout(() => {
-        const typed = clientBranchInput.value.trim();
-        if (!typed) {
-            setClientBranch('');
-            return;
-        }
-        const match = clientBranchNames.find(name => name.toLocaleLowerCase() === typed.toLocaleLowerCase());
-        setClientBranch(match || clientBranchFilter.value);
-    }, 150));
-    clientBarangayInput.addEventListener('blur', () => setTimeout(() => { clientBarangayInput.value = ''; }, 150));
-
-    // A barangay typed in full but not yet picked still counts when searching.
-    document.getElementById('clientFilterForm').addEventListener('submit', () => {
-        const typed = clientBarangayInput.value.trim().toLocaleLowerCase();
-        const match = (registerBarangaysByBranch[clientBranchFilter.value] || []).find(name => name.toLocaleLowerCase() === typed);
-        if (match && !selectedClientBarangays.includes(match)) {
-            selectedClientBarangays.push(match);
-            renderClientBarangays();
-        }
-    });
-    renderClientBarangays();
 
     // View client details
     function formatDate(dateString) {
@@ -704,6 +643,11 @@
                             <div class="client-detail-field cd-field"><span>Branch</span><strong>${escapeHtml(client.branch)}</strong></div>
                             <div class="client-detail-field cd-field"><span>Mobile Number</span><strong>${escapeHtml(client.contact)}</strong></div>
                             <div class="client-detail-field cd-field"><span>Plan</span><strong>${escapeHtml(client.plan)}</strong></div>
+                            <div class="client-detail-field cd-field"><span>NAP Box / Port</span><strong>${escapeHtml(client.nap || 'Not connected')}</strong></div>
+                            <div class="client-detail-field cd-field"><span>Mode of Payment</span><strong>${escapeHtml(client.mop || '—')}</strong></div>
+                            <div class="client-detail-field cd-field"><span>IP Address</span><strong>${escapeHtml(client.ip || '—')}</strong></div>
+                            <div class="client-detail-field cd-field"><span>Facebook Account</span><strong>${escapeHtml(client.facebook || '—')}</strong></div>
+                            <div class="client-detail-field cd-field"><span>Google Coordinates</span><strong>${client.mapUrl ? `<a href="${escapeHtml(client.mapUrl)}" target="_blank" rel="noopener">${escapeHtml(client.coordinates)}</a>` : '—'}</strong></div>
                         </div>
                         <div class="client-detail-rate"><span>Monthly Rate</span><strong>₱${parseFloat(client.rate).toFixed(2)}</strong></div>
                     </div>

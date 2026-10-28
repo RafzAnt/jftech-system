@@ -57,46 +57,51 @@ class ClientAccountsFilterTest extends TestCase
         return array_map('intval', array_column($result[$key], 'id'));
     }
 
-    public function test_branch_filter_limits_clients(): void
+    public function test_a_branch_typed_in_the_search_limits_clients(): void
     {
         // Newest client first.
-        $this->assertSame([2, 1], $this->ids(['branch' => 'Balilihan']));
-        $this->assertSame([3], $this->ids(['branch' => 'Loon']));
+        $this->assertSame([3, 2, 1], $this->ids([]));
+        $this->assertSame([2, 1], $this->ids(['search' => 'Balilihan']));
+        $this->assertSame([3], $this->ids(['search' => 'Loon']));
     }
 
-    public function test_barangay_filter_applies_within_branch_and_ignores_other_branches_barangays(): void
+    public function test_a_barangay_typed_in_the_search_limits_clients_and_words_narrow_each_other(): void
     {
-        $this->assertSame([2], $this->ids(['branch' => 'Balilihan', 'barangays' => ['Boyog Sur']]));
-        // Barangays only count when they belong to the selected branch.
-        $this->assertSame([3, 2, 1], $this->ids(['barangays' => ['Boyog Sur']]));
+        $this->assertSame([2], $this->ids(['search' => 'Boyog Sur']));
+        $this->assertSame([2], $this->ids(['search' => 'Balilihan Boyog Sur']));
+        // A barangay that belongs to another branch finds nothing together with this one.
+        $this->assertSame([], $this->ids(['search' => 'Loon Boyog']));
+        $this->assertSame([1], $this->ids(['search' => 'Balilihan, boctol, ana']));
     }
 
-    public function test_search_matches_name_code_mobile_branch_and_barangay_and_respects_filters(): void
+    public function test_search_matches_name_code_mobile_branch_and_barangay(): void
     {
-        $this->assertSame([1], $this->ids(['search' => 'ana'], 'searchResults'));
-        $this->assertSame([2], $this->ids(['search' => 'JFT-2'], 'searchResults'));
-        $this->assertSame([3], $this->ids(['search' => '09170000003'], 'searchResults'));
-        $this->assertSame([3], $this->ids(['search' => 'loon'], 'searchResults'));
-        $this->assertSame([1], $this->ids(['search' => 'boctol'], 'searchResults'));
-        $this->assertSame([2], $this->ids(['search' => 'balilihan', 'branch' => 'Balilihan', 'barangays' => ['Boyog Sur']], 'searchResults'));
+        $this->assertSame([1], $this->ids(['search' => 'ana']));
+        $this->assertSame([2], $this->ids(['search' => 'JFT-2']));
+        $this->assertSame([3], $this->ids(['search' => '09170000003']));
+        $this->assertSame([3], $this->ids(['search' => 'loon']));
+        $this->assertSame([1], $this->ids(['search' => 'boctol']));
+        $this->assertSame([2], $this->ids(['search' => 'balilihan cruz']));
     }
 
     public function test_archived_view_only_lists_archived_clients(): void
     {
         $this->assertSame([4], $this->ids(['view' => 'archived']));
-        $this->assertSame([4], $this->ids(['view' => 'archived', 'search' => 'ana'], 'searchResults'));
+        $this->assertSame([4], $this->ids(['view' => 'archived', 'search' => 'ana']));
     }
 
-    public function test_page_shows_branch_barangay_filters_and_columns(): void
+    public function test_page_has_one_search_box_and_the_branch_and_barangay_columns(): void
     {
         $action = require app_path('Support/PageActions/bill_inquiry.php');
-        $data = $action(Request::create('/client-accounts', 'GET', ['branch' => 'Balilihan', 'barangays' => ['Boctol']]));
+        $data = $action(Request::create('/client-accounts', 'GET', ['search' => 'Balilihan Boctol']));
         $data['currentPage'] = 'bill_inquiry';
 
         $html = view('pages.bill_inquiry', $data)->render();
 
-        $this->assertStringContainsString('id="clientBranchInput"', $html);
-        $this->assertStringContainsString('id="clientBarangayInput"', $html);
+        $this->assertSame(1, substr_count($html, 'name="search"'));
+        $this->assertStringContainsString('placeholder="Branch, Barangay, Clients"', $html);
+        $this->assertStringNotContainsString('id="clientBranchInput"', $html);
+        $this->assertStringNotContainsString('id="clientBarangayInput"', $html);
         $this->assertStringContainsString('<th>Branch</th>', $html);
         $this->assertStringContainsString('<th>Barangay</th>', $html);
         $this->assertStringContainsString('Ana Reyes', $html);

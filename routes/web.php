@@ -3,9 +3,12 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ApiController;
 use App\Http\Controllers\EmployeeApiController;
+use App\Http\Controllers\InstallationApiController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\InventoryController;
+use App\Http\Controllers\NapBoxLookupController;
 use App\Http\Controllers\NapBoxPhotoController;
+use App\Http\Controllers\SearchSuggestionController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\PriceManagementController;
 use App\Http\Controllers\InventoryRequestController;
@@ -32,8 +35,8 @@ $cleanPages = [
     'settings' => 'settings',
     'print_clients' => 'print-clients',
     'inventory_requests' => 'inventory-requests',
-    'work_requests' => 'work-requests',
     'nap_boxes' => 'nap-boxes',
+    'installations' => 'installations',
     'reports' => 'reports',
     'print_monthly_reports' => 'print-monthly-reports',
     'print_employees' => 'print-employees',
@@ -79,18 +82,14 @@ Route::prefix('backend/api')->middleware('throttle:api')->group(function () {
         Route::get('inventory_items.php', [ApiController::class, 'inventoryItems']);
         Route::post('inventory_request_create.php', [ApiController::class, 'inventoryRequestCreate']);
         Route::get('inventory_requests_list.php', [ApiController::class, 'inventoryRequestsList']);
-        Route::get('barangays.php', [EmployeeApiController::class, 'barangays']);
-        Route::get('clients_search.php', [EmployeeApiController::class, 'clientsSearch']);
         Route::get('nap_boxes.php', [EmployeeApiController::class, 'napBoxes']);
         Route::get('nap_box.php', [EmployeeApiController::class, 'napBox']);
         Route::get('nap_box_photo.php', [EmployeeApiController::class, 'napBoxPhoto']);
-        Route::get('work_requests.php', [EmployeeApiController::class, 'workRequests']);
-        Route::get('work_request.php', [EmployeeApiController::class, 'workRequest']);
-        Route::post('work_request_create.php', [EmployeeApiController::class, 'workRequestCreate']);
-        Route::post('work_request_update.php', [EmployeeApiController::class, 'workRequestUpdate']);
-        Route::post('work_request_cancel.php', [EmployeeApiController::class, 'workRequestCancel']);
-        Route::post('work_request_complete.php', [EmployeeApiController::class, 'workRequestComplete']);
         Route::get('transactions.php', [EmployeeApiController::class, 'transactions']);
+        Route::get('installation_options.php', [InstallationApiController::class, 'options']);
+        Route::get('barangay_location.php', [InstallationApiController::class, 'location'])->middleware('throttle:30,1');
+        Route::get('installations.php', [InstallationApiController::class, 'index']);
+        Route::post('installation_create.php', [InstallationApiController::class, 'store']);
     });
 });
 Route::post('/session/keepalive', [AuthController::class, 'keepAlive'])->middleware(['auth', 'inactivity'])->name('session.keepalive');
@@ -98,6 +97,8 @@ Route::post('/logout', [AuthController::class, 'destroy'])->middleware('auth')->
 Route::post('/pages/logout.php', [AuthController::class, 'destroy'])->middleware('auth');
 
 Route::middleware(['auth', 'inactivity', 'role:super_admin,admin'])->group(function () use ($cleanPages, $redirectWithQuery) {
+    // Where a barangay is, so the coordinates of a new client fill in by themselves.
+    Route::get('/locations/geocode', [LocationController::class, 'geocode'])->middleware('throttle:30,1')->name('locations.geocode');
     Route::get('/locations/balilihan-search', [LocationController::class, 'searchBalilihan'])->middleware('throttle:10,1')->name('locations.balilihan-search');
     Route::post('/billing/generate', [BillingController::class, 'generate'])->name('billing.generate');
     // Stock is kept per branch: the branch admin keeps their own branch's stock and the super admin looks at every
@@ -117,6 +118,10 @@ Route::middleware(['auth', 'inactivity', 'role:super_admin,admin'])->group(funct
         ->name('inventory-requests.decide');
 
     // The photo of a NAP box (the controller limits a branch admin to their own branch).
+    // What the one search box of a list page suggests while someone types.
+    Route::get('/search-suggestions', [SearchSuggestionController::class, 'index'])->middleware('throttle:240,1')->name('search.suggestions');
+    // The boxes and ports of a barangay, for the pickers of Register New Client and Installations.
+    Route::get('/nap-boxes/lookup', [NapBoxLookupController::class, 'index'])->name('nap-boxes.lookup');
     Route::get('/nap-boxes/{box}/photo', [NapBoxPhotoController::class, 'show'])->whereNumber('box')->name('nap-boxes.photo');
 
     // Price Management: every branch sees the plans, only the super admin changes them.

@@ -254,13 +254,24 @@ class BranchCompanyPagesTest extends TestCase
         $this->assertFalse($page['canChangeRoles']);
     }
 
-    public function test_the_super_admin_lists_every_account_and_can_pick_a_branch(): void
+    public function test_the_super_admin_lists_every_account_and_types_a_branch_or_a_name_in_the_one_search_box(): void
     {
         $this->addLoonTechnicianAccount();
         $this->signIn(1);
 
         $this->assertSame([1, 2, 3, 4, 5, 6], $this->ids($this->users()['users']));
-        $this->assertSame([3, 6], $this->ids($this->users([], ['branch' => 'Loon'])['users']));
+        $this->assertSame([3, 6], $this->ids($this->users([], ['search' => 'Loon'])['users']), 'a branch');
+        $this->assertSame([6], $this->ids($this->users([], ['search' => 'Loon tech'])['users']), 'a branch and a name');
+        $this->assertSame([], $this->ids($this->users([], ['search' => 'Balilihan Loon'])['users']), 'words narrow each other');
+    }
+
+    public function test_a_branch_admin_has_no_branch_to_type_in_the_users_search(): void
+    {
+        $this->addLoonTechnicianAccount();
+        $this->signIn(2);
+
+        $this->assertSame([5], $this->ids($this->users([], ['search' => 'Balilihan'])['users']));
+        $this->assertSame([], $this->ids($this->users([], ['search' => 'Loon'])['users']), 'another branch finds nothing');
     }
 
     public function test_a_branch_admin_creates_an_account_for_a_technician_of_their_branch(): void
@@ -370,7 +381,7 @@ class BranchCompanyPagesTest extends TestCase
         $this->assertSame(0, $page['failedLogins']);
     }
 
-    public function test_the_super_admin_sees_every_login_and_can_pick_a_branch(): void
+    public function test_the_super_admin_sees_every_login_until_a_branch_or_a_name_is_typed(): void
     {
         $this->seedLogins();
         $this->signIn(1);
@@ -378,18 +389,27 @@ class BranchCompanyPagesTest extends TestCase
         $this->assertSame([1, 2, 3, 4, 5], $this->ids($all['loginHistory']));
         $this->assertSame(5, $all['totalLogins']);
         $this->assertSame(1, $all['failedLogins']);
-
-        $loon = $this->page('login_history', ['branch' => 'Loon']);
-        $this->assertSame([2], $this->ids($loon['loginHistory']));
-        $this->assertSame(1, $loon['totalLogins']);
     }
 
-    public function test_a_branch_admin_cannot_pick_another_branchs_logins(): void
+    public function test_the_login_history_is_searched_by_branch_or_name_in_one_box(): void
+    {
+        $this->seedLogins();
+        $this->signIn(1);
+
+        $this->assertSame([2], $this->ids($this->page('login_history', ['search' => 'Loon'])['loginHistory']), 'the branch of the account');
+        $this->assertSame([1, 3], $this->ids($this->page('login_history', ['search' => 'Balilihan'])['loginHistory']));
+        $this->assertSame([4], $this->ids($this->page('login_history', ['search' => 'ghost'])['loginHistory']), 'a username that belongs to no account');
+        $this->assertSame([3], $this->ids($this->page('login_history', ['search' => 'Balilihan tech'])['loginHistory']), 'words narrow each other');
+    }
+
+    public function test_a_branch_admin_cannot_search_into_another_branchs_logins(): void
     {
         $this->seedLogins();
         $this->signIn(3);
 
-        $this->assertSame([2], $this->ids($this->page('login_history', ['branch' => 'Balilihan'])['loginHistory']));
+        $this->assertSame([2], $this->ids($this->page('login_history', ['branch' => 'Balilihan'])['loginHistory']), 'the old branch box does nothing any more');
+        $this->assertSame([], $this->ids($this->page('login_history', ['search' => 'Balilihan'])['loginHistory']));
+        $this->assertSame([2], $this->ids($this->page('login_history', ['search' => 'Loon'])['loginHistory']));
     }
 
     // ---- prices and settings ----------------------------------------------------------------------

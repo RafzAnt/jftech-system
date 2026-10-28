@@ -31,7 +31,7 @@ class AuthenticateEmployeeToken
             ->leftJoin('users', 'users.id', '=', 'employees.user_id')
             ->where('employees.id', $record->employee_id)
             ->where('employees.status', 'active')
-            ->where(fn ($query) => $query->whereNull('users.id')->orWhere('users.status', 'active'))
+            ->where(fn ($query) => $query->whereNull('users.id')->orWhere(fn ($account) => $account->where('users.status', 'active')->where('users.archived', 0)))
             ->first(['employees.*']);
         if (! $employee) {
             return $this->unauthenticated();

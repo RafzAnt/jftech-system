@@ -14,6 +14,7 @@
     </script>
     <link rel="stylesheet" href="{{ asset('css/jftech-theme.css') }}?{{ $themeCssVersion }}">
     <link rel="stylesheet" href="{{ asset('css/nap_boxes.css') }}?{{ $napBoxesCssVersion }}">
+    <link rel="stylesheet" href="{{ asset('css/client_filter.css') }}?{{ $clientFilterCssVersion }}">
 </head>
 <body>
     <div class="grid-overlay"></div>
@@ -27,20 +28,7 @@
                 <p style="color: var(--text-muted); font-size: 0.85rem;">{{ $canManage ? 'The NAP boxes of your branch, counted in your inventory, and what is connected to each port' : 'The NAP boxes of every branch, counted in the inventory, and what is connected to each port' }}</p>
             </div>
             <div style="display:flex;gap:.65rem;flex-wrap:wrap;align-items:center;">
-                @if (! \App\Support\BranchScope::isRestricted())
-                <form method="GET" action="" class="dashboard-branch-form">
-                    @if ($showArchived)<input type="hidden" name="view" value="archived">@endif
-                    <label class="form-label" for="napBranch" style="margin:0;">Branch</label>
-                    <select name="branch" id="napBranch" class="form-select" onchange="this.form.submit()" style="width:auto;min-width:170px;">
-                        <option value="">All branches</option>
-                        @foreach ($branches as $branchOption)
-                        <option value="{{ $branchOption }}" {{ $branch === $branchOption ? 'selected' : '' }}>{{ $branchOption }}</option>
-                        @endforeach
-                    </select>
-                </form>
-                @else
-                <span class="badge badge-info">{{ $ownBranch ?: 'No branch assigned' }} branch</span>
-                @endif
+                <span class="badge badge-info">{{ $ownBranch ?: ($branch ? $branch . ' branch' : 'All branches') }}{{ $ownBranch ? ' branch' : '' }}</span>
                 <a class="btn btn-secondary" href="inventory.php{{ $branch && ! \App\Support\BranchScope::isRestricted() ? '?branch=' . urlencode($branch) : '' }}">Back to Inventory</a>
                 @if ($canManage && ! $showArchived)
                 <button class="btn btn-success" type="button" onclick="openBoxModal()">+ Add NAP Box</button>
@@ -63,26 +51,25 @@
             <a href="inventory.php?category={{ urlencode(\App\Support\NapBoxes::STOCK_CATEGORY) }}{{ $branch && ! \App\Support\BranchScope::isRestricted() ? '&branch=' . urlencode($branch) : '' }}" class="stat-card" style="text-decoration: none; color: inherit;"><div class="stat-value" style="color: var(--warning);">{{ number_format($napInStock) }}</div><div class="stat-label">NAP Boxes in Stock</div></a>
         </div>
 
-        <div class="card" style="margin-bottom: 1.5rem;">
+        <!-- One search box: a branch, a barangay or a NAP box -->
+        <form method="GET" action="" class="card client-filter-card" id="clientFilterForm" style="margin-bottom: 1.5rem;">
+            @if ($branch && ! \App\Support\BranchScope::isRestricted())<input type="hidden" name="branch" value="{{ $branch }}">@endif
+            @if ($showArchived)<input type="hidden" name="view" value="archived">@endif
             <div class="card-body">
-                <form method="GET" action="" class="box-filter-form">
-                    @if ($branch && ! \App\Support\BranchScope::isRestricted())<input type="hidden" name="branch" value="{{ $branch }}">@endif
-                    @if ($showArchived)<input type="hidden" name="view" value="archived">@endif
-                    <div class="form-group">
-                        <label class="form-label" for="filterBarangay">Barangay</label>
-                        <input type="text" id="filterBarangay" name="barangay" class="form-input" list="barangaySuggestions" placeholder="Barangay" autocomplete="off" value="{{ $filterBarangay }}">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="filterSearch">Search</label>
-                        <input type="text" id="filterSearch" name="q" class="form-input" placeholder="NAP name or location" value="{{ $search }}">
-                    </div>
-                    <button type="submit" class="btn btn-primary">Search</button>
-                    @if ($filterBarangay !== '' || $search !== '')
-                    <a class="btn btn-secondary" href="nap_boxes.php{{ $showArchived ? '?view=archived' : '' }}">Clear</a>
-                    @endif
-                </form>
+                @php
+                    $searchTerm = $search;
+                    $scopeBranch = $ownBranch;
+                    $filterSubject = 'NAP Boxes';
+                    $filterSearchLabel = 'Search NAP Boxes';
+                    $filterIdPrefix = 'nap';
+                    unset($filterDate);
+                @endphp
+                @include('pages.partials.client_location_filter')
+                @if ($search !== '')
+                <a class="btn btn-secondary btn-sm" style="margin-top: 0.75rem;" href="nap_boxes.php{{ $showArchived ? '?view=archived' : '' }}">Clear search</a>
+                @endif
             </div>
-        </div>
+        </form>
 
         <div class="card">
             <div class="card-header">
@@ -101,9 +88,9 @@
                                 @if (! \App\Support\BranchScope::isRestricted())<th>Branch</th>@endif
                                 <th>Barangay</th>
                                 <th>Location</th>
+                                <th>Coordinates</th>
                                 <th>Ports</th>
                                 <th>Occupied</th>
-                                <th>Reserved</th>
                                 <th>Faulty</th>
                                 <th>Available</th>
                                 <th>Status</th>
@@ -117,26 +104,35 @@
                                 @if (! \App\Support\BranchScope::isRestricted())<td><span class="badge badge-info">{{ $box['branch_name'] }}</span></td>@endif
                                 <td>{{ $box['barangay_name'] }}</td>
                                 <td class="cell-wrap">{{ $box['location'] ?: '—' }}</td>
+                                <td class="cell-wrap">
+                                    @if ($box['map_url'])
+                                    <a href="{{ $box['map_url'] }}" target="_blank" rel="noopener" title="Open in Google Maps">{{ $box['coordinates'] }}</a>
+                                    @else
+                                    <span class="badge badge-warning" title="Edit the box and add its Google coordinates">No coordinates</span>
+                                    @endif
+                                </td>
                                 <td>{{ $box['total_ports'] }}</td>
                                 <td>{{ $box['occupied_ports'] }}</td>
-                                <td>{{ $box['reserved_ports'] ?: '—' }}</td>
                                 <td>{{ $box['faulty_ports'] ?: '—' }}</td>
                                 <td><strong style="color: {{ $box['available_ports'] > 0 ? 'var(--success)' : 'var(--danger)' }};">{{ $box['available_ports'] }}</strong></td>
                                 <td><span class="badge badge-{{ $box['status'] === 'active' ? 'success' : 'secondary' }}">{{ ucfirst($box['status']) }}</span></td>
-                                <td>
-                                    <div class="port-actions">
-                                        <a class="btn btn-sm btn-secondary" href="nap_boxes.php?box={{ $box['id'] }}{{ $showArchived ? '&view=archived' : '' }}{{ $branch && ! \App\Support\BranchScope::isRestricted() ? '&branch=' . urlencode($branch) : '' }}#ports">Ports</a>
-                                        @if ($canManage)
-                                            @if (! $showArchived)
-                                            <button class="btn btn-sm btn-primary" type="button" data-box='@json($box, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP)' onclick="openBoxModal(JSON.parse(this.dataset.box))">Edit</button>
+                                <td class="nap-menu-cell">
+                                    <div class="nap-action-menu">
+                                        <button class="nap-action-menu-btn" type="button" aria-label="Actions for {{ $box['name'] }}" aria-expanded="false" onclick="toggleNapActionMenu(this)">&#8942;</button>
+                                        <div class="nap-action-menu-dropdown">
+                                            <a class="nap-menu-item" href="nap_boxes.php?box={{ $box['id'] }}{{ $showArchived ? '&view=archived' : '' }}{{ $branch && ! \App\Support\BranchScope::isRestricted() ? '&branch=' . urlencode($branch) : '' }}#ports">Ports</a>
+                                            @if ($canManage)
+                                                @if (! $showArchived)
+                                                <button class="nap-menu-item" type="button" data-box='@json($box, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP)' onclick="closeNapActionMenus(); openBoxModal(JSON.parse(this.dataset.box))">Edit</button>
+                                                @endif
+                                                <form method="POST" action="">
+                                                    @csrf
+                                                    <input type="hidden" name="action" value="{{ $showArchived ? 'restore_box' : 'archive_box' }}">
+                                                    <input type="hidden" name="box_id" value="{{ $box['id'] }}">
+                                                    <button type="submit" class="nap-menu-item {{ $showArchived ? '' : 'nap-menu-item-danger' }}" @if (! $showArchived) onclick="return confirm('Archive this NAP box?')" @endif>{{ $showArchived ? 'Restore' : 'Archive' }}</button>
+                                                </form>
                                             @endif
-                                            <form method="POST" action="">
-                                                @csrf
-                                                <input type="hidden" name="action" value="{{ $showArchived ? 'restore_box' : 'archive_box' }}">
-                                                <input type="hidden" name="box_id" value="{{ $box['id'] }}">
-                                                <button type="submit" class="btn btn-sm {{ $showArchived ? 'btn-success' : 'btn-danger' }}" @if (! $showArchived) onclick="return confirm('Archive this NAP box?')" @endif>{{ $showArchived ? 'Restore' : 'Archive' }}</button>
-                                            </form>
-                                        @endif
+                                        </div>
                                     </div>
                                 </td>
                             </tr>
@@ -152,7 +148,7 @@
         @if ($selectedBox)
         <div class="card" id="ports" style="margin-top: 1.5rem;">
             <div class="card-header">
-                <span class="card-title">{{ $selectedBox['name'] }} — {{ $selectedBox['barangay_name'] }}{{ $selectedBox['location'] ? ' · ' . $selectedBox['location'] : '' }}</span>
+                <span class="card-title">{{ $selectedBox['name'] }} — {{ $selectedBox['barangay_name'] }}{{ $selectedBox['location'] ? ' · ' . $selectedBox['location'] : '' }}@if ($selectedBox['map_url']) · <a href="{{ $selectedBox['map_url'] }}" target="_blank" rel="noopener">{{ $selectedBox['coordinates'] }}</a>@endif</span>
                 <div class="nap-summary">
                     <span>Total <strong>{{ $selectedBox['total_ports'] }}</strong></span>
                     <span>Occupied <strong>{{ $selectedBox['occupied_ports'] }}</strong></span>
@@ -174,12 +170,10 @@
                             @foreach ($selectedBox['ports'] as $port)
                             <tr>
                                 <td><strong>{{ $port['port_number'] }}</strong></td>
-                                <td><span class="port-status port-status-{{ $port['status'] }}">{{ ucfirst($port['status']) }}</span></td>
+                                <td><span class="port-status port-status-{{ $port['reserved'] ? 'reserved' : $port['status'] }}" @if ($port['reserved']) title="Used in an installation report that is waiting for the admin" @endif>{{ $port['reserved'] ? 'Reserved' : ucfirst($port['status']) }}</span></td>
                                 <td>
                                     @if ($port['client_name'])
                                     {{ $port['client_name'] }} <span style="color: var(--text-muted);">{{ $port['client_code'] }}</span>
-                                    @elseif ($port['reserved_by'])
-                                    <span style="color: var(--text-muted);">Request {{ $port['reserved_by'] }}</span>
                                     @else
                                     —
                                     @endif
@@ -187,7 +181,7 @@
                                 <td>
                                     @if ($canManage && empty($selectedBox['archived']))
                                     <div class="port-actions">
-                                        @if ($port['status'] === 'available')
+                                        @if ($port['status'] === 'available' && ! $port['reserved'])
                                         <form method="POST" action="">
                                             @csrf
                                             <input type="hidden" name="action" value="port"><input type="hidden" name="port_id" value="{{ $port['id'] }}"><input type="hidden" name="do" value="assign">
@@ -308,6 +302,11 @@
                         <input type="text" name="location" id="boxLocation" class="form-input" maxlength="255" placeholder="Purok 2, near the chapel">
                     </div>
                     <div class="form-group" style="grid-column: 1 / -1;">
+                        <label class="form-label" for="boxCoordinates">Google coordinates *</label>
+                        <input type="text" name="coordinates" id="boxCoordinates" class="form-input" maxlength="300" placeholder="9.6541, 124.1234" autocomplete="off" required>
+                        <small style="color: var(--text-muted);">Exactly where the NAP box hangs. On Google Maps, press and hold (or right-click) the spot and copy the numbers at the top, or paste the map address.</small>
+                    </div>
+                    <div class="form-group" style="grid-column: 1 / -1;">
                         <label class="form-label" for="boxPhoto">Photo of the NAP box</label>
                         <input type="file" id="boxPhoto" class="form-input" accept="image/jpeg,image/png,image/webp" onchange="choosePhoto(this)">
                         <input type="hidden" name="photo_data" id="boxPhotoData">
@@ -327,6 +326,45 @@
     @endif
 
     <script>
+    // The row actions (Ports, Edit, Archive) live in a three-dot menu. The open menu is moved to the page body so the table cannot clip it.
+    function closeNapActionMenus() {
+        document.querySelectorAll('.nap-action-menu-dropdown.show').forEach(menu => {
+            menu.classList.remove('show');
+            if (menu._napMenuPlaceholder) {
+                menu.removeAttribute('style');
+                menu._napMenuPlaceholder.replaceWith(menu);
+                delete menu._napMenuPlaceholder;
+            }
+        });
+        document.querySelectorAll('.nap-action-menu-btn[aria-expanded="true"]').forEach(button => button.setAttribute('aria-expanded', 'false'));
+    }
+    function toggleNapActionMenu(button) {
+        const menu = button.nextElementSibling;
+        const willOpen = !menu.classList.contains('show');
+        closeNapActionMenus();
+        if (!willOpen) return;
+        const placeholder = document.createComment('nap action menu');
+        menu.parentNode.replaceChild(placeholder, menu);
+        menu._napMenuPlaceholder = placeholder;
+        document.body.appendChild(menu);
+        menu.style.cssText = 'position:fixed;visibility:hidden;z-index:1000;right:auto;bottom:auto';
+        menu.classList.add('show');
+        const buttonRect = button.getBoundingClientRect();
+        const menuRect = menu.getBoundingClientRect();
+        const top = buttonRect.bottom + menuRect.height + 8 <= window.innerHeight ? buttonRect.bottom + 6 : Math.max(8, buttonRect.top - menuRect.height - 6);
+        const left = Math.max(8, Math.min(window.innerWidth - menuRect.width - 8, buttonRect.right - menuRect.width));
+        menu.style.top = top + 'px';
+        menu.style.left = left + 'px';
+        menu.style.visibility = 'visible';
+        button.setAttribute('aria-expanded', 'true');
+    }
+    document.addEventListener('click', event => {
+        if (!event.target.closest('.nap-action-menu') && !event.target.closest('.nap-action-menu-dropdown')) closeNapActionMenus();
+    });
+    document.addEventListener('keydown', event => { if (event.key === 'Escape') closeNapActionMenus(); });
+    window.addEventListener('scroll', closeNapActionMenus, true);
+    window.addEventListener('resize', closeNapActionMenus);
+
     function openBoxModal(box) {
         const editing = !!box;
         document.getElementById('boxModalTitle').textContent = editing ? 'Edit NAP Box' : 'Add NAP Box';
@@ -335,6 +373,7 @@
         document.getElementById('boxPorts').value = editing ? box.total_ports : 8;
         document.getElementById('boxBarangay').value = editing ? box.barangay_name : '';
         document.getElementById('boxLocation').value = editing ? (box.location || '') : '';
+        document.getElementById('boxCoordinates').value = editing ? (box.coordinates || '') : '';
         document.getElementById('boxStatus').value = editing ? box.status : 'active';
         document.getElementById('boxStatusGroup').style.display = editing ? '' : 'none';
         // A new box is taken from the stock; an existing one is only changed.

@@ -10,7 +10,7 @@ return function (\Illuminate\Http\Request $request): array {
     return [
         'from' => $from,
         'to' => $to,
-        'branchLabel' => $branch ?? 'All branches',
+        'selectedBranch' => $branch,
         'report' => PeriodReport::build($from, $to, $branch),
     ];
 };

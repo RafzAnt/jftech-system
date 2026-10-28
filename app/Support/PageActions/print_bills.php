@@ -51,16 +51,7 @@ $totalPending = array_sum(array_map(function($b) { return $b['status'] === 'pend
 $totalPaid = array_sum(array_map(function($b) { return $b['status'] === 'paid' ? (float) $b['amount'] : 0; }, $bills));
 $totalOverdue = array_sum(array_map(function($b) { return $b['status'] === 'overdue' ? (float) $b['amount'] : 0; }, $bills));
 
-$periodLabel = '';
-if ($selectedStart && $selectedEnd) {
-    $periodLabel = date('M d, Y', strtotime($selectedStart)) . ' to ' . date('M d, Y', strtotime($selectedEnd));
-} elseif ($selectedStart) {
-    $periodLabel = 'From ' . date('M d, Y', strtotime($selectedStart));
-} elseif ($selectedEnd) {
-    $periodLabel = 'Until ' . date('M d, Y', strtotime($selectedEnd));
-} else {
-    $periodLabel = 'All Dates';
-}
+$periodLabel = \App\Support\ReportFormat::coverage($selectedStart, $selectedEnd);
 
 $statusLabel = '';
 if ($selectedStatus) {

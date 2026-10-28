@@ -31,50 +31,13 @@ $showOverdue = $request->boolean('overdue');
 $clientActionSuccess = '';
 $clientActionError = '';
 
-// Branch, barangay, and search filters (same behavior as Browse Clients).
-$branches = config('bohol_branches', []);
-$branchBarangays = config('bohol_barangays', []);
-$searchTerm = trim((string) $request->query('search', ''));
-// A branch admin only works with their own branch: it is the only option and is always selected.
+// The one search box: a branch, a barangay or a client (same behavior as Browse Clients, see LocationFilter).
+// A branch admin only works with their own branch.
 $scopeBranch = \App\Support\BranchScope::current();
-if ($scopeBranch !== null) {
-    $ownBranches = array_filter(array_keys($branches), static fn (string $name): bool => strcasecmp($name, $scopeBranch) === 0);
-    $branches = array_intersect_key($branches, array_flip($ownBranches));
-}
-$selectedBranch = $scopeBranch !== null ? array_key_first($branches) ?? '' : trim((string) $request->query('branch', ''));
-if (! array_key_exists($selectedBranch, $branches)) {
-    $selectedBranch = '';
-}
-$requestedBarangays = $request->query('barangays', []);
-$selectedBarangays = is_array($requestedBarangays) ? $requestedBarangays : [];
-$validBarangaysForBranch = $selectedBranch ? ($branchBarangays[$selectedBranch] ?? []) : [];
-$selectedBarangays = array_values(array_unique(array_filter(array_map('trim', $selectedBarangays), static function ($name) use ($validBarangaysForBranch) {
-    return in_array($name, $validBarangaysForBranch, true);
-})));
+$location = \App\Support\LocationFilter::fromRequest($request);
+$searchTerm = $location['searchTerm'];
 [$locationSql, $locationParams] = \App\Support\BranchScope::clients($scopeBranch, 'c');
-if ($selectedBranch) {
-    $locationSql .= ' AND LOWER(COALESCE(c.branch_name, \'\')) = LOWER(?)';
-    $locationParams[] = $selectedBranch;
-}
-if ($selectedBarangays) {
-    $placeholders = implode(', ', array_fill(0, count($selectedBarangays), '?'));
-    $locationSql .= " AND LOWER(COALESCE(c.registered_barangay_name, b.barangay_name, '')) IN ($placeholders)";
-    array_push($locationParams, ...array_map('strtolower', $selectedBarangays));
-}
-$searchSql = '';
-$searchParams = [];
-if ($searchTerm !== '') {
-    $searchSql = " AND (
-        LOWER(COALESCE(c.full_name, '')) LIKE LOWER(?)
-        OR LOWER(COALESCE(c.client_code, '')) LIKE LOWER(?)
-        OR LOWER(COALESCE(c.contact_number, '')) LIKE LOWER(?)
-        OR LOWER(COALESCE(c.branch_name, '')) LIKE LOWER(?)
-        OR LOWER(COALESCE(c.registered_barangay_name, b.barangay_name, '')) LIKE LOWER(?)
-    )";
-    for ($i = 0; $i < 5; $i++) {
-        $searchParams[] = '%' . $searchTerm . '%';
-    }
-}
+[$searchSql, $searchParams] = \App\Support\LocationFilter::clientConditions($location, 'c', 'b');
 $archivedSql = $showArchived ? 'c.archived = 1' : '(c.archived IS NULL OR c.archived = 0)';
 $overdueSql = $showOverdue
     ? " AND EXISTS (SELECT 1 FROM bills overdue_bills WHERE overdue_bills.client_id = c.id AND overdue_bills.status = 'overdue')"
@@ -206,17 +169,10 @@ if ($request->has('client_id') && $request->query('client_id')) {
     }
 }
 
-// Search clients. Branch, barangay, and search terms can be used together.
-$searchResults = [];
-if ($searchTerm !== '') {
-    $stmt = $pdo->prepare('SELECT c.*, COALESCE(c.registered_barangay_name, b.barangay_name) AS barangay_name FROM clients c LEFT JOIN barangays b ON c.barangay_id = b.id WHERE ' . $archivedSql . $locationSql . $searchSql . $overdueSql . ' ORDER BY c.id DESC LIMIT 20');
-    $stmt->execute([...$locationParams, ...$searchParams]);
-    $searchResults = $stmt->fetchAll();
-}
-
-// Get clients for quick select, optionally limited to a branch and barangays.
-$stmt = $pdo->prepare('SELECT c.id, c.full_name, c.contact_number, c.email, c.wifi_plan, c.status, c.branch_name, COALESCE(c.registered_barangay_name, b.barangay_name) AS barangay_name FROM clients c LEFT JOIN barangays b ON c.barangay_id = b.id WHERE ' . $archivedSql . $locationSql . $overdueSql . ' ORDER BY c.id DESC');
-$stmt->execute($locationParams);
+// The clients of the list: everyone the account may see, narrowed by what was typed in the one search box (a branch, a barangay or a
+// client, words together).
+$stmt = $pdo->prepare('SELECT c.id, c.full_name, c.contact_number, c.email, c.wifi_plan, c.status, c.branch_name, COALESCE(c.registered_barangay_name, b.barangay_name) AS barangay_name FROM clients c LEFT JOIN barangays b ON c.barangay_id = b.id WHERE ' . $archivedSql . $locationSql . $searchSql . $overdueSql . ' ORDER BY c.id DESC');
+$stmt->execute([...$locationParams, ...$searchParams]);
 $allClients = $stmt->fetchAll();
 [$archivedScope, $archivedScopeParams] = \App\Support\BranchScope::clients($scopeBranch, 'c');
 $stmt = $pdo->prepare('SELECT COUNT(*) FROM clients c WHERE c.archived = 1' . $archivedScope);

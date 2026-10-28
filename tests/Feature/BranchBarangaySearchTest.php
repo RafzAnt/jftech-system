@@ -4,17 +4,18 @@ namespace Tests\Feature;
 
 use App\Http\Controllers\PriceManagementController;
 use App\Support\LocationFilter;
-use App\Support\WorkRequestService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\PreserveGlobalState;
 use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use Tests\Concerns\BranchTestData;
 use Tests\TestCase;
 
 /**
- * The super admin searches every list page by branch (and by barangay where the records have one) and sees all the records when
- * nothing is chosen; a branch admin only ever has their own branch, whatever the address bar says.
+ * Every list page has ONE search box. The super admin types a branch, a barangay or a name (or several words that narrow each other)
+ * and sees all the records when it is empty; a branch admin has no branch to type, their own is automatic, so a word of another branch
+ * finds nothing.
  *
  * Seed: users 1 super admin, 2 Balilihan admin, 3 Loon admin. Balilihan: client 1 (Boctol), employee 1, payment 1 (1000), payroll 1;
  * Loon: client 2 (Agsoso), client 3 archived, employee 2, payment 2 (2000), payroll 2. The Employees page declares helper
@@ -67,39 +68,45 @@ class BranchBarangaySearchTest extends TestCase
 
     // ---- the filter itself ------------------------------------------------------------------------
 
-    public function test_the_super_admin_may_pick_any_branch_in_any_spelling(): void
+    public function test_the_search_is_one_text_whatever_else_is_in_the_address_bar(): void
     {
         $this->signIn(1);
 
-        $this->assertSame('', $this->filter([])['selectedBranch']);
-        $this->assertSame('Loon', $this->filter(['branch' => ' loon '])['selectedBranch']);
-        $this->assertSame('', $this->filter(['branch' => 'Atlantis'])['selectedBranch']);
-        $this->assertCount(19, $this->filter([])['branches']);
+        $this->assertSame(['searchTerm' => '', 'scopeBranch' => null], $this->filter([]));
+        $this->assertSame('Loon Agsoso', $this->filter(['search' => '  Loon Agsoso '])['searchTerm']);
+        $this->assertSame('', $this->filter(['branch' => 'Loon', 'barangays' => ['Agsoso']])['searchTerm'], 'the old branch and barangay boxes are gone');
     }
 
-    public function test_the_barangays_must_belong_to_the_chosen_branch(): void
-    {
-        $this->signIn(1);
-
-        $this->assertSame(['Agsoso'], $this->filter(['branch' => 'Loon', 'barangays' => ['agsoso', 'Boctol', 'Nowhere']])['selectedBarangays']);
-        $this->assertSame([], $this->filter(['barangays' => ['Agsoso']])['selectedBarangays'], 'a barangay needs its branch');
-        $this->assertSame(['Agsoso'], $this->filter(['branch' => 'Loon', 'barangays' => ['Agsoso', 'AGSOSO']])['selectedBarangays']);
-    }
-
-    public function test_a_branch_admin_only_has_their_own_branch(): void
+    public function test_a_branch_admin_has_their_own_branch_automatically(): void
     {
         $this->signIn(2);
 
-        $filter = $this->filter(['branch' => 'Loon', 'barangays' => ['Agsoso']]);
+        $this->assertSame('Balilihan', $this->filter(['branch' => 'Loon'])['scopeBranch']);
+    }
 
-        $this->assertSame('Balilihan', $filter['selectedBranch']);
-        $this->assertSame(['Balilihan'], array_keys($filter['branches']));
-        $this->assertSame([], $filter['selectedBarangays']);
+    public function test_the_placeholder_says_what_can_be_typed(): void
+    {
+        $this->assertSame('Branch, Barangay, Clients', LocationFilter::placeholder(null, 'Clients'));
+        $this->assertSame('Barangay, Clients', LocationFilter::placeholder('Balilihan', 'Clients'), 'a branch admin has no branch to type');
+        $this->assertSame('Branch, Barangay, Employees', LocationFilter::placeholder(null, 'Employees'));
+        $this->assertSame('Branch, Users', LocationFilter::placeholder(null, 'Users', false));
+        $this->assertSame('Users', LocationFilter::placeholder('Loon', 'Users', false));
+    }
+
+    public function test_the_words_of_a_search_narrow_each_other(): void
+    {
+        $this->assertSame(['Loon', 'Agsoso', 'Ana'], LocationFilter::words(' Loon,  Agsoso   Ana '));
+        $this->assertSame([], LocationFilter::words('  , '));
+
+        [$sql, $params] = LocationFilter::wordConditions('Loon ana', ['c.full_name', 'c.branch_name']);
+        $this->assertSame(2, substr_count($sql, ' AND ('), 'every word has to be found');
+        $this->assertSame(['%Loon%', '%Loon%', '%ana%', '%ana%'], $params);
+        $this->assertSame(['', []], LocationFilter::wordConditions('', ['c.full_name']));
     }
 
     // ---- Payment History -----------------------------------------------------------------------------
 
-    public function test_payment_history_shows_every_branch_until_one_is_picked(): void
+    public function test_payment_history_shows_every_branch_until_something_is_typed(): void
     {
         $this->signIn(1);
 
@@ -107,18 +114,20 @@ class BranchBarangaySearchTest extends TestCase
         $this->assertSame([1, 2], $this->ids($all['payments']));
         $this->assertEquals(3000, $all['totalPayments']);
 
-        $loon = $this->page('payment_history', ['branch' => 'Loon']);
+        $loon = $this->page('payment_history', ['search' => 'Loon']);
         $this->assertSame([2], $this->ids($loon['payments']));
-        $this->assertEquals(2000, $loon['totalPayments'], 'the cards follow the filter');
+        $this->assertEquals(2000, $loon['totalPayments'], 'the cards follow the search');
     }
 
-    public function test_payment_history_can_be_searched_by_barangay(): void
+    public function test_payment_history_can_be_searched_by_branch_barangay_and_both_together(): void
     {
         $this->signIn(1);
 
-        $this->assertSame([2], $this->ids($this->page('payment_history', ['branch' => 'Loon', 'barangays' => ['Agsoso']])['payments']));
-        $this->assertSame([1], $this->ids($this->page('payment_history', ['branch' => 'Balilihan', 'barangays' => ['Agsoso']])['payments']), 'Agsoso is not a barangay of Balilihan, so it is ignored and the whole branch shows');
-        $this->assertSame([1], $this->ids($this->page('payment_history', ['branch' => 'Balilihan', 'barangays' => ['Boctol']])['payments']));
+        $this->assertSame([2], $this->ids($this->page('payment_history', ['search' => 'Agsoso'])['payments']), 'a barangay');
+        $this->assertSame([1], $this->ids($this->page('payment_history', ['search' => 'boctol'])['payments']));
+        $this->assertSame([2], $this->ids($this->page('payment_history', ['search' => 'Loon Agsoso'])['payments']), 'a branch and its barangay');
+        $this->assertSame([], $this->ids($this->page('payment_history', ['search' => 'Balilihan Agsoso'])['payments']), 'Agsoso is not a barangay of Balilihan');
+        $this->assertSame([2], $this->ids($this->page('payment_history', ['search' => 'Loon, ben'])['payments']), 'a branch and a client');
     }
 
     public function test_payment_history_can_be_searched_by_client_code_and_reference_number(): void
@@ -135,80 +144,182 @@ class BranchBarangaySearchTest extends TestCase
     {
         $this->signIn(2);
 
-        $this->assertSame([1], $this->ids($this->page('payment_history', ['branch' => 'Loon'])['payments']));
+        $this->assertSame([1], $this->ids($this->page('payment_history', ['branch' => 'Loon'])['payments']), 'the old branch box does nothing any more');
+        $this->assertSame([], $this->ids($this->page('payment_history', ['search' => 'Loon'])['payments']), 'another branch is not found');
         $this->assertSame([], $this->ids($this->page('payment_history', ['search' => 'ben'])['payments']), 'a client of another branch is not found');
+        $this->assertSame([1], $this->ids($this->page('payment_history', ['search' => 'Balilihan Boctol'])['payments']));
     }
 
-    public function test_payment_history_shows_the_filter_and_the_branch_and_barangay_of_each_payment(): void
+    public function test_payment_history_has_one_search_box_and_shows_the_branch_and_barangay_of_each_payment(): void
     {
         $this->signIn(1);
-
-        $html = $this->get('/payments?branch=Loon&barangays[]=Agsoso')->assertOk()->getContent();
+        $html = $this->get('/payments?search=Loon+Agsoso')->assertOk()->getContent();
 
         $this->assertStringContainsString('id="clientFilterForm"', $html);
         $this->assertStringContainsString('Search Payments', $html);
+        $this->assertStringContainsString('placeholder="Branch, Barangay, Payments"', $html);
+        $this->assertSame(1, substr_count($html, 'name="search"'));
+        $this->assertStringNotContainsString('id="clientBranchInput"', $html);
+        $this->assertStringNotContainsString('id="clientBarangayInput"', $html);
         $this->assertStringContainsString('<th>Branch</th>', $html);
         $this->assertStringContainsString('<th>Barangay</th>', $html);
         $this->assertStringContainsString('<td>Agsoso</td>', $html);
         $this->assertStringContainsString('Ben Cruz', $html);
         $this->assertStringNotContainsString('Ana Reyes', $html);
+
+        $this->signIn(2);
+        $this->assertStringContainsString('placeholder="Barangay, Payments"', $this->get('/payments')->assertOk()->getContent(), 'a branch admin has no branch to type');
     }
 
     // ---- Employees and attendance -----------------------------------------------------------------------
 
-    public function test_the_employee_list_can_be_narrowed_to_a_branch(): void
+    public function test_the_employee_list_shows_everyone_until_something_is_typed(): void
     {
         $this->signIn(1);
 
-        $all = $this->page('employees');
-        $this->assertSame([1, 2], $this->ids($all['listedEmployees']));
-        $this->assertSame('', $all['selectedListBranch']);
+        $this->assertSame([1, 2], $this->ids($this->page('employees')['listedEmployees']));
     }
 
-    public function test_the_employee_list_of_one_branch(): void
+    public static function superAdminEmployeeSearches(): array
     {
-        $this->signIn(1);
-
-        $loon = $this->page('employees', ['branch' => 'loon']);
-
-        $this->assertSame([2], $this->ids($loon['listedEmployees']));
-        $this->assertSame('Loon', $loon['selectedListBranch']);
-        $this->assertSame([1, 2], $this->ids($loon['employees']), 'the other tabs still know every employee');
+        return [
+            'a branch' => [['search' => 'loon'], [2]],
+            'a name' => [['search' => 'fay'], [2]],
+            'a code and its branch' => [['search' => 'EMP-1 balilihan'], [1]],
+            'a code and another branch' => [['search' => 'EMP-1 Loon'], []],
+        ];
     }
 
-    public function test_the_branch_filter_also_narrows_the_attendance_records(): void
+    #[DataProvider('superAdminEmployeeSearches')]
+    public function test_the_employee_list_is_searched_by_branch_name_or_code(array $query, array $expected): void
     {
         $this->signIn(1);
 
-        $rows = array_filter($this->page('employees', ['tab' => 'attendance', 'branch' => 'Loon'])['attendanceRecords'], fn ($row) => $row['attendance_id'] !== null);
+        $page = $this->page('employees', $query);
+
+        $this->assertSame($expected, $this->ids($page['listedEmployees']));
+        $this->assertSame([1, 2], $this->ids($page['employees']), 'the other tabs still know every employee');
+    }
+
+    public function test_the_search_also_narrows_the_attendance_records(): void
+    {
+        $this->signIn(1);
+
+        $rows = array_filter($this->page('employees', ['tab' => 'attendance', 'search' => 'Loon'])['attendanceRecords'], fn ($row) => $row['attendance_id'] !== null);
 
         $this->assertSame([2], $this->ids($rows, 'employee_id'));
     }
 
-    public function test_a_branch_admin_cannot_list_another_branchs_employees(): void
+    /** The employees of the attendance rows of the day that belong to a scan (the page also lists active employees without one). */
+    private function attendanceEmployees(array $query): array
     {
-        $this->signIn(2);
+        DB::table('employees')->where('id', 1)->update(['address' => 'Purok 2, Boctol, Balilihan']);
+        DB::table('employees')->where('id', 2)->update(['address' => 'Sitio Mabuhay, Agsoso, Loon']);
+        $rows = array_filter($this->page('employees', ['tab' => 'attendance', ...$query])['attendanceRecords'], fn ($row) => $row['attendance_id'] !== null);
 
-        $page = $this->page('employees', ['branch' => 'Loon']);
-
-        $this->assertSame([1], $this->ids($page['listedEmployees']));
-        $this->assertSame('', $page['selectedListBranch']);
+        return $this->ids($rows, 'employee_id');
     }
 
-    public function test_the_employee_page_has_the_branch_filter_in_the_details_tab(): void
+    public static function superAdminAttendanceSearches(): array
+    {
+        return [
+            'every branch until something is typed' => [[], [1, 2]],
+            'a branch' => [['search' => 'Loon'], [2]],
+            'a barangay (in the address)' => [['search' => 'agsoso'], [2]],
+            'a branch and its barangay' => [['search' => 'Loon agsoso'], [2]],
+            'a barangay the branch does not have' => [['search' => 'Loon Cabug'], []],
+            'an employee by name' => [['search' => 'fay'], [2]],
+            'an employee by code' => [['search' => 'EMP-1'], [1]],
+            'an employee of another branch' => [['search' => 'Loon Eli'], []],
+        ];
+    }
+
+    #[DataProvider('superAdminAttendanceSearches')]
+    public function test_attendance_is_searched_by_branch_barangay_and_employee(array $query, array $expected): void
     {
         $this->signIn(1);
 
-        $html = $this->get('/employees?branch=Loon')->assertOk()->getContent();
+        $this->assertSame($expected, $this->attendanceEmployees($query));
+    }
 
-        $this->assertStringContainsString('<option value="Loon" selected>Loon</option>', $html);
+    public static function branchAdminAttendanceSearches(): array
+    {
+        return [
+            'another branch in the address bar' => [['branch' => 'Loon'], [1]],
+            'a barangay of their branch' => [['search' => 'Boctol'], [1]],
+            'a barangay of another branch finds nothing, never widening the branch' => [['search' => 'Agsoso'], []],
+            'an employee of another branch' => [['search' => 'Fay'], []],
+            'an employee of their branch' => [['search' => 'Eli'], [1]],
+        ];
+    }
+
+    #[DataProvider('branchAdminAttendanceSearches')]
+    public function test_a_branch_admin_searches_attendance_inside_their_own_branch_only(array $query, array $expected): void
+    {
+        $this->signIn(2);
+
+        $this->assertSame($expected, $this->attendanceEmployees($query));
+    }
+
+    public function test_the_attendance_tab_has_the_same_one_search_box_as_the_other_pages(): void
+    {
+        $this->signIn(1);
+
+        $html = $this->get('/employees?tab=attendance')->assertOk()->getContent();
+
+        $this->assertStringContainsString('id="attendanceSearchInput"', $html);
+        $this->assertStringContainsString('name="attendance_date"', $html);
+        $this->assertStringContainsString('Search Employees', $html);
+        $this->assertStringContainsString('placeholder="Branch, Barangay, Employees"', $html);
+        $this->assertStringNotContainsString('id="clientBranchInput"', $html);
+        $this->assertStringNotContainsString('id="clientBarangayInput"', $html);
+        $this->assertStringNotContainsString('All Employees', $html);
+    }
+
+    public function test_a_branch_admin_has_no_branch_to_type_in_the_employee_search(): void
+    {
+        $this->signIn(2);
+
+        $html = $this->get('/employees?tab=attendance')->assertOk()->getContent();
+
+        $this->assertStringContainsString('placeholder="Barangay, Employees"', $html);
+        $this->assertStringNotContainsString('placeholder="Branch, Barangay, Employees"', $html);
+    }
+
+    public static function branchAdminEmployeeSearches(): array
+    {
+        return [
+            'the old branch box' => [['branch' => 'Loon'], [1]],
+            'a word of another branch' => [['search' => 'Loon'], []],
+            'an employee of another branch' => [['search' => 'Fay'], []],
+            'an employee of their branch' => [['search' => 'Eli'], [1]],
+        ];
+    }
+
+    #[DataProvider('branchAdminEmployeeSearches')]
+    public function test_a_branch_admin_cannot_list_another_branchs_employees(array $query, array $expected): void
+    {
+        $this->signIn(2);
+
+        $this->assertSame($expected, $this->ids($this->page('employees', $query)['listedEmployees']));
+    }
+
+    public function test_the_employee_details_tab_has_the_search_box_and_lists_what_it_finds(): void
+    {
+        $this->signIn(1);
+
+        $html = $this->get('/employees?tab=details&search=Loon')->assertOk()->getContent();
+
+        $this->assertStringContainsString('id="employeeListSearchInput"', $html);
+        $this->assertStringContainsString('value="Loon"', $html);
+        $this->assertStringNotContainsString('<option value="Loon" selected>', $html, 'the branch drop-down is gone');
         $this->assertStringContainsString('Fay Garcia', $html);
-        $this->assertStringNotContainsString('Eli Santos</td>', $html, 'only the employees of the branch are listed');
+        $this->assertStringNotContainsString('Eli Santos</td>', $html, 'only the employees found are listed');
     }
 
     // ---- Payroll -------------------------------------------------------------------------------------------
 
-    public function test_payroll_shows_every_branch_until_one_is_picked(): void
+    public function test_payroll_shows_every_branch_until_something_is_typed(): void
     {
         $this->signIn(1);
 
@@ -216,21 +327,18 @@ class BranchBarangaySearchTest extends TestCase
         $this->assertSame([1, 2], $this->ids($all['payrollRecords']));
         $this->assertSame(2, $all['totalRecords']);
 
-        $loon = $this->page('payroll', ['branch' => 'Loon']);
+        $loon = $this->page('payroll', ['search' => 'Loon']);
         $this->assertSame([2], $this->ids($loon['payrollRecords']));
-        $this->assertSame(1, $loon['totalRecords'], 'the cards follow the filter');
+        $this->assertSame(1, $loon['totalRecords'], 'the cards follow the search');
         $this->assertEquals(4000, $loon['totalNetPay']);
-        $this->assertSame('Loon', $loon['selectedBranch']);
     }
 
     public function test_a_branch_admin_cannot_search_into_another_branchs_payroll(): void
     {
         $this->signIn(2);
 
-        $page = $this->page('payroll', ['branch' => 'Loon']);
-
-        $this->assertSame([1], $this->ids($page['payrollRecords']));
-        $this->assertSame('Balilihan', $page['selectedBranch'], 'a branch admin always has their own branch');
+        $this->assertSame([1], $this->ids($this->page('payroll', ['branch' => 'Loon'])['payrollRecords']), 'the old branch box does nothing any more');
+        $this->assertSame([], $this->ids($this->page('payroll', ['search' => 'Loon'])['payrollRecords']));
     }
 
     public function test_payroll_can_be_searched_by_barangay_in_the_employee_address(): void
@@ -239,13 +347,14 @@ class BranchBarangaySearchTest extends TestCase
         DB::table('employees')->where('id', 2)->update(['address' => 'Sitio Mabuhay, Agsoso, Loon']);
 
         $this->signIn(1);
-        $this->assertSame([2], $this->ids($this->page('payroll', ['branch' => 'Loon', 'barangays' => ['agsoso']])['payrollRecords']));
-        $this->assertSame([], $this->ids($this->page('payroll', ['branch' => 'Loon', 'barangays' => ['Cabug']])['payrollRecords']));
-        $this->assertSame([1, 2], $this->ids($this->page('payroll', ['barangays' => ['Agsoso']])['payrollRecords']), 'a barangay is ignored until its branch is picked');
+        $this->assertSame([2], $this->ids($this->page('payroll', ['search' => 'agsoso'])['payrollRecords']));
+        $this->assertSame([2], $this->ids($this->page('payroll', ['search' => 'Loon agsoso'])['payrollRecords']));
+        $this->assertSame([], $this->ids($this->page('payroll', ['search' => 'Loon Cabug'])['payrollRecords']));
+        $this->assertSame([], $this->ids($this->page('payroll', ['search' => 'Balilihan Agsoso'])['payrollRecords']));
 
-        $both = $this->page('payroll', ['branch' => 'Loon', 'barangays' => ['Cabug', 'Agsoso']]);
-        $this->assertSame([2], $this->ids($both['payrollRecords']));
-        $this->assertSame(1, $both['totalRecords'], 'the cards follow the filter');
+        $found = $this->page('payroll', ['search' => 'Mabuhay']);
+        $this->assertSame([2], $this->ids($found['payrollRecords']));
+        $this->assertSame(1, $found['totalRecords'], 'the cards follow the search');
     }
 
     public function test_payroll_can_be_searched_by_employee(): void
@@ -264,8 +373,7 @@ class BranchBarangaySearchTest extends TestCase
         DB::table('employees')->where('id', 2)->update(['address' => 'Boctol, Loon']);
         $this->signIn(2);
 
-        $this->assertSame([1], $this->ids($this->page('payroll', ['barangays' => ['Boctol']])['payrollRecords']));
-        $this->assertSame([1], $this->ids($this->page('payroll', ['branch' => 'Loon', 'barangays' => ['Boctol']])['payrollRecords']));
+        $this->assertSame([1], $this->ids($this->page('payroll', ['search' => 'Boctol'])['payrollRecords']), 'Boctol of Loon is not theirs');
         $this->assertSame([], $this->ids($this->page('payroll', ['search' => 'Fay'])['payrollRecords']), 'an employee of another branch');
         $this->assertSame([1], $this->ids($this->page('payroll', ['search' => 'Eli'])['payrollRecords']));
     }
@@ -293,87 +401,21 @@ class BranchBarangaySearchTest extends TestCase
         $this->assertStringNotContainsString('<select name="employee_id"', $html);
     }
 
-    public function test_the_payroll_filter_and_the_branch_of_each_payslip_are_shown(): void
+    public function test_the_payroll_has_one_search_box_and_the_branch_of_each_payslip_is_shown(): void
     {
         $this->signIn(1);
 
-        $html = $this->get('/payroll?branch=Loon')->assertOk()->getContent();
+        $html = $this->get('/payroll?search=Loon')->assertOk()->getContent();
 
         $this->assertStringContainsString('id="clientFilterForm"', $html);
-        $this->assertStringContainsString('<input type="hidden" id="clientBranchFilter" name="branch" value="Loon">', $html);
         $this->assertStringContainsString('Search Employees', $html);
-        $this->assertStringNotContainsString('name="period_start"', $html, 'only the branch, barangay and employee search');
+        $this->assertStringContainsString('placeholder="Branch, Barangay, Employees"', $html);
+        $this->assertSame(1, substr_count($html, 'name="search"'));
+        $this->assertStringNotContainsString('id="clientBranchFilter"', $html);
+        $this->assertStringNotContainsString('name="period_start"', $html, 'only the search box');
         $this->assertStringContainsString('<span class="payslip-label">Branch</span><strong>Loon</strong>', $html);
-    }
 
-    // ---- Work Requests --------------------------------------------------------------------------------------
-
-    private function addWorkRequests(): void
-    {
-        foreach ([['WR-1', 'Loon', 'Agsoso'], ['WR-2', 'Loon', 'Cabug'], ['WR-3', 'Balilihan', 'Boctol']] as $index => [$code, $branch, $barangay]) {
-            DB::table('work_requests')->insert([
-                'id' => $index + 1, 'request_code' => $code, 'branch_name' => $branch, 'employee_id' => $branch === 'Loon' ? 2 : 1, 'work_type' => 'repair',
-                'barangay_name' => $barangay, 'status' => 'pending_approval', 'created_at' => now(), 'updated_at' => now(),
-            ]);
-        }
-    }
-
-    public function test_work_requests_can_be_searched_by_branch_and_barangay(): void
-    {
-        $this->addWorkRequests();
-
-        $this->assertSame([1, 2, 3], $this->ids(WorkRequestService::listing(null, null, null, 100, null)));
-        $this->assertSame([1, 2], $this->ids(WorkRequestService::listing(null, 'Loon', null, 100, null)));
-        $this->assertSame([2], $this->ids(WorkRequestService::listing(null, 'Loon', null, 100, 'cabug')));
-        $this->assertSame([], $this->ids(WorkRequestService::listing(null, 'Balilihan', null, 100, 'Cabug')));
-        $this->assertSame(1, WorkRequestService::counts(null, 'Loon', 'Agsoso')['pending_approval']);
-    }
-
-    public function test_the_work_requests_page_filters_by_barangay_and_the_tab_counts_follow(): void
-    {
-        $this->addWorkRequests();
-        $this->signIn(1);
-
-        $page = $this->page('work_requests', ['status' => 'all', 'branch' => 'Loon', 'barangay' => 'Cabug']);
-
-        $this->assertSame([2], $this->ids($page['requests']));
-        $this->assertSame('Cabug', $page['barangay']);
-        $this->assertSame(1, $page['tabCounts']['pending']);
-        $this->assertContains('Cabug', $page['barangaySuggestions']);
-        $this->assertNotContains('Boctol', $page['barangaySuggestions'], 'only the barangays of the chosen branch are offered');
-    }
-
-    public function test_a_barangay_that_is_not_one_of_the_branch_is_ignored(): void
-    {
-        $this->addWorkRequests();
-        $this->signIn(1);
-
-        $page = $this->page('work_requests', ['status' => 'all', 'branch' => 'Loon', 'barangay' => 'Boctol']);
-
-        $this->assertSame('', $page['barangay']);
-        $this->assertSame([1, 2], $this->ids($page['requests']));
-    }
-
-    public function test_a_branch_admin_filters_their_own_barangays(): void
-    {
-        $this->addWorkRequests();
         $this->signIn(2);
-
-        $page = $this->page('work_requests', ['status' => 'all', 'branch' => 'Loon', 'barangay' => 'Boctol']);
-
-        $this->assertSame([3], $this->ids($page['requests']));
-        $this->assertSame('Boctol', $page['barangay']);
-    }
-
-    public function test_the_work_requests_page_shows_the_barangay_filter(): void
-    {
-        $this->addWorkRequests();
-        $this->signIn(1);
-
-        $html = $this->get('/work-requests?status=all&branch=Loon&barangay=Cabug')->assertOk()->getContent();
-
-        $this->assertStringContainsString('id="requestBarangay"', $html);
-        $this->assertStringContainsString('value="Cabug"', $html);
-        $this->assertStringContainsString('<datalist id="requestBarangaySuggestions">', $html);
+        $this->assertStringContainsString('placeholder="Barangay, Employees"', $this->get('/payroll')->assertOk()->getContent());
     }
 }

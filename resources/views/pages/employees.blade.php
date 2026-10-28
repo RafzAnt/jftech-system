@@ -14,6 +14,7 @@
     </script>
     <link rel="stylesheet" href="{{ asset('css/jftech-theme.css') }}?{{ $themeCssVersion }}">
     <link rel="stylesheet" href="{{ asset('css/employees.css') }}?{{ $employeesCssVersion }}">
+    <link rel="stylesheet" href="{{ asset('css/client_filter.css') }}?{{ $clientFilterCssVersion }}">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
@@ -49,21 +50,20 @@
             <div id="detailsTab" class="tab-content {{ $activeTab === 'details' ? 'active' : '' }}">
                 <div class="card">
                     <div class="card-header">
-                        <span class="card-title">Employee List <span class="badge badge-info">{{ count($listedEmployees) }}{{ $selectedListBranch ? ' · ' . $selectedListBranch : '' }}</span></span>
-                        <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
-                            <form method="GET" action="" style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
-                                <input type="hidden" name="tab" value="details">
-                                <select name="branch" class="form-select" style="width: auto; min-width: 150px; padding: 0.5rem;" aria-label="Branch" onchange="this.form.submit()">
-                                    <option value="">{{ \App\Support\BranchScope::isRestricted() ? 'My branch' : 'All Branches' }}</option>
-                                    @foreach ($employeeBranches as $branch)
-                                    <option value="{{ $branch }}" {{ $selectedListBranch === $branch ? 'selected' : '' }}>{{ $branch }}</option>
-                                    @endforeach
-                                </select>
-                            </form>
-                            <div class="search-box" style="margin: 0;">
-                                <input type="text" class="search-input" placeholder="Search employees..." data-target="#employeesTable">
-                            </div>
-                        </div>
+                        <span class="card-title">Employee List <span class="badge badge-info">{{ count($listedEmployees) }}{{ $searchTerm !== '' ? ' · ' . $searchTerm : '' }}</span></span>
+                    </div>
+                    <div class="card-body client-filter-card" style="border-bottom: 1px solid var(--border-color);">
+                        <!-- One search box: a branch, a barangay or an employee -->
+                        <form method="GET" action="" id="employeeListFilterForm">
+                            <input type="hidden" name="tab" value="details">
+                            @php
+                                $filterSubject = 'Employees';
+                                $filterSearchLabel = 'Search Employees';
+                                $filterIdPrefix = 'employeeList';
+                                unset($filterDate);
+                            @endphp
+                            @include('pages.partials.client_location_filter')
+                        </form>
                     </div>
                     <div class="card-body" style="padding: 0;">
                         <div class="data-table-container">
@@ -254,29 +254,34 @@ $overtimeQR = null;
         </div>
                 </div>
 
+                <!-- One search box (a branch, a barangay or an employee), the same as the other list pages. -->
+                <form method="GET" action="" class="card client-filter-card" id="clientFilterForm" style="margin-bottom: 1.5rem;">
+                    <input type="hidden" name="tab" value="attendance">
+                    <div class="card-header">
+                        <span class="card-title">Filter Attendance</span>
+                    </div>
+                    <div class="card-body">
+                        @php
+                            $filterSubject = 'Employees';
+                            $filterSearchLabel = 'Search Employees';
+                            $filterIdPrefix = 'attendance';
+                            $filterDate = ['name' => 'attendance_date', 'label' => 'Date', 'value' => $selectedDate];
+                        @endphp
+                        @include('pages.partials.client_location_filter')
+                    </div>
+                </form>
+
                 <!-- Attendance Records -->
                 <div class="card">
                     <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
                         <span class="card-title">Attendance Records</span>
                         <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
-                            <form method="GET" action="" style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
-                                <input type="hidden" name="tab" value="attendance">
-                                <select name="employee_id" class="form-select" style="width: auto; min-width: 190px; padding: 0.5rem;">
-                                    <option value="">All Employees</option>
-                                    @foreach ($employees as $employee)
-                                    <option value="{{ $employee['id'] }}" {{ (string) $selectedEmployeeId === (string) $employee['id'] ? 'selected' : '' }}>{{ htmlspecialchars($employee['full_name']) }}</option>
-                                    @endforeach
-                                </select>
-                                <select name="branch" class="form-select" style="width: auto; min-width: 150px; padding: 0.5rem;">
-                                    <option value="">All Branches</option>
-                                    @foreach ($employeeBranches as $branch)
-                                    <option value="{{ $branch }}" {{ $selectedAttendanceBranch === $branch ? 'selected' : '' }}>{{ $branch }}</option>
-                                    @endforeach
-                                </select>
-                                <input type="date" name="attendance_date" class="form-input" value="{{ $selectedDate }}" style="width: auto; padding: 0.5rem;">
-                                <button type="submit" class="btn btn-sm btn-primary">View</button>
-                            </form>
-                            <a class="btn btn-sm btn-secondary" href="{{ url('/pages/print_attendance.php?start=' . urlencode($monthStart) . '&end=' . urlencode($monthEnd) . ($selectedEmployeeId !== '' ? '&employee_id=' . urlencode($selectedEmployeeId) : '') . ($selectedAttendanceBranch !== '' ? '&branch=' . urlencode($selectedAttendanceBranch) : '')) }}" target="_blank" rel="noopener">Print / Export</a>
+                            <a class="btn btn-sm btn-secondary" href="{{ url('/pages/print_attendance.php?' . http_build_query(array_filter([
+                                'start' => $monthStart,
+                                'end' => $monthEnd,
+                                'employee_id' => $selectedEmployeeId,
+                                'search' => $searchTerm,
+                            ], static fn ($value): bool => $value !== '' && $value !== []))) }}" target="_blank" rel="noopener">Print / Export</a>
                         </div>
                     </div>
                     <div class="card-body" style="padding: 0;">
@@ -306,9 +311,9 @@ $overtimeQR = null;
                                         <td>{{ $record['branch_name'] ?: '—' }}</td>
                                         <td>{{ $record['attendance_date'] ? date('M d, Y', strtotime($record['attendance_date'])) : date('M d, Y', strtotime($selectedDate)) }}</td>
                                         <td class="attendance-in">{{ $record['morning_time_in'] ? date('h:i A', strtotime($record['morning_time_in'])) : '-' }}</td>
-                                        <td class="attendance-out">{{ $record['morning_time_out'] ? date('h:i A', strtotime($record['morning_time_out'])) : '-' }}</td>
+                                        <td class="attendance-out">{{ $record['morning_time_out'] ? date('h:i A', strtotime($record['morning_time_out'])) : '-' }}@if (($record['undertime_minutes_morning'] ?? 0) > 0) <span class="badge badge-warning" title="Left before the morning session ended">Undertime {{ $record['undertime_minutes_morning'] }} min</span>@endif</td>
                                         <td class="attendance-in">{{ $record['afternoon_time_in'] ? date('h:i A', strtotime($record['afternoon_time_in'])) : '-' }}</td>
-                                        <td class="attendance-out">{{ $record['afternoon_time_out'] ? date('h:i A', strtotime($record['afternoon_time_out'])) : '-' }}</td>
+                                        <td class="attendance-out">{{ $record['afternoon_time_out'] ? date('h:i A', strtotime($record['afternoon_time_out'])) : '-' }}@if (($record['undertime_minutes_afternoon'] ?? 0) > 0) <span class="badge badge-warning" title="Left before the afternoon session ended">Undertime {{ $record['undertime_minutes_afternoon'] }} min</span>@endif</td>
                                         <td>
                                             @if (!empty($record['overtime_time_in']) && !empty($record['overtime_time_out']))
                                                 {{ date('h:i A', strtotime($record['overtime_time_in'])) }} - {{ date('h:i A', strtotime($record['overtime_time_out'])) }} <span class="badge badge-info">{{ (int) $record['overtime_minutes'] }} min</span>

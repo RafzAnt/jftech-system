@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\BranchScope;
+use App\Support\Geocoder;
+use App\Support\NapBoxes;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -9,6 +12,40 @@ use Illuminate\Support\Facades\RateLimiter;
 
 class LocationController extends Controller
 {
+    /**
+     * Where a barangay is, for the coordinates of a new client to fill in by themselves (the branch's town when the map has no such
+     * barangay). A branch admin always gets their own branch, whatever the address bar says.
+     */
+    public function geocode(Request $request): JsonResponse
+    {
+        $branch = BranchScope::current() ?? trim((string) $request->query('branch', ''));
+
+        return response()->json(self::place($branch, (string) $request->query('barangay', '')));
+    }
+
+    /**
+     * The answer of Geocoder::place for a barangay of the branch (a barangay the branch does not have is looked up as the town), as
+     * the page and the employee app read it.
+     *
+     * @return array<string, mixed>
+     */
+    public static function place(string $branch, string $barangay): array
+    {
+        $barangay = trim($barangay);
+        $list = NapBoxes::barangaysOf($branch);
+        foreach ($list as $option) {
+            if (strcasecmp($option, $barangay) === 0) {
+                $barangay = $option;
+                break;
+            }
+        }
+        if ($list !== [] && ! in_array($barangay, $list, true)) {
+            $barangay = '';
+        }
+
+        return Geocoder::place($branch, $barangay);
+    }
+
     /** Search OpenStreetMap locations only within Balilihan, Bohol. */
     public function searchBalilihan(Request $request): JsonResponse
     {

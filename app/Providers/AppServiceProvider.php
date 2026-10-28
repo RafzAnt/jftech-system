@@ -65,6 +65,17 @@ class AppServiceProvider extends ServiceProvider
             $avatarLetter = strtoupper(substr($sessionFullName, 0, 1));
             $mainJsVersion = @filemtime(public_path('js/jftech-main.js')) ?: 1;
 
+            // Installation reports that wait for this branch admin to check and confirm (the super admin only looks, so no number).
+            // A project that has not run the installations migration yet simply shows none.
+            $installationsWaiting = 0;
+            if (Auth::user()?->isBranchAdmin()) {
+                try {
+                    $installationsWaiting = \App\Support\Installations::counts(\App\Support\BranchScope::current())['submitted'];
+                } catch (\Throwable) {
+                    $installationsWaiting = 0;
+                }
+            }
+
             $navItems = [
                 ['id' => 'dashboard', 'section' => 'Overview', 'label' => 'Dashboard', 'icon' => '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>', 'url' => 'dashboard.php'],
                 ['id' => 'clients_browse', 'section' => 'Clients & Billing', 'label' => 'Clients', 'icon' => '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>', 'url' => 'clients_browse.php'],
@@ -77,32 +88,13 @@ class AppServiceProvider extends ServiceProvider
                     ['label' => 'Stock Management', 'url' => 'inventory.php'],
                     ['label' => 'Requests', 'url' => 'inventory_requests.php'],
                     ['label' => 'NAP Boxes', 'url' => 'nap_boxes.php'],
+                    ['label' => 'Installations', 'url' => 'installations.php', 'badge' => $installationsWaiting],
                 ]],
-                ['id' => 'work_requests', 'label' => 'Work Requests', 'icon' => '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="m9 14 2 2 4-4"/></svg>', 'url' => 'work_requests.php'],
                 ['id' => 'reports', 'label' => 'Reports', 'icon' => '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>', 'url' => 'reports.php'],
                 ['id' => 'settings', 'section' => 'Administration', 'label' => 'System Settings', 'icon' => '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>', 'url' => 'settings.php'],
                 ['id' => 'user_management', 'label' => 'User Management', 'icon' => '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>', 'url' => 'user_management.php'],
                 ['id' => 'login_history', 'label' => 'Login History', 'icon' => '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>', 'url' => 'login_history.php'],
             ];
-
-            // Requests that wait for the admin: a new request to approve, or a finished job to confirm.
-            // A project that has not run the field work migration yet simply shows no number.
-            try {
-                $waiting = \Illuminate\Support\Facades\DB::table('work_requests')
-                    ->whereIn('status', ['pending_approval', 'work_completed']);
-                $waitingBranch = \App\Support\BranchScope::current();
-                if ($waitingBranch !== null) {
-                    $waiting = $waitingBranch === '' ? $waiting->whereRaw('1 = 0') : $waiting->whereRaw('LOWER(branch_name) = LOWER(?)', [$waitingBranch]);
-                }
-                $waitingCount = Auth::check() ? $waiting->count() : 0;
-            } catch (\Throwable) {
-                $waitingCount = 0;
-            }
-            foreach ($navItems as $index => $navItem) {
-                if ($navItem['id'] === 'work_requests' && $waitingCount > 0) {
-                    $navItems[$index]['badge'] = $waitingCount;
-                }
-            }
 
             $view->with([
                 'sessionScopeLabel' => $sessionScopeLabel,

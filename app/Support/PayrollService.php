@@ -31,31 +31,18 @@ class PayrollService
         return PayrollCalculator::settings($values);
     }
 
-    /** @return array{morning_start: string, afternoon_start: string} */
-    private function schedule(): array
-    {
-        $stored = DB::table('system_settings')
-            ->whereIn('setting_key', ['qr_morning_start', 'qr_afternoon_start'])
-            ->pluck('setting_value', 'setting_key')->all();
-
-        return [
-            'morning_start' => $stored['qr_morning_start'] ?? '08:00:00',
-            'afternoon_start' => $stored['qr_afternoon_start'] ?? '13:00:00',
-        ];
-    }
-
     /**
      * What the attendance of the period says: every session with a time in is half a day; a session marked late costs the
-     * minutes between its start and the time in; the overtime session (scanned or entered by hand) adds its minutes.
+     * minutes between its start and the time in; a session left more than the grace period before it ends is undertime (the minutes
+     * it was short); the overtime session (scanned or entered by hand) adds its minutes.
      *
-     * @return array{days_worked: float, late_minutes: int, overtime_minutes: int, absent_sessions: int, total_hours: float, records: int}
+     * @return array{days_worked: float, late_minutes: int, undertime_minutes: int, overtime_minutes: int, absent_sessions: int, total_hours: float, records: int}
      */
     public function attendance(int $employeeId, string $start, string $end): array
     {
-        $schedule = $this->schedule();
-        $starts = ['morning' => $schedule['morning_start'], 'afternoon' => $schedule['afternoon_start']];
+        $schedule = AttendanceTime::schedule();
 
-        $summary = ['days_worked' => 0.0, 'late_minutes' => 0, 'overtime_minutes' => 0, 'absent_sessions' => 0, 'total_hours' => 0.0, 'records' => 0];
+        $summary = ['days_worked' => 0.0, 'late_minutes' => 0, 'undertime_minutes' => 0, 'overtime_minutes' => 0, 'absent_sessions' => 0, 'total_hours' => 0.0, 'records' => 0];
         $rows = DB::table('attendance')->where('employee_id', $employeeId)->whereBetween('attendance_date', [$start, $end])->get();
 
         foreach ($rows as $row) {
@@ -63,13 +50,12 @@ class PayrollService
             $summary['total_hours'] += (float) ($row->total_hours ?? 0);
             $sunday = Carbon::parse($row->attendance_date)->isSunday();
 
-            foreach ($starts as $part => $sessionStart) {
+            foreach ($schedule as $part => $session) {
                 $timeIn = $row->{"{$part}_time_in"} ?? null;
                 if ($timeIn) {
                     $summary['days_worked'] += 0.5;
-                    if (($row->{"status_{$part}"} ?? null) === 'late') {
-                        $summary['late_minutes'] += AttendanceTime::minutesBetween($sessionStart, $timeIn);
-                    }
+                    $summary['late_minutes'] += AttendanceTime::lateOf($row->{"status_{$part}"} ?? null, $timeIn, $session['start']);
+                    $summary['undertime_minutes'] += AttendanceTime::undertimeOf($timeIn, $row->{"{$part}_time_out"} ?? null, $session['end']);
                 } elseif (($row->{"status_{$part}"} ?? null) === 'absent' && ! $sunday) {
                     $summary['absent_sessions']++;
                 }
@@ -89,7 +75,7 @@ class PayrollService
     /**
      * Every line of the payslip that follows from the rate and the attendance of the period.
      *
-     * @param array<string, mixed> $override quantities the admin typed (undertime minutes, or any of the attendance counts)
+     * @param array<string, mixed> $override quantities the admin typed over the attendance (any of the attendance counts)
      */
     public function compute(int $employeeId, float $dailyRate, string $start, string $end, array $override = []): array
     {

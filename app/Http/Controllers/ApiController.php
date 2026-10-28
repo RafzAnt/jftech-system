@@ -53,15 +53,47 @@ class ApiController extends Controller
 
         return response()->json(['success' => true, 'data' => $out, 'all_items' => $items->values()]);
     }
+    /**
+     * The last 30 days the employee has a record for, newest first, each with the minutes it was late, the minutes of early leaving and
+     * the hours worked, plus the totals of those days for the top of the app's history screen.
+     */
     public function attendanceHistory(Request $request): JsonResponse
     {
         $employee = $request->attributes->get('employee');
-        return response()->json(['success' => true, 'data' => DB::table('attendance as a')->join('employees as e', 'e.id', '=', 'a.employee_id')->where('a.employee_id', $employee->id)->orderByDesc('a.attendance_date')->limit(30)->get(['a.*', 'e.position', DB::raw('COALESCE(a.branch_name, e.branch_name) AS branch_name')])]);
+        $rows = DB::table('attendance as a')->join('employees as e', 'e.id', '=', 'a.employee_id')->where('a.employee_id', $employee->id)
+            ->orderByDesc('a.attendance_date')->orderByDesc('a.id')->limit(30)
+            ->get(['a.*', 'e.position', DB::raw('COALESCE(a.branch_name, e.branch_name) AS branch_name')]);
+
+        $schedule = \App\Support\AttendanceTime::schedule();
+        $summary = ['days_recorded' => 0, 'days_worked' => 0.0, 'late_minutes' => 0, 'undertime_minutes' => 0, 'overtime_minutes' => 0, 'total_hours' => 0.0, 'absent_sessions' => 0];
+        foreach ($rows as $row) {
+            $figures = \App\Support\AttendanceTime::dayFigures($row, $schedule);
+            $row->late_minutes = $figures['late_minutes'];
+            $row->undertime_minutes = $figures['undertime_minutes'];
+            // The hours of a record the app never closed (or an old one) are worked out from its times.
+            $row->total_hours = $figures['total_hours'] > 0 ? $figures['total_hours'] : (float) $row->total_hours;
+
+            $summary['days_recorded']++;
+            $summary['late_minutes'] += $figures['late_minutes'];
+            $summary['undertime_minutes'] += $figures['undertime_minutes'];
+            $summary['overtime_minutes'] += (int) $row->overtime_minutes;
+            $summary['total_hours'] += (float) $row->total_hours;
+            foreach (['morning', 'afternoon'] as $part) {
+                if ($row->{"{$part}_time_in"}) {
+                    $summary['days_worked'] += 0.5;
+                } elseif ($row->{"status_{$part}"} === 'absent' && ! \Illuminate\Support\Carbon::parse($row->attendance_date)->isSunday()) {
+                    $summary['absent_sessions']++;
+                }
+            }
+        }
+        $summary['total_hours'] = round($summary['total_hours'], 2);
+
+        return response()->json(['success' => true, 'data' => $rows, 'summary' => $summary]);
     }
     public function employeeLogin(Request $request): JsonResponse
     {
         $data = $request->validate(['username' => ['required', 'string'], 'password' => ['required', 'string']]);
-        $user = DB::table('users')->join('employees', 'employees.user_id', '=', 'users.id')->where('users.username', $data['username'])->where('users.status', 'active')->where('employees.status', 'active')->select('users.*', 'employees.id as employee_id', 'employees.position as employee_position', 'employees.full_name as employee_name', 'employees.branch_name as employee_branch')->first();
+        $user = DB::table('users')->join('employees', 'employees.user_id', '=', 'users.id')->where('users.username', $data['username'])->where('users.status', 'active')->where('users.archived', 0)->where('employees.status', 'active')->select('users.*', 'employees.id as employee_id', 'employees.position as employee_position', 'employees.full_name as employee_name', 'employees.branch_name as employee_branch')->first();
         if (! $user || ! Hash::check($data['password'], $user->password)) {
             DB::table('login_history')->insert(['username' => $data['username'], 'full_name' => '', 'role' => 'employee', 'ip_address' => $request->ip(), 'user_agent' => (string) $request->userAgent(), 'status' => 'failed', 'error_message' => 'Invalid username or password.']);
             return response()->json(['success' => false, 'message' => 'Invalid username or password.'], 401);
@@ -202,24 +234,52 @@ class ApiController extends Controller
             return $this->scanOvertime($employee, $qr, $now);
         }
         $settings = DB::table('system_settings')->pluck('setting_value', 'setting_key');
-        $attendance = DB::table('attendance')->where('employee_id', $employee->id)->whereDate('attendance_date', today())->first();
         $time = $now->format('H:i:s');
         $startTime = $qr->qr_type === 'morning' ? ($settings['qr_morning_start'] ?? '08:00:00') : ($settings['qr_afternoon_start'] ?? '13:00:00');
         $lateThreshold = (int) ($settings['late_threshold_minutes'] ?? 30);
         $thresholdTime = date('H:i:s', strtotime($startTime) + ($lateThreshold * 60));
         $status = $time > $thresholdTime ? 'late' : 'present';
-        DB::transaction(function () use (&$attendance, $employee, $qr, $time, $status) {
-            $branch = $employee->branch_name;
+        $part = $qr->qr_type === 'morning' ? 'morning' : 'afternoon';
+
+        // The first scan of a session is the time in and the next one the time out. The row is locked so two scans at once cannot make two rows for the day.
+        $outcome = DB::transaction(function () use ($employee, $qr, $time, $status, $part) {
+            $attendance = DB::table('attendance')->where('employee_id', $employee->id)->whereDate('attendance_date', today())->lockForUpdate()->first();
+
             if (! $attendance) {
-                $id = DB::table('attendance')->insertGetId(['employee_id' => $employee->id, 'attendance_date' => today(), 'qr_code_used' => $qr->qr_code, 'branch_name' => $branch, $qr->qr_type === 'morning' ? 'morning_time_in' : 'afternoon_time_in' => $time, $qr->qr_type === 'morning' ? 'status_morning' : 'status_afternoon' => $status, 'created_at' => now()]);
-                $attendance = DB::table('attendance')->where('id', $id)->first(); return;
+                DB::table('attendance')->insert([
+                    'employee_id' => $employee->id, 'attendance_date' => today(), 'qr_code_used' => $qr->qr_code, 'branch_name' => $employee->branch_name,
+                    "{$part}_time_in" => $time, "status_{$part}" => $status, 'total_hours' => 0, 'created_at' => now(),
+                ]);
+
+                return ['scan_type' => 'Time In', 'status' => $status];
             }
-            $in = $qr->qr_type === 'morning' ? 'morning_time_in' : 'afternoon_time_in'; $out = $qr->qr_type === 'morning' ? 'morning_time_out' : 'afternoon_time_out';
-            DB::table('attendance')->where('id', $attendance->id)->update([$attendance->$in ? $out : $in => $time, $attendance->$in ? 'total_hours' : ($qr->qr_type === 'morning' ? 'status_morning' : 'status_afternoon') => $attendance->$in ? DB::raw('total_hours') : $status, 'qr_code_used' => $qr->qr_code, 'branch_name' => $attendance->branch_name ?: $branch]);
+            if (! $attendance->{"{$part}_time_in"}) {
+                DB::table('attendance')->where('id', $attendance->id)->update([
+                    "{$part}_time_in" => $time, "status_{$part}" => $status, 'qr_code_used' => $qr->qr_code, 'branch_name' => $attendance->branch_name ?: $employee->branch_name,
+                ]);
+
+                return ['scan_type' => 'Time In', 'status' => $status];
+            }
+            if (\App\Support\AttendanceTime::minutesBetween($attendance->{"{$part}_time_in"}, $time) < 1 && ! $attendance->{"{$part}_time_out"}) {
+                return ['error' => 'You have just timed in. Scan again when your shift ends.'];
+            }
+
+            $row = (array) $attendance;
+            $row["{$part}_time_out"] = $time;
+            DB::table('attendance')->where('id', $attendance->id)->update([
+                "{$part}_time_out" => $time, 'total_hours' => \App\Support\AttendanceTime::totalHours($row),
+                'qr_code_used' => $qr->qr_code, 'branch_name' => $attendance->branch_name ?: $employee->branch_name,
+            ]);
+
+            // The status of a session is the one its time in earned; a time out does not change it.
+            return ['scan_type' => 'Time Out', 'status' => $attendance->{"status_{$part}"} ?: 'present'];
         });
-        $scanType = $qr->qr_type === 'morning' ? 'Time In' : 'Time Out';
-        $formattedTime = $now->format('h:i A');
-        return response()->json(['success' => true, 'message' => 'Attendance recorded.', 'status' => $status, 'scan_type' => $scanType, 'time' => $formattedTime, 'employee_name' => $employee->full_name, 'position' => $employee->position, 'branch_name' => $employee->branch_name]);
+
+        if (isset($outcome['error'])) {
+            return response()->json(['success' => false, 'message' => $outcome['error']], 422);
+        }
+
+        return response()->json(['success' => true, 'message' => 'Attendance recorded.', 'status' => $outcome['status'], 'scan_type' => $outcome['scan_type'], 'time' => $now->format('h:i A'), 'employee_name' => $employee->full_name, 'position' => $employee->position, 'branch_name' => $employee->branch_name]);
     }
     /**
      * The overtime QR code: the first scan of the day starts the overtime, the second one ends it, and the minutes in between

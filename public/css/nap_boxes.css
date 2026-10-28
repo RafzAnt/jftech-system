@@ -25,8 +25,82 @@
 
 .port-status-available { color: var(--success); background: var(--success-soft); border-color: color-mix(in srgb, var(--success) 22%, transparent); }
 .port-status-occupied { color: var(--accent); background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 22%, transparent); }
-.port-status-reserved { color: var(--warning); background: var(--warning-soft); border-color: color-mix(in srgb, var(--warning) 22%, transparent); }
 .port-status-faulty { color: var(--danger); background: var(--danger-soft); border-color: color-mix(in srgb, var(--danger) 22%, transparent); }
+.port-status-reserved { color: var(--warning); background: color-mix(in srgb, var(--warning) 14%, transparent); border-color: color-mix(in srgb, var(--warning) 28%, transparent); }
+
+.nap-menu-cell {
+    width: 1%;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.nap-action-menu {
+    position: relative;
+    display: inline-block;
+}
+
+.nap-action-menu-btn {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    color: var(--text-secondary);
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.nap-action-menu-btn:hover,
+.nap-action-menu-btn[aria-expanded="true"] {
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+.nap-action-menu-dropdown {
+    display: none;
+    min-width: 150px;
+    padding: 0.25rem;
+    text-align: left;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: var(--shadow-lg);
+}
+
+.nap-action-menu-dropdown.show {
+    display: block;
+}
+
+.nap-action-menu-dropdown form {
+    margin: 0;
+}
+
+.nap-menu-item {
+    display: block;
+    width: 100%;
+    padding: 0.6rem 0.9rem;
+    color: var(--text-primary);
+    font: inherit;
+    font-size: 0.9rem;
+    text-align: left;
+    text-decoration: none;
+    background: transparent;
+    border: 0;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.nap-menu-item:hover {
+    color: var(--accent);
+    background: rgba(0, 212, 255, 0.08);
+}
+
+.nap-menu-item-danger,
+.nap-menu-item-danger:hover {
+    color: var(--danger);
+}
 
 .port-actions {
     display: flex;
@@ -56,18 +130,6 @@
 
 .nap-summary strong {
     color: var(--text-primary);
-}
-
-.box-filter-form {
-    display: flex;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-    align-items: flex-end;
-}
-
-.box-filter-form .form-group {
-    margin: 0;
-    min-width: 180px;
 }
 
 /* The photo of a NAP box: on the open box, and as the preview in the form. */

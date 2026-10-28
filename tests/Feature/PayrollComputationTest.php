@@ -10,7 +10,7 @@ use Tests\Concerns\BranchTestData;
 use Tests\TestCase;
 
 /**
- * Real payroll: the pay follows from the daily rate and the attendance, automatically or by hand.
+ * Real payroll: the pay follows from the daily rate and the attendance; the form fills it in and every box can be typed over.
  *
  * Seed: employee 1 (Eli, Technician, Balilihan) and employee 2 (Fay, Technician, Loon), both 500 a day; users 1 super admin,
  * 2 Balilihan admin, 3 Loon admin. The week of Monday 2026-03-02 holds the attendance of employee 1:
@@ -66,6 +66,17 @@ class PayrollComputationTest extends TestCase
         $this->assertSame(1, $summary['absent_sessions']);
     }
 
+    public function test_leaving_a_session_early_is_undertime_but_the_last_few_minutes_are_the_whole_session(): void
+    {
+        // The morning of the 3rd ends at 11:15 instead of 12:00 (45 minutes short); the afternoon of the 2nd ends at 16:57 (3 minutes: still full).
+        DB::table('attendance')->where('attendance_date', '2026-03-03')->update(['morning_time_out' => '11:15:00']);
+        DB::table('attendance')->where('attendance_date', '2026-03-02')->update(['afternoon_time_out' => '16:57:00']);
+
+        $this->assertSame(45, app(PayrollService::class)->attendance(1, self::START, self::END)['undertime_minutes']);
+        // A session without a time out (still running, or not closed) is not undertime.
+        $this->assertSame(0, app(PayrollService::class)->attendance(1, '2026-03-04', '2026-03-04')['undertime_minutes']);
+    }
+
     public function test_the_schedule_of_the_business_settings_is_used(): void
     {
         // A morning that starts at 07:00 makes the 09:00 scan two hours late.
@@ -109,15 +120,15 @@ class PayrollComputationTest extends TestCase
         $this->assertEquals(312.5, $payroll->overtime_pay);   // 62.50 x 1.25 x 4
     }
 
-    // ---- an automatic payroll --------------------------------------------------------------------
+    // ---- a payroll with nothing typed over ---------------------------------------------------------
 
-    public function test_an_automatic_payroll_is_worked_out_from_the_rate_and_the_attendance(): void
+    public function test_a_payroll_with_nothing_typed_is_worked_out_from_the_rate_and_the_attendance(): void
     {
         $this->signIn(2);
-        $this->post('/payroll', $this->form(1, ['computation_mode' => 'auto']))->assertOk()->assertViewHas('success', 'Payroll record created successfully.');
+        $this->post('/payroll', $this->form(1))->assertOk()->assertViewHas('success', 'Payroll record created successfully.');
 
         $payroll = $this->payrollOf(1);
-        $this->assertSame('auto', $payroll->computation_mode);
+        $this->assertSame('manual', $payroll->computation_mode, 'a payroll made on the form is saved as the admin sees it');
         $this->assertEquals(2, $payroll->total_days_worked);
         $this->assertEquals(1000, $payroll->basic_salary);
         $this->assertEquals(60, $payroll->late_minutes);
@@ -134,23 +145,11 @@ class PayrollComputationTest extends TestCase
         $this->assertEquals(740.63, $payroll->net_pay);
     }
 
-    public function test_an_automatic_payroll_ignores_amounts_typed_over_the_computed_ones(): void
-    {
-        $this->signIn(2);
-        $this->post('/payroll', $this->form(1, ['computation_mode' => 'auto', 'basic_salary' => 99999, 'sss' => 1, 'late' => 0, 'total_days_worked' => 6]))->assertOk();
-
-        $payroll = $this->payrollOf(1);
-        $this->assertEquals(1000, $payroll->basic_salary);
-        $this->assertEquals(150, $payroll->sss);
-        $this->assertEquals(62.5, $payroll->late);
-        $this->assertEquals(2, $payroll->total_days_worked);
-    }
-
-    public function test_an_automatic_payroll_still_takes_the_extras_and_the_undertime_minutes(): void
+    public function test_the_extras_and_the_undertime_minutes_are_added_to_the_standard_computation(): void
     {
         $this->signIn(2);
         // 30 minutes of undertime cost 31.25; 200 of incentives are added; a 100 cash advance is deducted.
-        $this->post('/payroll', $this->form(1, ['computation_mode' => 'auto', 'undertime_minutes' => 30, 'incentives' => 200, 'cash_advance' => 100]))->assertOk();
+        $this->post('/payroll', $this->form(1, ['undertime_minutes' => 30, 'incentives' => 200, 'cash_advance' => 100]))->assertOk();
 
         $payroll = $this->payrollOf(1);
         $this->assertEquals(30, $payroll->undertime_minutes);
@@ -160,35 +159,68 @@ class PayrollComputationTest extends TestCase
         $this->assertEquals(809.38, $payroll->net_pay);
     }
 
-    public function test_an_automatic_payroll_needs_attendance(): void
+    public function test_the_undertime_of_the_attendance_is_deducted_unless_the_admin_types_another(): void
+    {
+        $this->signIn(2);
+        DB::table('attendance')->where('attendance_date', '2026-03-03')->update(['morning_time_out' => '11:15:00']);
+
+        // Nothing typed: the 45 minutes of the attendance cost 62.50 x 45 / 60 = 46.88.
+        $this->post('/payroll', $this->form(1))->assertOk();
+        $payroll = $this->payrollOf(1);
+        $this->assertEquals(45, $payroll->undertime_minutes);
+        $this->assertEquals(46.88, $payroll->undertime);
+        $this->assertEquals(62.5 + 46.88 + 150 + 75 + 50, (float) $payroll->deductions);
+
+        // The form is filled with the same minutes before saving.
+        $preview = $this->getJson('/payroll?action=preview&employee_id=1&start=' . self::START . '&end=' . self::END)->assertOk()->json();
+        $this->assertSame(45, $preview['undertime_minutes']);
+        $this->assertEquals(46.88, $preview['undertime']);
+
+        // What the admin types wins, and 0 means none.
+        DB::table('payroll')->delete();
+        $this->post('/payroll', $this->form(1, ['undertime_minutes' => 0]))->assertOk();
+        $this->assertEquals(0, $this->payrollOf(1)->undertime_minutes);
+        $this->assertEquals(0, $this->payrollOf(1)->undertime);
+    }
+
+    public function test_without_attendance_the_standard_is_zero_and_what_is_typed_is_paid(): void
     {
         $this->signIn(3);
         DB::table('employees')->where('id', 2)->update(['position' => 'Technician II']);
 
-        $page = $this->post('/payroll', $this->form(2, ['computation_mode' => 'auto']))->assertOk();
+        // Nothing typed and no attendance: nothing to pay, but the record can still be made and edited.
+        $this->post('/payroll', $this->form(2))->assertOk()->assertViewHas('success', 'Payroll record created successfully.');
+        $this->assertEquals(0, $this->payrollOf(2)->basic_salary);
+        $this->assertEquals(0, $this->payrollOf(2)->net_pay);
 
-        $this->assertStringContainsString('has no attendance in this period', $page->viewData('error'));
-        $this->assertSame(0, DB::table('payroll')->count());
+        // The admin types the days that were worked but never scanned: 3 days at 500.
+        $id = $this->payrollOf(2)->id;
+        $this->post('/payroll', $this->form(2, ['payroll_id' => $id, 'total_days_worked' => 3]))->assertOk();
+        $this->assertEquals(1500, $this->payrollOf(2)->basic_salary);
     }
 
-    public function test_the_mode_defaults_to_automatic(): void
+    public function test_the_form_has_no_choice_between_automatic_and_manual(): void
     {
         $this->signIn(2);
-        $this->post('/payroll', $this->form(1))->assertOk();
 
-        $this->assertSame('auto', $this->payrollOf(1)->computation_mode);
+        $html = $this->get('/payroll')->assertOk()->getContent();
+
+        $this->assertStringNotContainsString('How is this payroll computed?', $html);
+        $this->assertStringNotContainsString('name="computation_mode"', $html);
+        $this->assertStringNotContainsString('mode-option', $html);
+        $this->assertStringNotContainsString('Fill standard amounts', $html);
+        $this->assertStringContainsString('Recalculate from attendance', $html);
     }
 
-    // ---- a manual payroll --------------------------------------------------------------------------
+    // ---- typing over the standard -----------------------------------------------------------------
 
-    public function test_a_manual_payroll_takes_the_quantities_and_works_out_the_amounts_from_them(): void
+    public function test_the_typed_quantities_work_out_the_amounts_that_follow_from_them(): void
     {
         $this->signIn(2);
         // 3 days, 30 minutes late, 2 hours of overtime; no amount typed, so the standard computation fills them in.
-        $this->post('/payroll', $this->form(1, ['computation_mode' => 'manual', 'total_days_worked' => 3, 'late_minutes' => 30, 'overtime_hours' => 2]))->assertOk();
+        $this->post('/payroll', $this->form(1, ['total_days_worked' => 3, 'late_minutes' => 30, 'overtime_hours' => 2]))->assertOk();
 
         $payroll = $this->payrollOf(1);
-        $this->assertSame('manual', $payroll->computation_mode);
         $this->assertEquals(3, $payroll->total_days_worked);
         $this->assertEquals(1500, $payroll->basic_salary);
         $this->assertEquals(31.25, $payroll->late);
@@ -196,11 +228,11 @@ class PayrollComputationTest extends TestCase
         $this->assertEquals([150, 75, 50], [(float) $payroll->sss, (float) $payroll->philhealth, (float) $payroll->pagibig]);
     }
 
-    public function test_a_manual_payroll_keeps_what_the_admin_typed_over_a_computed_amount(): void
+    public function test_what_the_admin_typed_over_a_computed_amount_is_kept(): void
     {
         $this->signIn(2);
         $this->post('/payroll', $this->form(1, [
-            'computation_mode' => 'manual', 'total_days_worked' => 3, 'basic_salary' => 1400, 'sss' => 100, 'philhealth' => 60, 'pagibig' => 40,
+            'total_days_worked' => 3, 'basic_salary' => 1400, 'sss' => 100, 'philhealth' => 60, 'pagibig' => 40,
             'overtime_pay' => 500, 'late' => 10, 'allowances' => 300, 'other_deductions' => 20,
         ]))->assertOk();
 
@@ -212,10 +244,10 @@ class PayrollComputationTest extends TestCase
         $this->assertEquals(1970, $payroll->net_pay);
     }
 
-    public function test_a_manual_payroll_leaves_the_contributions_to_the_standard_when_the_boxes_are_empty(): void
+    public function test_the_contributions_stay_standard_when_their_boxes_are_empty(): void
     {
         $this->signIn(2);
-        $this->post('/payroll', $this->form(1, ['computation_mode' => 'manual', 'total_days_worked' => 2, 'sss' => '', 'philhealth' => '', 'pagibig' => '']))->assertOk();
+        $this->post('/payroll', $this->form(1, ['total_days_worked' => 2, 'sss' => '', 'philhealth' => '', 'pagibig' => '']))->assertOk();
 
         $payroll = $this->payrollOf(1);
         $this->assertEquals([150, 75, 50], [(float) $payroll->sss, (float) $payroll->philhealth, (float) $payroll->pagibig]);
@@ -226,14 +258,14 @@ class PayrollComputationTest extends TestCase
     {
         // An employee who is not covered: the admin types 0 on purpose, and that wins over the standard amount.
         $this->signIn(2);
-        $this->post('/payroll', $this->form(1, ['computation_mode' => 'manual', 'total_days_worked' => 2, 'sss' => 0, 'philhealth' => 0, 'pagibig' => 0]))->assertOk();
+        $this->post('/payroll', $this->form(1, ['total_days_worked' => 2, 'sss' => 0, 'philhealth' => 0, 'pagibig' => 0]))->assertOk();
 
         $this->assertEquals([0, 0, 0], [(float) $this->payrollOf(1)->sss, (float) $this->payrollOf(1)->philhealth, (float) $this->payrollOf(1)->pagibig]);
     }
 
     public function test_the_preview_gives_the_standard_contributions_even_without_attendance(): void
     {
-        // The form fills the contributions of a manual payroll from this, so it must not depend on the days worked.
+        // The form fills the contributions from this, so it must not depend on the days worked.
         DB::table('attendance')->delete();
         $this->signIn(2);
 
@@ -245,7 +277,7 @@ class PayrollComputationTest extends TestCase
             ->assertJsonPath('pagibig', 50);
     }
 
-    public function test_the_form_shows_the_standard_amount_under_each_contribution_and_a_button_to_fill_them(): void
+    public function test_the_form_shows_the_standard_amount_under_each_contribution_and_a_button_to_load_them_again(): void
     {
         $this->signIn(2);
 
@@ -254,13 +286,12 @@ class PayrollComputationTest extends TestCase
         foreach (['sss', 'philhealth', 'pagibig'] as $key) {
             $this->assertStringContainsString('id="hint_' . $key . '"', $html);
         }
-        $this->assertStringContainsString('Fill standard amounts', $html);
     }
 
-    public function test_a_manual_payroll_can_have_more_deductions_than_pay_and_the_net_is_zero(): void
+    public function test_a_payroll_can_have_more_deductions_than_pay_and_the_net_is_zero(): void
     {
         $this->signIn(2);
-        $this->post('/payroll', $this->form(1, ['computation_mode' => 'manual', 'total_days_worked' => 0.5, 'cash_advance' => 5000]))->assertOk();
+        $this->post('/payroll', $this->form(1, ['total_days_worked' => 0.5, 'cash_advance' => 5000]))->assertOk();
 
         $this->assertEquals(0, $this->payrollOf(1)->net_pay);
     }
@@ -268,7 +299,7 @@ class PayrollComputationTest extends TestCase
     public function test_the_days_worked_cannot_be_more_than_the_days_of_the_period(): void
     {
         $this->signIn(2);
-        $page = $this->post('/payroll', $this->form(1, ['computation_mode' => 'manual', 'total_days_worked' => 8]))->assertOk();
+        $page = $this->post('/payroll', $this->form(1, ['total_days_worked' => 8]))->assertOk();
 
         $this->assertSame('Error: Days worked cannot be more than the 7 day(s) of the period.', $page->viewData('error'));
         $this->assertSame(0, DB::table('payroll')->count());
@@ -278,8 +309,8 @@ class PayrollComputationTest extends TestCase
     {
         $this->signIn(2);
 
-        $this->assertSame('Error: SSS must be a number.', $this->post('/payroll', $this->form(1, ['computation_mode' => 'manual', 'sss' => 'lots']))->viewData('error'));
-        $this->assertSame('Error: Incentives is too large.', $this->post('/payroll', $this->form(1, ['computation_mode' => 'manual', 'incentives' => 1000000]))->viewData('error'));
+        $this->assertSame('Error: SSS must be a number.', $this->post('/payroll', $this->form(1, ['sss' => 'lots']))->viewData('error'));
+        $this->assertSame('Error: Incentives is too large.', $this->post('/payroll', $this->form(1, ['incentives' => 1000000]))->viewData('error'));
         $this->assertSame(0, DB::table('payroll')->count());
     }
 
@@ -288,14 +319,14 @@ class PayrollComputationTest extends TestCase
     public function test_a_second_payroll_for_the_same_period_is_refused_but_an_edit_is_not(): void
     {
         $this->signIn(2);
-        $this->post('/payroll', $this->form(1, ['computation_mode' => 'auto']))->assertOk();
+        $this->post('/payroll', $this->form(1))->assertOk();
 
-        $again = $this->post('/payroll', $this->form(1, ['computation_mode' => 'auto']))->assertOk();
+        $again = $this->post('/payroll', $this->form(1))->assertOk();
         $this->assertSame('Error: Eli Santos already has payroll for this period. Edit that record instead.', $again->viewData('error'));
         $this->assertSame(1, DB::table('payroll')->count());
 
         $id = $this->payrollOf(1)->id;
-        $edit = $this->post('/payroll', $this->form(1, ['payroll_id' => $id, 'computation_mode' => 'auto', 'status' => 'paid']))->assertOk();
+        $edit = $this->post('/payroll', $this->form(1, ['payroll_id' => $id, 'status' => 'paid']))->assertOk();
         $this->assertSame('Payroll record updated successfully.', $edit->viewData('success'));
         $this->assertSame('paid', $this->payrollOf(1)->status);
         $this->assertSame(1, DB::table('payroll')->count());
@@ -304,23 +335,29 @@ class PayrollComputationTest extends TestCase
     public function test_an_archived_payroll_does_not_block_a_new_one(): void
     {
         $this->signIn(2);
-        $this->post('/payroll', $this->form(1, ['computation_mode' => 'auto']))->assertOk();
+        $this->post('/payroll', $this->form(1))->assertOk();
         DB::table('payroll')->update(['archived' => true]);
 
-        $this->post('/payroll', $this->form(1, ['computation_mode' => 'auto']))->assertOk()->assertViewHas('success', 'Payroll record created successfully.');
+        $this->post('/payroll', $this->form(1))->assertOk()->assertViewHas('success', 'Payroll record created successfully.');
         $this->assertSame(2, DB::table('payroll')->count());
     }
 
-    public function test_saving_an_automatic_payroll_again_follows_a_correction_of_the_attendance(): void
+    public function test_saving_again_keeps_the_typed_boxes_and_follows_the_attendance_for_the_empty_ones(): void
     {
         $this->signIn(2);
-        $this->post('/payroll', $this->form(1, ['computation_mode' => 'auto']))->assertOk();
+        $this->post('/payroll', $this->form(1))->assertOk();
         $id = $this->payrollOf(1)->id;
 
         // Wednesday afternoon turns out to have been worked after all.
         DB::table('attendance')->where('attendance_date', '2026-03-04')->update(['afternoon_time_in' => '13:00:00', 'status_afternoon' => 'present']);
-        $this->post('/payroll', $this->form(1, ['payroll_id' => $id, 'computation_mode' => 'auto']))->assertOk();
 
+        // The form of an edit sends what the boxes hold, so the saved days stay as they are...
+        $this->post('/payroll', $this->form(1, ['payroll_id' => $id, 'total_days_worked' => 2, 'basic_salary' => 1000]))->assertOk();
+        $this->assertEquals(2, $this->payrollOf(1)->total_days_worked);
+        $this->assertEquals(1000, $this->payrollOf(1)->basic_salary);
+
+        // ...and the empty boxes (or Recalculate from attendance) pick up the correction.
+        $this->post('/payroll', $this->form(1, ['payroll_id' => $id, 'total_days_worked' => '', 'basic_salary' => '']))->assertOk();
         $this->assertEquals(2.5, $this->payrollOf(1)->total_days_worked);
         $this->assertEquals(1250, $this->payrollOf(1)->basic_salary);
     }
@@ -375,6 +412,7 @@ class PayrollComputationTest extends TestCase
         $this->assertSame('processed', $payroll->status);
         $this->assertSame(self::START, substr((string) $payroll->payroll_period_start, 0, 10));
         $this->assertSame(self::END, substr((string) $payroll->payroll_period_end, 0, 10));
+        $this->assertStringContainsString('<span class="payslip-mode-badge">AUTOMATIC</span>', $this->get('/payroll')->getContent(), 'a payroll the system made by itself says so');
     }
 
     public function test_the_super_admin_generates_the_week_for_the_admin_employees_only(): void
@@ -446,15 +484,35 @@ class PayrollComputationTest extends TestCase
     public function test_the_payroll_page_hides_the_weekly_generator_and_shows_the_late_and_undertime_of_a_computed_payslip(): void
     {
         $this->signIn(2);
-        $this->post('/payroll', $this->form(1, ['computation_mode' => 'auto']))->assertOk();
+        $this->post('/payroll', $this->form(1))->assertOk();
 
         $html = $this->get('/payroll')->assertOk()->getContent();
 
         $this->assertStringNotContainsString('Automatic Weekly Payroll', $html);
-        $this->assertStringContainsString('payslip-mode-badge', $html);
-        $this->assertStringContainsString('AUTOMATIC', $html);
+        $this->assertStringNotContainsString('payslip-mode-badge', $html, 'a payroll made on the form has no badge');
         $this->assertStringContainsString('Late (60 min)', $html);
         $this->assertStringContainsString('<tr><td>Undertime</td>', $html);
+    }
+
+    public function test_a_page_of_hundreds_of_payslips_stays_small(): void
+    {
+        $this->signIn(2);
+        $rows = [];
+        for ($week = 0; $week < 305; $week++) {
+            $start = Carbon::parse('2024-01-01')->addWeeks($week);
+            $rows[] = ['employee_id' => 1, 'payroll_period_start' => $start->toDateString(), 'payroll_period_end' => $start->copy()->addDays(6)->toDateString(), 'net_pay' => 1000, 'status' => 'paid', 'computation_mode' => 'auto'];
+        }
+        foreach (array_chunk($rows, 50) as $chunk) {
+            DB::table('payroll')->insert($chunk);
+        }
+
+        $html = $this->get('/payroll')->assertOk()->getContent();
+
+        $this->assertSame(300, substr_count($html, 'class="payslip-card"'), 'the page carries the newest 300 payslips');
+        $this->assertStringContainsString('Showing the newest 300 of 305 payroll records', $html);
+        $this->assertStringContainsString('305</div>', $html, 'the totals still count all of them');
+        $this->assertLessThan(6, substr_count($html, 'data:image/png;base64,'), 'the logo is the cached picture of the logo route, not a copy in every payslip');
+        $this->assertGreaterThanOrEqual(300, substr_count($html, '/assets/jftech-logo.png'));
     }
 
     public function test_an_old_payslip_keeps_its_old_deductions(): void
@@ -480,7 +538,7 @@ class PayrollComputationTest extends TestCase
     public function test_the_print_page_lists_late_and_undertime_of_a_computed_payslip(): void
     {
         $this->signIn(2);
-        $this->post('/payroll', $this->form(1, ['computation_mode' => 'auto']))->assertOk();
+        $this->post('/payroll', $this->form(1))->assertOk();
 
         $html = $this->get('/print-payroll?id=' . $this->payrollOf(1)->id)->assertOk()->getContent();
 

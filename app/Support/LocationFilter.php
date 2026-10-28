@@ -5,89 +5,62 @@ namespace App\Support;
 use Illuminate\Http\Request;
 
 /**
- * The branch and barangay search of a list page: the branch (the super admin picks any; a branch admin only has their own),
- * the barangays of that branch, and a text search. Used with resources/views/pages/partials/client_location_filter, which
- * draws the fields. Leaving everything empty shows every record the account may see.
+ * The search of a list page: ONE text box for everything. The super admin types a branch, a barangay or a name (or several of
+ * them together, for example "Loon Agsoso Ana"); a branch admin has no branch to type because their own is automatic, so only a
+ * barangay or a name. Every word has to be found in at least one of the columns (name, code, mobile number, branch, barangay, ...),
+ * so the words narrow each other. Leaving it empty shows every record the account may see (BranchScope still applies first).
+ * Used with resources/views/pages/partials/client_location_filter, which draws the box.
  */
 final class LocationFilter
 {
     /**
-     * @return array{branches: array<string, mixed>, branchBarangays: array<string, array<int, string>>, selectedBranch: string, selectedBarangays: array<int, string>, searchTerm: string, scopeBranch: ?string}
+     * @return array{searchTerm: string, scopeBranch: ?string}
      */
     public static function fromRequest(Request $request): array
     {
-        $branches = config('bohol_branches', []);
-        $branchBarangays = config('bohol_barangays', []);
-
-        // A branch admin only works with their own branch: it is the only option and is always selected.
-        $own = BranchScope::current();
-        if ($own !== null) {
-            $branches = array_intersect_key($branches, array_flip(array_filter(array_keys($branches), static fn (string $name): bool => strcasecmp($name, $own) === 0)));
-        }
-
-        $selectedBranch = $own !== null ? (array_key_first($branches) ?? '') : trim((string) $request->query('branch', ''));
-        foreach (array_keys($branches) as $name) {
-            if (strcasecmp($name, $selectedBranch) === 0) {
-                $selectedBranch = $name;
-                break;
-            }
-        }
-        if (! array_key_exists($selectedBranch, $branches)) {
-            $selectedBranch = '';
-        }
-
-        $valid = $selectedBranch !== '' ? ($branchBarangays[$selectedBranch] ?? []) : [];
-        $requested = $request->query('barangays', []);
-        $selectedBarangays = [];
-        foreach (is_array($requested) ? $requested : [] as $name) {
-            foreach ($valid as $option) {
-                if (is_string($name) && strcasecmp(trim($name), $option) === 0) {
-                    $selectedBarangays[$option] = $option;
-                }
-            }
-        }
-
         return [
-            'branches' => $branches,
-            'branchBarangays' => $branchBarangays,
-            'selectedBranch' => $selectedBranch,
-            'selectedBarangays' => array_values($selectedBarangays),
             'searchTerm' => trim((string) $request->query('search', '')),
-            // The branch the account is limited to; null for the super admin (the filter partial locks the branch box when set).
-            'scopeBranch' => $own,
+            // The branch the account is limited to; null for the super admin.
+            'scopeBranch' => BranchScope::current(),
         ];
     }
 
     /**
-     * The conditions of the filter for a query over clients, as [sql, params] to append to a WHERE that already has one.
-     *
-     * @param array<string, mixed> $filter       from fromRequest()
-     * @param string               $clientAlias  the clients table, for example "c"
-     * @param string               $barangayJoin the barangays table joined on clients.barangay_id, for example "br"
-     * @param array<int, string>   $moreSearchColumns other columns the text search looks in (a reference number, ...)
+     * What the box says it is for: "Branch, Barangay, Clients" for the super admin and "Barangay, Clients" for a branch admin
+     * (their branch is automatic). $withBarangay is false for lists that have no barangay (users, login history).
      */
-    public static function clientConditions(array $filter, string $clientAlias = 'c', string $barangayJoin = 'br', array $moreSearchColumns = []): array
+    public static function placeholder(?string $scopeBranch, string $subject, bool $withBarangay = true): string
+    {
+        return implode(', ', array_filter([
+            $scopeBranch === null ? 'Branch' : null,
+            $withBarangay ? 'Barangay' : null,
+            $subject,
+        ]));
+    }
+
+    /**
+     * The words of a search, as typed: separated by spaces or commas.
+     *
+     * @return array<int, string>
+     */
+    public static function words(string $term): array
+    {
+        return array_values(array_filter(preg_split('/[\s,]+/u', trim($term)) ?: [], static fn (string $word): bool => $word !== ''));
+    }
+
+    /**
+     * " AND (every word matches one of the columns)" as [sql, params], to append to a WHERE that already has a condition.
+     *
+     * @param array<int, string> $columns SQL expressions to look in
+     */
+    public static function wordConditions(string $term, array $columns): array
     {
         $sql = '';
         $params = [];
-        $barangayName = "COALESCE({$clientAlias}.registered_barangay_name, {$barangayJoin}.barangay_name, '')";
-
-        if ($filter['selectedBranch'] !== '') {
-            $sql .= " AND LOWER(COALESCE({$clientAlias}.branch_name, '')) = LOWER(?)";
-            $params[] = $filter['selectedBranch'];
-        }
-        if ($filter['selectedBarangays'] !== []) {
-            $sql .= " AND LOWER({$barangayName}) IN (" . implode(', ', array_fill(0, count($filter['selectedBarangays']), '?')) . ')';
-            array_push($params, ...array_map('strtolower', $filter['selectedBarangays']));
-        }
-        if ($filter['searchTerm'] !== '') {
-            $columns = array_merge(
-                ["{$clientAlias}.full_name", "{$clientAlias}.client_code", "{$clientAlias}.contact_number", "{$clientAlias}.branch_name", $barangayName],
-                $moreSearchColumns,
-            );
+        foreach (self::words($term) as $word) {
             $sql .= ' AND (' . implode(' OR ', array_map(static fn (string $column): string => "LOWER(COALESCE({$column}, '')) LIKE LOWER(?)", $columns)) . ')';
             foreach ($columns as $unused) {
-                $params[] = '%' . $filter['searchTerm'] . '%';
+                $params[] = '%' . $word . '%';
             }
         }
 
@@ -95,36 +68,34 @@ final class LocationFilter
     }
 
     /**
-     * The same conditions for a query over employees. An employee has a branch but no barangay of their own, only a free-text
-     * address, so a barangay matches when the address mentions it.
+     * The conditions of the search for a query over clients, as [sql, params] to append to a WHERE that already has one.
      *
-     * @param array<string, mixed> $filter        from fromRequest()
-     * @param string               $employeeAlias the employees table, for example "e"
+     * @param array{searchTerm: string} $filter    from fromRequest()
+     * @param string               $clientAlias    the clients table, for example "c"
+     * @param string               $barangayJoin   the barangays table joined on clients.barangay_id, for example "br"
+     * @param array<int, string>   $moreSearchColumns other columns the search looks in (a reference number, ...)
      */
-    public static function employeeConditions(array $filter, string $employeeAlias = 'e'): array
+    public static function clientConditions(array $filter, string $clientAlias = 'c', string $barangayJoin = 'br', array $moreSearchColumns = []): array
     {
-        $sql = '';
-        $params = [];
-        $address = "LOWER(COALESCE({$employeeAlias}.address, ''))";
+        return self::wordConditions($filter['searchTerm'], array_merge([
+            "{$clientAlias}.full_name", "{$clientAlias}.client_code", "{$clientAlias}.contact_number", "{$clientAlias}.branch_name",
+            "COALESCE({$clientAlias}.registered_barangay_name, {$barangayJoin}.barangay_name)",
+        ], $moreSearchColumns));
+    }
 
-        if ($filter['selectedBranch'] !== '') {
-            $sql .= " AND LOWER(COALESCE({$employeeAlias}.branch_name, '')) = LOWER(?)";
-            $params[] = $filter['selectedBranch'];
-        }
-        if ($filter['selectedBarangays'] !== []) {
-            $sql .= ' AND (' . implode(' OR ', array_fill(0, count($filter['selectedBarangays']), "{$address} LIKE LOWER(?)")) . ')';
-            foreach ($filter['selectedBarangays'] as $barangay) {
-                $params[] = '%' . $barangay . '%';
-            }
-        }
-        if ($filter['searchTerm'] !== '') {
-            $columns = ['full_name', 'employee_code', 'position', 'contact_number', 'address'];
-            $sql .= ' AND (' . implode(' OR ', array_map(static fn (string $column): string => "LOWER(COALESCE({$employeeAlias}.{$column}, '')) LIKE LOWER(?)", $columns)) . ')';
-            foreach ($columns as $unused) {
-                $params[] = '%' . $filter['searchTerm'] . '%';
-            }
-        }
-
-        return [$sql, $params];
+    /**
+     * The same for a query over employees. An employee has a branch but no barangay of their own, only a free-text address, so a
+     * barangay is found when the address mentions it.
+     *
+     * @param array{searchTerm: string} $filter       from fromRequest()
+     * @param string               $employeeAlias     the employees table, for example "e"
+     * @param array<int, string>   $moreSearchColumns other columns (for example the branch recorded on an attendance row)
+     */
+    public static function employeeConditions(array $filter, string $employeeAlias = 'e', array $moreSearchColumns = []): array
+    {
+        return self::wordConditions($filter['searchTerm'], array_merge(
+            array_map(static fn (string $column): string => "{$employeeAlias}.{$column}", ['full_name', 'employee_code', 'position', 'contact_number', 'branch_name', 'address']),
+            $moreSearchColumns,
+        ));
     }
 }

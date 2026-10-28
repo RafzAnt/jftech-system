@@ -827,6 +827,20 @@ html:not([data-theme]) .btn-primary {
     font-size: 0.88rem;
 }
 
+/* The number of things in a sub-menu entry that wait for the admin. */
+.nav-badge {
+    margin-left: auto;
+    min-width: 20px;
+    padding: 0 0.4rem;
+    border-radius: 999px;
+    background: #f59e0b;
+    color: #1f1300;
+    font-size: 0.68rem;
+    font-weight: 700;
+    line-height: 20px;
+    text-align: center;
+}
+
 .submenu-item.active::before {
     left: -1px;
     border-radius: 0 3px 3px 0;
@@ -1807,20 +1821,6 @@ html[data-theme="dark"] .form-select {
 .form-input:focus,
 .form-select:focus {
     box-shadow: var(--ui-focus);
-}
-
-/* The number of requests waiting for the admin, at the end of a sidebar link. */
-.nav-badge {
-    margin-left: auto;
-    min-width: 20px;
-    padding: 0 0.4rem;
-    border-radius: 999px;
-    background: #f59e0b;
-    color: #1f1300;
-    font-size: 0.68rem;
-    font-weight: 700;
-    line-height: 20px;
-    text-align: center;
 }
 
 /* A read-only form (a branch admin looking at the shared settings) reads as locked. */

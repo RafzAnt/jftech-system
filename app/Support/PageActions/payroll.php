@@ -17,13 +17,9 @@ $scopeBranch = \App\Support\BranchScope::current();
 [$employeeScope, $employeeScopeParams] = \App\Support\BranchScope::employees($scopeBranch, 'e');
 [$payrollEmployeeScope, $payrollEmployeeScopeParams] = \App\Support\BranchScope::viaEmployee($scopeBranch, 'payroll.employee_id');
 
-// Branch, barangay and employee search (the super admin may pick any branch; a branch admin only has their own). Left empty it
-// shows every record the account may see. An employee has no barangay of their own, so it is looked up in the address.
+// The one search box: a branch, a barangay or an employee (a branch admin only has their own branch). Left empty it shows every
+// record the account may see. An employee has no barangay of their own, so it is looked up in the address.
 $location = \App\Support\LocationFilter::fromRequest($request);
-$branches = $location['branches'];
-$branchBarangays = $location['branchBarangays'];
-$selectedBranch = $location['selectedBranch'];
-$selectedBarangays = $location['selectedBarangays'];
 $searchTerm = $location['searchTerm'];
 [$locationSql, $locationParams] = \App\Support\LocationFilter::employeeConditions($location, 'e');
 // The same filter for queries on the payroll table itself.
@@ -174,36 +170,27 @@ if ($request->isMethod('post') && $request->input('payroll_action') === 'auto_ge
             return $value;
         };
 
-        $mode = $request->input('computation_mode') === 'manual' ? 'manual' : 'auto';
-
-        // Undertime is not tracked by the clock, so its minutes are typed in both modes.
-        $override = ['undertime_minutes' => $typed('undertime_minutes') ?? 0];
-        if ($mode === 'manual') {
-            $periodDays = (int) round((strtotime($periodEnd) - strtotime($periodStart)) / 86400) + 1;
-            $days = $typed('total_days_worked');
-            if ($days !== null && $days > $periodDays) {
-                throw new Exception('Days worked cannot be more than the ' . $periodDays . ' day(s) of the period.');
-            }
-            $overtimeHours = $typed('overtime_hours');
-            $quantities = ['days_worked' => $days, 'late_minutes' => $typed('late_minutes'), 'overtime_minutes' => $overtimeHours === null ? null : $overtimeHours * 60];
-            foreach ($quantities as $key => $value) {
-                if ($value !== null) {
-                    $override[$key] = $value;
-                }
+        // The form starts from the standard computation of the period and every box can be typed over: what is typed wins, and a
+        // box left empty keeps the standard amount.
+        $periodDays = (int) round((strtotime($periodEnd) - strtotime($periodStart)) / 86400) + 1;
+        $days = $typed('total_days_worked');
+        if ($days !== null && $days > $periodDays) {
+            throw new Exception('Days worked cannot be more than the ' . $periodDays . ' day(s) of the period.');
+        }
+        $overtimeHours = $typed('overtime_hours');
+        $override = [];
+        $quantities = ['days_worked' => $days, 'late_minutes' => $typed('late_minutes'), 'undertime_minutes' => $typed('undertime_minutes'), 'overtime_minutes' => $overtimeHours === null ? null : $overtimeHours * 60];
+        foreach ($quantities as $key => $value) {
+            if ($value !== null) {
+                $override[$key] = $value;
             }
         }
 
         $lines = $payroll->compute($employeeId, $dailyRate, $periodStart, $periodEnd, $override);
-        if ($mode === 'auto' && $lines['total_days_worked'] <= 0 && $lines['overtime_hours'] <= 0) {
-            throw new Exception($employeeMap[$employeeId]['full_name'] . ' has no attendance in this period, so there is nothing to compute. Record the attendance first, or choose Manual to enter the pay by hand.');
-        }
-        if ($mode === 'manual') {
-            // Whatever the admin typed over a computed amount wins; an empty field keeps the standard computation.
-            foreach (\App\Support\PayrollCalculator::COMPUTED as $key) {
-                $value = $typed($key);
-                if ($value !== null) {
-                    $lines[$key] = $value;
-                }
+        foreach (\App\Support\PayrollCalculator::COMPUTED as $key) {
+            $value = $typed($key);
+            if ($value !== null) {
+                $lines[$key] = $value;
             }
         }
 
@@ -221,7 +208,7 @@ if ($request->isMethod('post') && $request->input('payroll_action') === 'auto_ge
             throw new Exception($employeeMap[$employeeId]['full_name'] . ' already has payroll for this period. Edit that record instead.');
         }
 
-        $columns = $payroll->row($employeeId, $dailyRate, $periodStart, $periodEnd, $lines, $extras, $mode, $status);
+        $columns = $payroll->row($employeeId, $dailyRate, $periodStart, $periodEnd, $lines, $extras, 'manual', $status);
 
         if ($payrollId) {
             \Illuminate\Support\Facades\DB::table('payroll')->where('id', $payrollId)->update($columns);
@@ -308,6 +295,7 @@ if ($showArchived) {
     $where[] = '(p.archived = 0 OR p.archived IS NULL)';
 }
 
+$payrollPageLimit = 300;
 $payrollSql = "
     SELECT p.*, e.full_name AS employee_name, e.employee_code, e.position, e.department, e.branch_name, e.status AS employment_status
     FROM payroll p
@@ -318,11 +306,13 @@ if ($where) {
     $payrollSql .= ' WHERE ' . implode(' AND ', $where);
 }
 
-$payrollSql .= ' ORDER BY p.created_at DESC, p.payroll_period_end DESC';
+// A payslip is a card of the page, and a company with hundreds of employees has thousands of them: the page carries the newest
+// PAYROLL_PAGE_LIMIT and says so; the search box narrows the list on the server.
+$payrollSql .= ' ORDER BY p.created_at DESC, p.payroll_period_end DESC LIMIT ' . $payrollPageLimit;
 
 $stmt = $pdo->prepare($payrollSql);
 $stmt->execute($params);
-$payrollRecords = $stmt->fetchAll();
+$payrollRecords = $stmt->fetchAll(PDO::FETCH_ASSOC);
 foreach ($payrollRecords as &$payrollRecord) {
     $payrollRecord['can_manage'] = \App\Support\BranchScope::canManagePayrollFor($payrollRecord['position'] ?? null);
 }
@@ -343,6 +333,8 @@ $archivedStmt->execute([...$payrollEmployeeScopeParams, ...$locationParams]);
 $archivedCount = (int) $archivedStmt->fetchColumn();
 
 $totalRecords = (int) $stats['total'];
+// How many records the list holds in all (the page shows the newest $payrollPageLimit of them).
+$listTotal = $showArchived ? $archivedCount : $totalRecords;
 $totalNetPay = (float) $stats['net'];
 $processedCount = (int) $stats['processed'];
 $paidCount = (int) $stats['paid'];

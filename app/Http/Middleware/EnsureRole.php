@@ -11,7 +11,7 @@ class EnsureRole
     public function handle(Request $request, Closure $next, string ...$roles): Response
     {
         $user = $request->user();
-        abort_unless($user && in_array((string) $user->role, $roles, true) && $user->status === 'active', 403);
+        abort_unless($user && in_array((string) $user->role, $roles, true) && $user->isActive(), 403);
         return $next($request);
     }
 }

@@ -127,7 +127,7 @@ class BranchPagesTest extends TestCase
         $bali = $this->page('clients_browse');
         $this->assertSame([1], $this->ids($bali['clients']));
         $this->assertSame(['Balilihan'], array_keys($bali['branches']));
-        $this->assertSame('Balilihan', $bali['selectedBranch']);
+        $this->assertSame('Balilihan', $bali['selectedBranch'], 'the register form needs their branch');
 
         $this->signIn(1);
         $super = $this->page('clients_browse');
@@ -142,7 +142,23 @@ class BranchPagesTest extends TestCase
         $this->signIn(2);
         $page = $this->page('clients_browse', ['branch' => 'Loon']);
 
-        $this->assertSame([1], $this->ids($page['clients']));
+        $this->assertSame([1], $this->ids($page['clients']), 'the old branch box does nothing any more');
+        $this->assertSame([], $this->ids($this->page('clients_browse', ['search' => 'Loon'])['clients']), 'a word of another branch finds nothing');
+        $this->assertSame([], $this->ids($this->page('clients_browse', ['search' => 'Ben'])['clients']));
+    }
+
+    public function test_the_clients_search_box_finds_a_branch_a_barangay_or_a_client(): void
+    {
+        $this->signIn(1);
+
+        $this->assertSame([2], $this->ids($this->page('clients_browse', ['search' => 'Loon'])['clients']), 'a branch (client 3 is archived)');
+        $this->assertSame([2], $this->ids($this->page('clients_browse', ['search' => 'Agsoso'])['clients']), 'a barangay');
+        $this->assertSame([1], $this->ids($this->page('clients_browse', ['search' => 'Boctol Ana'])['clients']), 'a barangay and a client');
+        $this->assertSame([], $this->ids($this->page('clients_browse', ['search' => 'Loon Boctol'])['clients']), 'words narrow each other');
+        $this->assertSame([3], $this->ids($this->page('clients_browse', ['search' => 'Loon', 'view' => 'archived'])['clients']));
+
+        $this->signIn(2);
+        $this->assertSame([1], $this->ids($this->page('clients_browse', ['search' => 'Boctol'])['clients']));
     }
 
     public function test_a_branch_admin_cannot_archive_another_branchs_client(): void
@@ -202,7 +218,9 @@ class BranchPagesTest extends TestCase
         $html = $this->get('/clients')->assertOk()->getContent();
         $this->assertStringNotContainsString('Register New Client', $html);
         $this->assertStringNotContainsString('registerClientModal', $html);
-        $this->assertStringContainsString('id="clientBranchInput"', $html, 'the branch filter is still there');
+        $this->assertStringContainsString('placeholder="Branch, Barangay, Clients"', $html, 'the super admin types a branch, a barangay or a client in one box');
+        $this->assertSame(1, substr_count($html, 'name="search"'));
+        $this->assertStringNotContainsString('id="clientBranchInput"', $html);
         $this->assertStringContainsString('Ana Reyes', $html);
         $this->assertStringContainsString('Ben Cruz', $html, 'the super admin sees every branch');
 
@@ -227,7 +245,7 @@ class BranchPagesTest extends TestCase
         $form = [
             'action' => 'register', 'first_name' => 'Dina', 'last_name' => 'Lopez', 'contact_number' => '09171234567',
             'email' => 'dina@example.com', 'registered_barangay_name' => 'Boctol', 'exact_address' => 'Purok 1',
-            'installation_date' => now()->toDateString(), 'internet_plan_id' => 1,
+            'installation_date' => now()->toDateString(), 'internet_plan_id' => 1, 'payment_mode' => 'cash', 'coordinates' => '9.6541, 124.1234',
         ];
 
         $page = $this->page('clients_browse', [], $form + ['branch_name' => 'Loon']);
@@ -290,8 +308,8 @@ class BranchPagesTest extends TestCase
         $this->signIn(2);
         $page = $this->page('bill_inquiry');
         $this->assertSame([1], $this->ids($page['allClients']));
-        $this->assertSame('Balilihan', $page['selectedBranch']);
-        $this->assertSame([1], $this->ids($this->page('bill_inquiry', ['search' => 'a'])['searchResults']));
+        $this->assertSame([1], $this->ids($this->page('bill_inquiry', ['search' => 'a'])['allClients']));
+        $this->assertSame([], $this->ids($this->page('bill_inquiry', ['search' => 'Loon'])['allClients']), 'another branch is not found');
         $this->assertSame(1, (int) $this->page('bill_inquiry', ['client_id' => 1])['selectedClient']['id']);
 
         $this->expectException(NotFoundHttpException::class);
@@ -404,66 +422,88 @@ class BranchPagesTest extends TestCase
         $this->assertSame('Loon', $page['branch']);
         $this->assertSame(2, $page['report']['bills']['count']);
         $this->assertEquals(2000, $page['report']['payments']['collected']);
+        $this->assertStringContainsString('<input type="hidden" name="branch" value="Loon">', view('pages.reports', $page)->render(), 'the report they view and print is their own branch');
 
         $this->signIn(1);
         $this->assertNull($this->page('reports')['branch']);
         $this->assertSame('Balilihan', $this->page('reports', ['branch' => 'Balilihan'])['branch']);
     }
 
-    public function test_the_business_report_lists_the_records_and_their_totals_match_the_summary(): void
+    public function test_the_business_summary_adds_up_branch_by_branch(): void
     {
         $start = now()->startOfMonth()->toDateString();
         $end = now()->endOfMonth()->toDateString();
 
         $all = PeriodReport::build($start, $end);
-        $details = $all['details'];
+        $branches = $all['branches'];
 
-        $this->assertCount(3, $details['bills']['rows']);
-        $this->assertEquals($all['bills']['amount'], $details['bills']['total']['amount']);
-        $this->assertEquals(3000, $details['bills']['total']['received']);
-        $this->assertEquals($all['bills']['outstanding'], $details['bills']['total']['balance']);
+        // The branch that billed most comes first, and the lines add up to the report's own figures.
+        $this->assertSame(['Loon', 'Balilihan'], array_column($branches['rows'], 'branch'));
+        $this->assertEquals(2500, $branches['rows'][0]['billed']);
+        $this->assertEquals(500, $branches['rows'][0]['outstanding']);
+        $this->assertEquals(1000, $branches['rows'][1]['collected']);
+        $this->assertEquals($all['bills']['amount'], $branches['total']['billed']);
+        $this->assertEquals($all['payments']['collected'], $branches['total']['collected']);
+        $this->assertEquals($all['bills']['outstanding'], $branches['total']['outstanding']);
+        $this->assertEquals($all['payroll']['net'], $branches['total']['payroll']);
 
-        $this->assertCount(2, $details['payments']['rows']);
-        $this->assertEquals($all['payments']['collected'], $details['payments']['total']['amount']);
-
-        $this->assertCount(2, $details['attendance']['rows']);
-        $this->assertSame($all['attendance']['records'], $details['attendance']['total']['records']);
-        $this->assertSame($all['attendance']['present'], $details['attendance']['total']['present']);
-
-        $this->assertCount(2, $details['payroll']['rows']);
-        $this->assertEquals($all['payroll']['net'], $details['payroll']['total']['net']);
-
-        $this->assertCount(2, $details['requests']['rows']);
-        $this->assertSame($all['requests']['total'], count($details['requests']['rows']));
-        $this->assertSame(3, $details['requests']['total']['quantity']);
-
-        $bali = PeriodReport::build($start, $end, 'Balilihan')['details'];
-        $this->assertSame(['B-1'], array_column($bali['bills']['rows'], 'bill_number'));
-        $this->assertEquals(1000, $bali['payments']['total']['amount']);
-        $this->assertSame(['Eli Santos'], array_column($bali['attendance']['rows'], 'full_name'));
-        $this->assertEquals(3000, $bali['payroll']['total']['net']);
-        $this->assertNull($bali['requests']);
-
-        $none = PeriodReport::build($start, $end, '')['details'];
-        $this->assertSame([], $none['bills']['rows']);
-        $this->assertEquals(0, $none['bills']['total']['amount']);
+        $this->assertSame(2, $all['requests']['total']);
+        $this->assertSame(3, $all['requests']['quantity']);
+        $this->assertNull(PeriodReport::build($start, $end, 'Balilihan')['branches'], 'a single branch has no branches to compare');
+        $this->assertSame(0, PeriodReport::build($start, $end, '')['bills']['count']);
     }
 
-    public function test_the_report_page_and_print_view_show_the_records_with_a_total_row(): void
+    public function test_the_business_summary_print_view_is_a_summary_without_the_records(): void
     {
         $this->signIn(1);
+        $html = view('pages.print_monthly_reports', $this->page('print_monthly_reports'))->render();
 
-        foreach (['reports', 'print_monthly_reports'] as $page) {
-            $html = view('pages.' . $page, $this->page($page))->render();
-
-            $this->assertStringContainsString('Ana Reyes', $html);
-            $this->assertStringContainsString('B-3', $html);
-            $this->assertStringContainsString('Total (3 bill(s))', $html);
-            $this->assertStringContainsString('₱3,500.00', $html);
-            $this->assertStringContainsString('Total (2 payment(s))', $html);
-            $this->assertStringContainsString('Eli Santos', $html);
-            $this->assertStringContainsString('Total (2 request(s)', $html);
+        foreach ([
+            'Business Summary Report', '1. Billing Summary', 'TOTAL BILLED', '₱3,500.00', '2. Collection Summary', 'TOTAL PAYMENTS RECEIVED',
+            'GCash', '3. Client Summary', '4. Attendance Summary', '5. Payroll Summary', 'NET PAY', '₱7,000.00',
+            '6. Inventory Requests Summary', '7. Summary by Branch',
+        ] as $text) {
+            $this->assertStringContainsString($text, $html);
         }
+        foreach (['Ana Reyes', 'Ben Cruz', 'Eli Santos', 'B-3'] as $record) {
+            $this->assertStringNotContainsString($record, $html, "{$record} is a record, not a summary figure");
+        }
+
+        // A branch admin's report has no stock requests and no branches to compare.
+        $this->signIn(2);
+        $own = view('pages.print_monthly_reports', $this->page('print_monthly_reports'))->render();
+        $this->assertStringNotContainsString('Inventory Requests Summary', $own);
+        $this->assertStringNotContainsString('Summary by Branch', $own);
+        $this->assertStringContainsString('₱1,000.00', $own);
+    }
+
+    public function test_the_reports_page_shows_the_summary_as_plain_tables_and_the_standard_format_opens_from_print(): void
+    {
+        $this->signIn(1);
+        $html = view('pages.reports', $this->page('reports'))->render();
+
+        // The summary is on the screen as tables: every section of the report, with its figures and its total row.
+        foreach (['1. Billing Summary', '2. Collection Summary', '3. Client Summary', '4. Attendance Summary', '5. Payroll Summary', '6. Inventory Requests Summary', '7. Summary by Branch', 'Total billed', '₱3,500.00', 'Total payments received', 'Outstanding balance', 'Net pay', '₱7,000.00'] as $text) {
+            $this->assertStringContainsString($text, $html, $text);
+        }
+        $this->assertGreaterThanOrEqual(8, substr_count($html, '<table class="data-table">'));
+        $this->assertStringContainsString('<tfoot>', $html);
+
+        // But not the paper: the letterhead, the signature lines and the record-by-record lists belong to the printed report.
+        foreach (['<iframe', 'TIN:', 'Signature over printed name', 'Prepared by', 'Ana Reyes', 'END OF REPORT', '<table class="report-table'] as $paper) {
+            $this->assertStringNotContainsString($paper, $html, "{$paper} belongs to the printed report");
+        }
+
+        // View shows the tables for the dates and branch chosen; Print opens the standard format of the same period in a new tab.
+        $this->assertStringContainsString('>View report</button>', $html);
+        $this->assertMatchesRegularExpression('~<button class="btn btn-secondary" type="submit" formaction="[^"]*/pages/print_monthly_reports\.php" formtarget="_blank"[^>]*>Print report</button>~', $html);
+
+        // A branch admin has no branch to choose, and no per-branch table: the tables and the print are their own branch's.
+        $this->signIn(3);
+        $own = view('pages.reports', $this->page('reports'))->render();
+        $this->assertStringNotContainsString('<select id="branch"', $own);
+        $this->assertStringContainsString('<input type="hidden" name="branch" value="Loon">', $own);
+        $this->assertStringNotContainsString('Summary by Branch', $own);
     }
 
     // ---- user accounts ---------------------------------------------------------------------------------

@@ -1,0 +1,136 @@
+/**
+ * JFTECH NAP box and port picker (public/js/nap_picker.js)
+ * Used by: the Register New Client form and the Installations page.
+ */
+
+.nap-picker {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.nap-picker-summary {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    color: var(--text-primary);
+}
+
+.nap-picker-hint,
+.nap-picker-message {
+    margin: 0;
+    color: var(--text-muted);
+}
+
+.nap-picker-clear {
+    border: 0;
+    background: transparent;
+    color: var(--accent);
+    cursor: pointer;
+    padding: 0;
+    text-decoration: underline;
+}
+
+.nap-picker-box {
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background: var(--bg-muted, var(--surface));
+    padding: 0.75rem 0.9rem;
+}
+
+.nap-picker-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.nap-picker-count {
+    color: var(--success);
+    font-weight: 600;
+}
+
+.nap-picker-count.is-full {
+    color: var(--danger);
+}
+
+.nap-picker-place {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-top: 0.15rem;
+    color: var(--text-muted);
+}
+
+.nap-port-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+    gap: 0.5rem;
+    margin-top: 0.65rem;
+}
+
+.nap-port {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.1rem;
+    min-width: 0;
+    padding: 0.4rem 0.35rem;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--text-primary);
+    font: inherit;
+    cursor: pointer;
+}
+
+.nap-port-number {
+    font-weight: 700;
+}
+
+.nap-port-note {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-muted);
+}
+
+.nap-port.is-free {
+    border-color: color-mix(in srgb, var(--success) 40%, transparent);
+}
+
+.nap-port.is-free:hover {
+    background: var(--success-soft);
+}
+
+.nap-port.is-selected {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    box-shadow: var(--ui-focus);
+}
+
+.nap-port.is-selected .nap-port-note {
+    color: var(--accent);
+}
+
+.nap-port.is-used,
+.nap-port.is-faulty,
+.nap-port.is-reserved {
+    cursor: not-allowed;
+    opacity: 0.8;
+}
+
+.nap-port.is-used {
+    background: var(--accent-soft);
+}
+
+.nap-port.is-faulty {
+    background: var(--danger-soft);
+}
+
+.nap-port.is-reserved {
+    background: var(--warning-soft);
+}

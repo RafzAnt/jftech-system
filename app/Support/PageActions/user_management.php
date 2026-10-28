@@ -51,7 +51,7 @@ $canonicalBranch = static function (string $typed) use ($branches): string {
 
 // The super admin manages every account. A branch admin only manages the technician (employee) accounts of
 // their own branch, so Admin accounts and other branches stay out of reach.
-$scopeBranch = \App\Support\BranchScope::resolve($request->query('branch'));
+$scopeBranch = \App\Support\BranchScope::current();
 $isBranchAdminView = \App\Support\BranchScope::isRestricted();
 $canChangeRoles = ! $isBranchAdminView;
 [$accountScope, $accountScopeParams] = \App\Support\BranchScope::users($scopeBranch, 'users');
@@ -221,19 +221,15 @@ $availableEmployees = [];
 $employeeChoices = [];
 $showArchived = ($request->query('view') ?? '') === 'archived';
 if ($verified) {
-    $search = $request->query('search') ?? '';
+    $search = trim((string) $request->query('search', ''));
     $archivedFilter = $showArchived ? 'AND users.archived = 1' : 'AND (users.archived = 0 OR users.archived IS NULL)';
     // A branch admin only lists the technician accounts of their branch.
     $roleFilter = $isBranchAdminView ? " AND users.role = 'employee'" : '';
     $scopeFilter = $accountScope . $roleFilter;
-    if ($search) {
-        $searchTerm = "%$search%";
-        $stmt = $pdo->prepare("SELECT users.*, employees.position AS employee_position FROM users LEFT JOIN employees ON employees.user_id = users.id WHERE (users.username LIKE ? OR users.full_name LIKE ? OR users.email LIKE ? OR employees.position LIKE ?) $archivedFilter $scopeFilter ORDER BY users.created_at DESC");
-        $stmt->execute([$searchTerm, $searchTerm, $searchTerm, $searchTerm, ...$accountScopeParams]);
-    } else {
-        $stmt = $pdo->prepare("SELECT users.*, employees.position AS employee_position FROM users LEFT JOIN employees ON employees.user_id = users.id WHERE TRUE $archivedFilter $scopeFilter ORDER BY users.created_at DESC");
-        $stmt->execute($accountScopeParams);
-    }
+    // The one search box: a branch, or a username, name, email or position, words narrowing each other (see LocationFilter).
+    [$searchSql, $searchParams] = \App\Support\LocationFilter::wordConditions($search, ['users.username', 'users.full_name', 'users.email', 'employees.position', 'users.branch_name']);
+    $stmt = $pdo->prepare("SELECT users.*, employees.position AS employee_position FROM users LEFT JOIN employees ON employees.user_id = users.id WHERE TRUE $archivedFilter $scopeFilter $searchSql ORDER BY users.created_at DESC");
+    $stmt->execute([...$accountScopeParams, ...$searchParams]);
     $users = $stmt->fetchAll();
     $archivedStmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE users.archived = 1 $scopeFilter");
     $archivedStmt->execute($accountScopeParams);

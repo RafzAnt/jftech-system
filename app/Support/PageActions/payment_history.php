@@ -12,12 +12,8 @@ $paymentHistoryCssVersion = filemtime(public_path('css/payment_history.css'));
 
 $clientFilterCssVersion = filemtime(public_path('css/client_filter.css'));
 
-// Branch, barangay and text search (the super admin may pick any branch; a branch admin only has their own).
+// The one search box: a branch, a barangay, a client, a bill or a reference number (a branch admin only has their own branch).
 $location = \App\Support\LocationFilter::fromRequest($request);
-$branches = $location['branches'];
-$branchBarangays = $location['branchBarangays'];
-$selectedBranch = $location['selectedBranch'];
-$selectedBarangays = $location['selectedBarangays'];
 $searchTerm = $location['searchTerm'];
 $scopeBranch = $location['scopeBranch'];
 
@@ -43,7 +39,7 @@ $stmt = $pdo->prepare($paymentQuery);
 $stmt->execute($paymentParams);
 $payments = $stmt->fetchAll();
 
-// Keep the summary cards in sync with the selected barangay/search filter.
+// Keep the summary cards in sync with the search.
 $totalPayments = array_sum(array_map(static fn (array $payment): float => (float) $payment['amount'], $payments));
 $todayPayments = array_sum(array_map(
     static fn (array $payment): float => $payment['payment_date'] === now()->toDateString() ? (float) $payment['amount'] : 0,

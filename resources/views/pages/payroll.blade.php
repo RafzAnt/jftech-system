@@ -66,8 +66,10 @@
             </div>
             <div class="card-body">
                 @php
+                    $filterSubject = 'Employees';
                     $filterSearchLabel = 'Search Employees';
-                    $filterSearchPlaceholder = 'Employee name, code, position or mobile number';
+                    $filterIdPrefix = 'client';
+                    unset($filterDate);
                 @endphp
                 @include('pages.partials.client_location_filter')
             </div>
@@ -84,6 +86,9 @@
                 </div>
             </div>
             <div class="card-body">
+                @if ($listTotal > count($payrollRecords))
+                <p class="payslip-limit-note" style="color: var(--text-muted); font-size: 0.85rem; margin: 0 0 1rem;">Showing the newest {{ number_format(count($payrollRecords)) }} of {{ number_format($listTotal) }} payroll records. Type a branch, a barangay or an employee in the search above to see the others.</p>
+                @endif
                 <div class="payslip-list" data-paginate-list data-page-size="5">
                     @if (empty($payrollRecords))
                         <div class="card" style="padding: 2rem; text-align: center; color: var(--text-muted);">
@@ -116,7 +121,7 @@
                             <div class="payslip-header">
                                 @include('partials.print_company')
                                 <div class="payslip-period">
-                                    <div><strong>PAYSLIP</strong>@if ($prComputed) <span class="payslip-mode-badge">{{ $record['computation_mode'] === 'auto' ? 'AUTOMATIC' : 'MANUAL' }}</span>@endif @if ($showArchived) <span class="payslip-archived-badge">ARCHIVED</span>@endif</div>
+                                    <div><strong>PAYSLIP</strong>@if (($record['computation_mode'] ?? '') === 'auto') <span class="payslip-mode-badge">AUTOMATIC</span>@endif @if ($showArchived) <span class="payslip-archived-badge">ARCHIVED</span>@endif</div>
                                     <div>Payroll Period: {{ date('M d, Y', strtotime($record['payroll_period_start'])) }} - {{ date('M d, Y', strtotime($record['payroll_period_end'])) }}</div>
                                 </div>
                             </div>
@@ -247,15 +252,6 @@
             <form method="POST" action="">
             @csrf
                 <input type="hidden" name="payroll_id" id="payrollId">
-                <input type="hidden" name="computation_mode" id="computationMode" value="auto">
-
-                <div class="form-section">
-                    <div class="form-section-title">How is this payroll computed?</div>
-                    <div class="mode-toggle">
-                        <button type="button" class="mode-option active" data-mode="auto" onclick="setMode('auto')" title="The pay is worked out from the daily rate and the attendance of the period. The contributions follow the SSS, PhilHealth and Pag-IBIG tables.">Automatic</button>
-                        <button type="button" class="mode-option" data-mode="manual" onclick="setMode('manual')" title="You type the days, minutes and amounts yourself. A field left empty keeps the standard computation.">Manual</button>
-                    </div>
-                </div>
 
                 <div class="form-section">
                     <div class="form-section-title">Employee &amp; Period</div>
@@ -307,7 +303,7 @@
                         <div class="form-group"><label class="form-label">Undertime (minutes)</label><input type="number" name="undertime_minutes" id="undertime_minutes" class="form-input" step="1" min="0" value="0" oninput="onQuantityInput('undertime_minutes');"></div>
                         <div class="form-group"><label class="form-label">Overtime (hours)</label><input type="number" name="overtime_hours" id="overtime_hours" class="form-input" step="0.01" min="0" value="0" oninput="onQuantityInput('overtime_hours');"></div>
                         <div class="form-group"><label class="form-label">Absent (not paid)</label><input type="number" name="absent" id="absent" class="form-input" step="0.01" min="0" value="0" oninput="computePayroll();"></div>
-                        <div class="form-group" style="display:flex;align-items:flex-end;"><button type="button" class="btn btn-secondary" id="recalculateButton" onclick="loadComputation();">Recalculate from attendance</button></div>
+                        <div class="form-group" style="display:flex;align-items:flex-end;"><button type="button" class="btn btn-secondary" id="recalculateButton" onclick="loadComputation();" title="Loads the numbers of the attendance and the contribution tables again; what you typed over is replaced.">Recalculate from attendance</button></div>
                     </div>
                 </div>
 
@@ -372,17 +368,16 @@
     const employeeChoices = @json($employeeChoices);
     const payrollConfig = @json($payrollConfig);
 
-    // Quantities the attendance gives, and the amounts that follow from them. In an automatic payroll the system fills them in;
-    // in a manual one the admin may type over every one of them.
-    const COMPUTED_FIELDS = ['total_days_worked', 'late_minutes', 'overtime_hours', 'absent', 'basic_salary', 'overtime_pay', 'late', 'undertime', 'sss', 'philhealth', 'pagibig'];
+    // Quantities the attendance gives, and the amounts that follow from them. The system fills them in when an employee and a
+    // period are chosen; the admin may type over every one of them.
+    const COMPUTED_FIELDS = ['total_days_worked', 'late_minutes', 'undertime_minutes', 'overtime_hours', 'absent', 'basic_salary', 'overtime_pay', 'late', 'undertime', 'sss', 'philhealth', 'pagibig'];
     const EXTRA_EARNINGS = ['regular_holiday', 'special_holiday', 'night_differential', 'incentives', 'allowances', 'leave_pay', 'rest_day_pay', 'salary_adjustment', 'other_earnings'];
     const EXTRA_DEDUCTIONS = ['withholding_tax', 'cash_advance', 'salary_loan', 'hdmf_loan', 'other_deductions'];
     const EARNING_FIELDS = ['basic_salary', 'overtime_pay'].concat(EXTRA_EARNINGS);
     const DEDUCTION_FIELDS = ['late', 'undertime', 'sss', 'philhealth', 'pagibig'].concat(EXTRA_DEDUCTIONS);
     const NUM_FIELDS = ['total_days_worked', 'late_minutes', 'undertime_minutes', 'overtime_hours', 'absent'].concat(EARNING_FIELDS, DEDUCTION_FIELDS);
 
-    const QUANTITY_FIELDS = ['total_days_worked', 'late_minutes', 'overtime_hours'];
-    let payrollMode = 'auto';
+    const QUANTITY_FIELDS = ['total_days_worked', 'late_minutes', 'undertime_minutes', 'overtime_hours'];
     let computationRequest = 0;
 
     function el(id) { return document.getElementById(id); }
@@ -393,23 +388,6 @@
     function num(id) { return parseFloat(el(id).value) || 0; }
     function round2(value) { return (Math.round((value + Number.EPSILON) * 100) / 100).toFixed(2); }
     function money(value) { return '₱' + Number(value).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
-
-    function setMode(mode, skipLoad) {
-        payrollMode = mode === 'manual' ? 'manual' : 'auto';
-        el('computationMode').value = payrollMode;
-        document.querySelectorAll('.mode-option').forEach(function(option) {
-            option.classList.toggle('active', option.getAttribute('data-mode') === payrollMode);
-        });
-        COMPUTED_FIELDS.forEach(function(id) {
-            const input = el(id);
-            input.readOnly = payrollMode === 'auto';
-            input.classList.toggle('calc-readonly', payrollMode === 'auto');
-        });
-        // Undertime is not tracked by the clock, so its minutes are always typed; its amount follows from them.
-        // The button reloads the standard numbers in both modes: an automatic payroll follows them, a manual one starts from them.
-        el('recalculateButton').textContent = payrollMode === 'auto' ? 'Recalculate from attendance' : 'Fill standard amounts';
-        if (!skipLoad) loadComputation();
-    }
 
     function resetPayrollForm() {
         el('payrollModalTitle').textContent = 'New Payroll';
@@ -428,7 +406,6 @@
         NUM_FIELDS.forEach(function(id) { setVal(id, '0'); });
         showNotes(['Choose an employee and a period to see the computation.']);
         standardContributions = null;
-        setMode('auto', true);
         computePayroll();
     }
 
@@ -562,7 +539,7 @@
     }
 
     // The standard computation of the period, from the server: attendance, late, overtime and the three contributions.
-    // It fills every computed box, in a manual payroll too (where each can then be typed over).
+    // It fills every computed box, and each can then be typed over.
     function loadComputation() {
         computePayroll();
         const request = ++computationRequest;
@@ -595,7 +572,7 @@
         const hourly = rate / payrollConfig.hoursPerDay;
         if (id === 'undertime_minutes') {
             setVal('undertime', round2(hourly * num('undertime_minutes') / 60));
-        } else if (payrollMode === 'manual') {
+        } else {
             if (id === 'total_days_worked') setVal('basic_salary', round2(num('total_days_worked') * rate));
             if (id === 'late_minutes') setVal('late', round2(hourly * num('late_minutes') / 60));
             if (id === 'overtime_hours') setVal('overtime_pay', round2(hourly * payrollConfig.overtimeRate * num('overtime_hours')));
@@ -632,11 +609,7 @@
         NUM_FIELDS.forEach(function(id) {
             setVal(id, record[id] !== undefined && record[id] !== null ? record[id] : '0');
         });
-        // Records from before automatic payroll are edited by hand.
-        setMode(record.computation_mode === 'auto' ? 'auto' : 'manual', true);
-        showNotes([payrollMode === 'auto'
-            ? 'Saving recomputes an automatic payroll from the attendance. Use "Recalculate from attendance" to see the new numbers first.'
-            : 'A manual payroll keeps the amounts as they are. Use "Fill standard amounts" to load the standard ones.']);
+        showNotes(['Saving keeps the amounts as they are. Use "Recalculate from attendance" to load the standard ones again.']);
         standardContributions = null;
         computePayroll();
         el('payrollModal').classList.add('active');

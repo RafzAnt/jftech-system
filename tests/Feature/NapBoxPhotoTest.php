@@ -39,12 +39,12 @@ class NapBoxPhotoTest extends TestCase
 
     private function newBox(array $extra = []): \Illuminate\Testing\TestResponse
     {
-        return $this->post('/nap-boxes', ['action' => 'save_box', 'name' => 'NAP-03', 'barangay' => 'Boctol', 'total_ports' => 8] + $extra);
+        return $this->post('/nap-boxes', ['action' => 'save_box', 'coordinates' => '9.6541, 124.1234', 'name' => 'NAP-03', 'barangay' => 'Boctol', 'total_ports' => 8] + $extra);
     }
 
     private function editBox(array $extra = []): \Illuminate\Testing\TestResponse
     {
-        return $this->post('/nap-boxes', ['action' => 'save_box', 'box_id' => 1, 'name' => 'NAP-01', 'barangay' => 'Boctol', 'total_ports' => 4, 'status' => 'active'] + $extra);
+        return $this->post('/nap-boxes', ['action' => 'save_box', 'coordinates' => '9.6541, 124.1234', 'box_id' => 1, 'name' => 'NAP-01', 'barangay' => 'Boctol', 'total_ports' => 4, 'status' => 'active'] + $extra);
     }
 
     public function test_a_box_is_added_with_its_photo_and_the_photo_is_shown(): void

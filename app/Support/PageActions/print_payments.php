@@ -44,6 +44,6 @@ $payments = $stmt->fetchAll();
 
 $total = (float) array_sum(array_map(function ($p) { return (float) $p['amount']; }, $payments));
 $count = count($payments);
-$rangeLabel = ($from || $to) ? (($from ?: 'Start') . ' to ' . ($to ?: 'Today')) : 'All Dates';
+$rangeLabel = \App\Support\ReportFormat::coverage($from, $to);
     return get_defined_vars();
 };

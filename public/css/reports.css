@@ -1,4 +1,4 @@
-/* Business report (on screen). */
+/* Reports page (on screen): the filter and the summary as plain tables. The standard report format is the print view. */
 
 /* ===== HEADER + FILTER ===== */
 .report-heading p {
@@ -50,157 +50,46 @@
     font-size: 0.78rem;
 }
 
-/* ===== PERIOD BANNER ===== */
-.report-period {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 0.6rem 1.5rem;
-    margin-bottom: 1.5rem;
-    padding: 1rem 1.25rem;
-    border: 1px solid var(--border-color);
-    border-left: 4px solid var(--accent);
-    border-radius: var(--radius);
-    background: var(--card-bg);
-    box-shadow: var(--shadow-sm);
+/* ===== FILTER CARD ===== */
+.report-print-card {
+    margin-bottom: 1.25rem;
+    padding: 1.25rem;
 }
 
-.report-period span {
-    display: block;
-    color: var(--text-muted);
-    font-size: 0.72rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+/* ===== THE SUMMARY AS TABLES ===== */
+.report-tables {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr));
+    gap: 1rem;
+    align-items: start;
 }
 
-.report-period strong {
-    color: var(--text-primary);
-    font-size: 1.35rem;
-    letter-spacing: -0.02em;
+.report-tables .report-wide {
+    grid-column: 1 / -1;
 }
 
-.report-period p {
-    margin: 0;
-    color: var(--text-secondary);
-    font-size: 0.85rem;
+.report-tables .data-table-container + .data-table-container {
+    border-top: 1px solid var(--border-color);
 }
 
-/* ===== SECTIONS ===== */
-.report-section-title {
-    margin: 1.5rem 0 0.75rem;
-    color: var(--text-secondary);
-    font-size: 0.8rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-}
-
-.report-section-title:first-of-type {
-    margin-top: 0;
-}
-
-.report-stats {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    margin-bottom: 1rem;
-}
-
-.stat-change--muted {
-    color: var(--text-muted);
-    font-weight: 500;
-}
-
-/* ===== SETTLED BAR ===== */
-.report-progress {
-    padding: 1rem 1.25rem;
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius);
-    background: var(--card-bg);
-    box-shadow: var(--shadow-sm);
-}
-
-.report-progress__head {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    margin-bottom: 0.5rem;
-    color: var(--text-secondary);
-    font-size: 0.85rem;
-}
-
-.report-progress__head strong {
-    color: var(--success);
-    font-size: 1rem;
-}
-
-.report-progress__bar {
-    height: 10px;
-    overflow: hidden;
-    border-radius: 999px;
-    background: var(--secondary);
-}
-
-.report-progress__bar span {
-    display: block;
-    height: 100%;
-    border-radius: 999px;
-    background: var(--success);
-}
-
-.report-progress p {
-    margin: 0.6rem 0 0;
-    color: var(--text-muted);
-    font-size: 0.8rem;
-}
-
-.report-progress p strong {
-    color: var(--text-primary);
-}
-
-/* ===== DETAIL TABLES ===== */
-.report-table-card {
-    min-width: 0;
-    margin-bottom: 1rem;
-}
-
-.report-table .num {
-    font-variant-numeric: tabular-nums;
+.report-tables .num {
     text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
 }
 
-.report-muted {
-    color: var(--text-muted);
+.report-tables tfoot td {
+    border-top: 2px solid var(--border-strong);
+    font-weight: 700;
 }
 
-.report-empty-row {
-    padding: 1.5rem 0.8rem !important;
+.report-tables .empty {
     color: var(--text-muted);
     text-align: center;
 }
 
-/* The total row closes every table, even when there are no records. */
-.data-table.report-table tfoot td {
-    padding: 0.75rem 0.8rem;
-    border-top: 2px solid var(--border-strong);
-    background: var(--bg-muted);
-    color: var(--text-primary);
-    font-weight: 700;
-    white-space: nowrap;
-}
-
 /* ===== RESPONSIVE ===== */
-@media (max-width: 1200px) {
-    .report-stats {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-}
-
 @media (max-width: 700px) {
-    .report-stats {
-        grid-template-columns: 1fr;
-    }
-
     .report-filter {
         width: 100%;
     }

@@ -1,0 +1,124 @@
+/*
+ * The one look of every printed report (layouts/print_report.blade.php): letterhead, title block,
+ * ruled tables with a TOTAL row, and the "Prepared by / Checked by / Approved by" signatures.
+ * The paper size and the page footer ("Page X of Y") are written by the layout, per report.
+ */
+:root {
+    --ink: #111111;
+    --muted: #555555;
+    --rule: #1f1f1f;
+    --grid: #8c8c8c;
+    --head: #e4e4e4;
+    --total: #f1f1f1;
+}
+
+* { box-sizing: border-box; }
+
+body.report-doc {
+    margin: 0;
+    padding: 18px;
+    background: #e9ebef;
+    color: var(--ink);
+    font: 10pt/1.4 Arial, Helvetica, sans-serif;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+body.report-doc.landscape { --sheet: 297mm; }
+body.report-doc.portrait { --sheet: 210mm; }
+
+.toolbar { max-width: var(--sheet); margin: 0 auto 12px; text-align: right; }
+.toolbar button { padding: 8px 16px; border: 0; border-radius: 4px; background: #1f2937; color: #fff; font: 700 13px Arial, sans-serif; cursor: pointer; }
+
+.report {
+    max-width: var(--sheet);
+    margin: 0 auto;
+    padding: 14mm 12mm;
+    background: #fff;
+    box-shadow: 0 1px 6px rgba(0, 0, 0, .25);
+}
+
+/* Letterhead */
+.letterhead { display: flex; align-items: center; justify-content: center; gap: 14px; padding-bottom: 8px; border-bottom: 2px solid var(--rule); text-align: center; }
+.letterhead img { width: auto; height: 54px; object-fit: contain; }
+.letterhead .company-name { font-size: 16pt; font-weight: 700; letter-spacing: .06em; }
+.letterhead .company-line { font-size: 9pt; color: #333; }
+
+/* Title block */
+.report-title { margin: 12px 0 10px; text-align: center; }
+.report-title h1 { margin: 0; font-size: 13pt; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.report-title .coverage { margin-top: 3px; font-size: 10pt; }
+
+.report-info { display: flex; flex-wrap: wrap; gap: 2px 28px; margin: 0 0 10px; padding: 5px 0; border-top: 1px solid var(--grid); border-bottom: 1px solid var(--grid); font-size: 9pt; }
+.report-info span { color: var(--muted); }
+.report-info strong { margin-left: 3px; }
+
+/* Key figures above the tables */
+.summary { display: flex; flex-wrap: wrap; margin: 0 0 12px; border: 1px solid var(--rule); }
+.summary > div { flex: 1 1 0; min-width: 110px; padding: 6px 10px; border-right: 1px solid var(--grid); }
+.summary > div:last-child { border-right: 0; }
+.summary span { display: block; font-size: 7.5pt; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.summary strong { display: block; font-size: 11pt; }
+.summary small { color: var(--muted); font-size: 8pt; }
+
+/* A section (heading and its tables) is never split between two pages */
+.report-section { break-inside: avoid; page-break-inside: avoid; }
+
+/* Tables */
+.section-heading { margin: 14px 0 5px; padding-bottom: 2px; border-bottom: 1px solid var(--rule); font-size: 10pt; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; break-after: avoid; }
+.report-table { width: 100%; border-collapse: collapse; font-size: 9pt; }
+.report-table + .report-table { margin-top: 8px; }
+.pair .report-table + .report-table { margin-top: 0; }
+.report-table.particulars td:last-child, .report-table.particulars th:last-child { width: 30%; }
+.report-table.dense { font-size: 8pt; }
+.report-table.dense th, .report-table.dense td { padding: 3px 4px; }
+.report-table th, .report-table td { padding: 4px 6px; border: 1px solid var(--grid); vertical-align: top; overflow-wrap: anywhere; }
+.report-table thead th { background: var(--head); border-color: #555; font-size: 8pt; letter-spacing: .03em; text-align: left; text-transform: uppercase; }
+.report-table .no { width: 1%; text-align: center; white-space: nowrap; }
+.report-table .num, .report-table thead th.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.report-table .center { text-align: center; }
+.report-table small { color: var(--muted); }
+.report-table tfoot td { border-top: 2px solid var(--rule); background: var(--total); font-weight: 700; }
+.report-table .empty { padding: 14px; color: var(--muted); text-align: center; }
+.report-table thead { display: table-header-group; }
+.report-table tfoot { display: table-row-group; }
+.report-table tr { break-inside: avoid; page-break-inside: avoid; }
+
+/* Details of a person or a document (payslip) */
+.detail-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; font-size: 9.5pt; }
+.detail-table td { width: 25%; padding: 5px 8px; border: 1px solid var(--grid); vertical-align: top; }
+.detail-table .label { display: block; margin-bottom: 2px; color: var(--muted); font-size: 7.5pt; letter-spacing: .04em; text-transform: uppercase; }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; margin-bottom: 8px; }
+.report-table tfoot.net-pay td { padding: 7px 8px; background: var(--head); font-size: 12pt; }
+
+/* Attendance QR codes */
+.qr-codes { display: flex; justify-content: center; gap: 28px; margin: 0 0 14px; }
+.qr-code { text-align: center; }
+.qr-code strong { display: block; margin-bottom: 5px; font-size: 10pt; }
+.qr-code div { display: inline-block; padding: 4px; background: #fff; }
+.qr-code img, .qr-code canvas { display: block; width: 104px !important; height: 104px !important; }
+.qr-code small { display: block; margin-top: 5px; color: var(--muted); font-size: 8pt; }
+
+/* Signatures */
+.signatories { display: flex; justify-content: space-between; gap: 30px; margin-top: 30px; break-inside: avoid; page-break-inside: avoid; }
+.signatory { flex: 1 1 0; font-size: 9pt; }
+.signatory .role { margin-bottom: 30px; font-weight: 700; }
+.signatory .name { min-height: 1.3em; padding-top: 3px; border-top: 1px solid #000; font-weight: 700; text-align: center; text-transform: uppercase; }
+.signatory .caption { color: var(--muted); font-size: 7.5pt; text-align: center; }
+.signatory .title { font-size: 8pt; text-align: center; }
+.signatory .signed-on { margin-top: 8px; font-size: 8pt; }
+
+/* End of the report */
+.report-end { margin-top: 18px; padding-top: 6px; border-top: 1px solid var(--grid); color: var(--muted); font-size: 8pt; text-align: center; }
+.report-end .end-mark { margin-bottom: 3px; font-weight: 700; letter-spacing: .25em; }
+
+@media (max-width: 650px) {
+    .pair { grid-template-columns: 1fr; }
+    .signatories { flex-direction: column; }
+    .report { padding: 10mm 6mm; }
+}
+
+@media print {
+    body.report-doc { padding: 0; background: #fff; }
+    .toolbar { display: none; }
+    .report { max-width: none; padding: 0; box-shadow: none; }
+}

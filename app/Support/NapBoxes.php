@@ -9,15 +9,10 @@ use Illuminate\Support\Facades\Schema;
 /**
  * NAP boxes and their ports.
  *
- * A port is stored as available, occupied (a client is connected) or faulty. "Reserved" is not stored: a port is
- * reserved while an installation request that proposes (or reported) it is still open, so it frees itself the
- * moment that request is cancelled, rejected or confirmed.
+ * A port is stored as available, occupied (a client is connected) or faulty.
  */
 final class NapBoxes
 {
-    /** Installation requests in these states hold the port they propose. */
-    public const OPEN_REQUEST_STATUSES = ['pending_approval', 'returned', 'approved', 'work_completed'];
-
     /** The picture of a box is kept as base64 text; the browser shrinks it first, so this is only a safety limit (bytes). */
     public const PHOTO_MAX_BYTES = 1_000_000;
 
@@ -25,31 +20,6 @@ final class NapBoxes
 
     /** NAP boxes are stock too: the inventory category of the NAP boxes a branch has not installed yet. */
     public const STOCK_CATEGORY = 'NAP Box';
-
-    /**
-     * Ports held by an open installation request, as [port id => request code].
-     * $exceptRequestId lets a request keep the port it already holds.
-     */
-    public static function reservedPorts(?string $branch = null, ?int $exceptRequestId = null): array
-    {
-        $query = DB::table('work_requests')
-            ->where('work_type', 'installation')
-            ->whereIn('status', self::OPEN_REQUEST_STATUSES)
-            ->when($branch !== null && $branch !== '', fn ($q) => $q->whereRaw('LOWER(branch_name) = LOWER(?)', [$branch]))
-            ->when($exceptRequestId, fn ($q) => $q->where('id', '!=', $exceptRequestId))
-            ->get(['request_code', 'status', 'nap_port_id', 'actual_nap_port_id']);
-
-        $reserved = [];
-        foreach ($query as $row) {
-            // Once the work is reported, the port that was really used is the one that matters.
-            $portId = $row->status === 'work_completed' && $row->actual_nap_port_id ? $row->actual_nap_port_id : $row->nap_port_id;
-            if ($portId) {
-                $reserved[(int) $portId] = $row->request_code;
-            }
-        }
-
-        return $reserved;
-    }
 
     /** The barangays of a branch, spelled as the branch has them (from config/bohol_barangays.php). */
     public static function barangaysOf(string $branch): array
@@ -76,18 +46,24 @@ final class NapBoxes
             ->where('archived', $archived)
             ->when(! $includeInactive, fn ($q) => $q->where('status', 'active'))
             ->when($barangay !== null && $barangay !== '', fn ($q) => $q->whereRaw('LOWER(barangay_name) = LOWER(?)', [$barangay]))
-            // LOWER() on both sides: LIKE ignores the case on MySQL but not on Postgres (Supabase).
-            ->when($search !== '', fn ($q) => $q->where(function ($inner) use ($search) {
-                $like = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $search) . '%';
-                $inner->whereRaw('LOWER(name) LIKE LOWER(?)', [$like])
-                    ->orWhereRaw("LOWER(COALESCE(location, '')) LIKE LOWER(?)", [$like])
-                    ->orWhereRaw('LOWER(barangay_name) LIKE LOWER(?)', [$like]);
-            }))
+            // Every word of the search must be found in the name, the location, the barangay or the branch. LOWER() on both sides:
+            // LIKE ignores the case on MySQL but not on Postgres (Supabase).
+            ->when($search !== '', function ($q) use ($search) {
+                foreach (LocationFilter::words($search) as $word) {
+                    $like = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $word) . '%';
+                    $q->where(function ($inner) use ($like) {
+                        $inner->whereRaw('LOWER(name) LIKE LOWER(?)', [$like])
+                            ->orWhereRaw("LOWER(COALESCE(location, '')) LIKE LOWER(?)", [$like])
+                            ->orWhereRaw('LOWER(barangay_name) LIKE LOWER(?)', [$like])
+                            ->orWhereRaw('LOWER(branch_name) LIKE LOWER(?)', [$like]);
+                    });
+                }
+            })
             ->orderByDesc('created_at')
             ->orderByDesc('id')
             ->get();
 
-        $result = self::withCounts($boxes->all(), self::reservedPorts($branch === '' ? null : $branch));
+        $result = self::withCounts($boxes->all());
 
         if ($filter === 'available') {
             $result = array_values(array_filter($result, fn (array $box) => $box['available_ports'] > 0));
@@ -108,16 +84,15 @@ final class NapBoxes
             return null;
         }
 
-        $reserved = self::reservedPorts($box->branch_name);
-        $result = self::withCounts([$box], $reserved)[0];
-        $result['ports'] = self::ports($id, $reserved);
+        $result = self::withCounts([$box])[0];
+        $result['ports'] = self::ports($id);
         $result['inventory_used'] = self::inventoryUsed($id);
 
         return $result;
     }
 
     /**
-     * The stock transactions that belong to a NAP box: the unit taken from stock when it was installed, and the materials the
+     * The stock transactions that belong to a NAP box: the unit taken from stock when it was installed. Newest first.
      * installations on its ports used. Newest first.
      */
     public static function inventoryUsed(int $boxId, int $limit = 50): array
@@ -170,8 +145,23 @@ final class NapBoxes
             ->all();
     }
 
-    /** The ports of a box, each with its display status: available, occupied, reserved or faulty. */
-    public static function ports(int $boxId, array $reserved): array
+    /**
+     * The active boxes of a barangay with their ports, for the pickers of Register New Client and of confirming an installation
+     * report. $exceptInstallation is the report being confirmed: its own reserved port is shown as free to take.
+     */
+    public static function inBarangay(?string $branch, string $barangay, ?int $exceptInstallation = null): array
+    {
+        $boxes = self::boxes($branch, $barangay);
+        usort($boxes, fn (array $a, array $b) => strnatcasecmp($a['name'], $b['name']));
+        foreach ($boxes as &$box) {
+            $box['ports'] = self::ports($box['id'], $exceptInstallation);
+        }
+
+        return $boxes;
+    }
+
+    /** The ports of a box, each with its status: available, occupied or faulty. */
+    public static function ports(int $boxId, ?int $exceptInstallation = null): array
     {
         $rows = DB::table('nap_ports')
             ->leftJoin('clients', 'clients.id', '=', 'nap_ports.client_id')
@@ -179,55 +169,41 @@ final class NapBoxes
             ->orderBy('nap_ports.port_number')
             ->get(['nap_ports.id', 'nap_ports.port_number', 'nap_ports.status', 'nap_ports.client_id', 'nap_ports.occupied_at', 'clients.full_name as client_name', 'clients.client_code']);
 
-        return array_map(function ($row) use ($reserved): array {
-            $status = $row->status;
-            if ($status === 'available' && isset($reserved[(int) $row->id])) {
-                $status = 'reserved';
-            }
+        $reserved = array_flip(self::reservedPortIds($boxId, $exceptInstallation));
 
-            return [
-                'id' => (int) $row->id,
-                'port_number' => (int) $row->port_number,
-                'status' => $status,
-                'client_id' => $row->client_id ? (int) $row->client_id : null,
-                'client_name' => $row->client_name,
-                'client_code' => $row->client_code,
-                'reserved_by' => $status === 'reserved' ? $reserved[(int) $row->id] : null,
-            ];
-        }, $rows->all());
+        return array_map(fn ($row): array => [
+            'id' => (int) $row->id,
+            'port_number' => (int) $row->port_number,
+            'status' => $row->status,
+            // A free port that an employee has already used in an installation report the admin has not confirmed yet.
+            'reserved' => $row->status === 'available' && isset($reserved[(int) $row->id]),
+            'client_id' => $row->client_id ? (int) $row->client_id : null,
+            'client_name' => $row->client_name,
+            'client_code' => $row->client_code,
+        ], $rows->all());
     }
 
     /**
-     * Why a port cannot be used for an installation, or null when it can.
-     * $exceptRequestId is the request that is asking, so it does not clash with the port it already holds.
+     * The ports that an installation report waiting for the admin has taken. They stay available until the admin confirms,
+     * but nobody else is offered them meanwhile. $exceptInstallation leaves out the report being confirmed.
+     *
+     * @return int[]
      */
-    public static function portProblem(int $portId, int $boxId, string $branch, ?int $exceptRequestId = null, ?int $clientId = null): ?string
+    public static function reservedPortIds(?int $boxId = null, ?int $exceptInstallation = null): array
     {
-        $port = DB::table('nap_ports')
-            ->join('nap_boxes', 'nap_boxes.id', '=', 'nap_ports.nap_box_id')
-            ->where('nap_ports.id', $portId)
-            ->where('nap_ports.nap_box_id', $boxId)
-            ->first(['nap_ports.id', 'nap_ports.status', 'nap_ports.client_id', 'nap_ports.port_number', 'nap_boxes.name', 'nap_boxes.branch_name', 'nap_boxes.status as box_status', 'nap_boxes.archived']);
-
-        if (! $port || strcasecmp(trim((string) $port->branch_name), trim($branch)) !== 0 || $port->archived || $port->box_status !== 'active') {
-            return 'Choose a port of an active NAP box in your branch.';
-        }
-        if ($port->status === 'faulty') {
-            return "{$port->name} port {$port->port_number} is marked faulty.";
-        }
-        if ($port->status === 'occupied' && ! ($clientId && (int) $port->client_id === $clientId)) {
-            return "{$port->name} port {$port->port_number} is already occupied.";
-        }
-        $reserved = self::reservedPorts($branch, $exceptRequestId);
-        if (isset($reserved[$portId])) {
-            return "{$port->name} port {$port->port_number} is already reserved by request {$reserved[$portId]}.";
+        if (! Schema::hasTable('client_installations')) {
+            return [];
         }
 
-        return null;
+        return DB::table('client_installations')
+            ->where('status', 'submitted')->whereNotNull('nap_port_id')
+            ->when($boxId !== null, fn ($q) => $q->where('nap_box_id', $boxId))
+            ->when($exceptInstallation !== null, fn ($q) => $q->where('id', '!=', $exceptInstallation))
+            ->pluck('nap_port_id')->map(fn ($id) => (int) $id)->all();
     }
 
-    /** Add the occupied / reserved / faulty / available counts to boxes. */
-    private static function withCounts(array $boxes, array $reserved): array
+    /** Add the occupied / faulty / available counts to boxes. */
+    private static function withCounts(array $boxes): array
     {
         if ($boxes === []) {
             return [];
@@ -239,10 +215,11 @@ final class NapBoxes
             ? DB::table('nap_box_photos')->whereIn('nap_box_id', $ids)->pluck('updated_at', 'nap_box_id')->all()
             : [];
         $ports = DB::table('nap_ports')->whereIn('nap_box_id', $ids)->get(['id', 'nap_box_id', 'status']);
+        $reserved = array_flip(self::reservedPortIds());
         $counts = [];
         foreach ($ports as $port) {
             $boxId = (int) $port->nap_box_id;
-            $counts[$boxId] ??= ['occupied' => 0, 'faulty' => 0, 'reserved' => 0, 'available' => 0, 'rows' => 0];
+            $counts[$boxId] ??= ['occupied' => 0, 'faulty' => 0, 'available' => 0, 'reserved' => 0, 'rows' => 0];
             $counts[$boxId]['rows']++;
             if ($port->status === 'occupied') {
                 $counts[$boxId]['occupied']++;
@@ -256,7 +233,7 @@ final class NapBoxes
         }
 
         return array_map(function ($box) use ($counts, $photos): array {
-            $c = $counts[(int) $box->id] ?? ['occupied' => 0, 'faulty' => 0, 'reserved' => 0, 'available' => 0, 'rows' => 0];
+            $c = $counts[(int) $box->id] ?? ['occupied' => 0, 'faulty' => 0, 'available' => 0, 'reserved' => 0, 'rows' => 0];
 
             return [
                 'id' => (int) $box->id,
@@ -268,21 +245,26 @@ final class NapBoxes
                 'archived' => (bool) $box->archived,
                 'total_ports' => (int) $box->total_ports,
                 'occupied_ports' => $c['occupied'],
-                'reserved_ports' => $c['reserved'],
                 'faulty_ports' => $c['faulty'],
+                'reserved_ports' => $c['reserved'],
                 'available_ports' => $c['available'],
+                'latitude' => $box->latitude !== null ? (float) $box->latitude : null,
+                'longitude' => $box->longitude !== null ? (float) $box->longitude : null,
+                'coordinates' => Coordinates::format($box->latitude, $box->longitude),
+                'map_url' => Coordinates::mapUrl($box->latitude, $box->longitude),
                 'has_photo' => isset($photos[(int) $box->id]),
                 'photo_version' => isset($photos[(int) $box->id]) ? (string) (strtotime((string) $photos[(int) $box->id]) ?: 1) : null,
             ];
         }, $boxes);
     }
 
-    /** Create a box with its numbered ports, all available. */
-    public static function create(string $branch, string $name, string $barangay, ?string $location, int $totalPorts): int
+    /** Create a box with its numbered ports, all available. $latitude and $longitude are where the box hangs. */
+    public static function create(string $branch, string $name, string $barangay, ?string $location, int $totalPorts, ?float $latitude = null, ?float $longitude = null): int
     {
-        return DB::transaction(function () use ($branch, $name, $barangay, $location, $totalPorts): int {
+        return DB::transaction(function () use ($branch, $name, $barangay, $location, $totalPorts, $latitude, $longitude): int {
             $boxId = (int) DB::table('nap_boxes')->insertGetId([
                 'name' => $name, 'branch_name' => $branch, 'barangay_name' => $barangay, 'location' => $location,
+                'latitude' => $latitude, 'longitude' => $longitude,
                 'total_ports' => $totalPorts, 'status' => 'active', 'archived' => false, 'created_at' => now(), 'updated_at' => now(),
             ]);
             self::addPorts($boxId, 1, $totalPorts);
@@ -296,9 +278,9 @@ final class NapBoxes
      * history, with the NAP box on it), then the box exists with its numbered ports. Without a unit in stock nothing happens.
      * $stockItemId may be left out when the branch has exactly one NAP Box stock item.
      */
-    public static function installFromStock(string $branch, string $name, string $barangay, ?string $location, int $totalPorts, ?int $stockItemId, ?int $adminId): int
+    public static function installFromStock(string $branch, string $name, string $barangay, ?string $location, int $totalPorts, ?int $stockItemId, ?int $adminId, ?float $latitude = null, ?float $longitude = null): int
     {
-        return DB::transaction(function () use ($branch, $name, $barangay, $location, $totalPorts, $stockItemId, $adminId): int {
+        return DB::transaction(function () use ($branch, $name, $barangay, $location, $totalPorts, $stockItemId, $adminId, $latitude, $longitude): int {
             $choices = self::stockItems($branch);
             if ($stockItemId === null || $stockItemId === 0) {
                 if (count($choices) !== 1) {
@@ -317,7 +299,7 @@ final class NapBoxes
                 throw new DomainException("There is no {$item->item_name} left in stock. Receive it in Inventory first.");
             }
 
-            $boxId = self::create($branch, $name, $barangay, $location, $totalPorts);
+            $boxId = self::create($branch, $name, $barangay, $location, $totalPorts, $latitude, $longitude);
             $balance = (int) $item->quantity - 1;
             DB::table('inventory')->where('id', $item->id)->update(['quantity' => $balance]);
             StockMovements::record((int) $item->id, -1, $balance, 'nap_installed', "{$name} installed at {$barangay}.", $adminId, ['nap_box_id' => $boxId]);

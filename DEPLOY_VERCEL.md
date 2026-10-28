@@ -30,9 +30,9 @@ Vercel build command or output directory for this app.
    `database/supabase/migrations/2026_10_16_inventory_per_branch.sql`. It adds
    `inventory.branch_name` (existing items stay with Balilihan) and makes the
    item name unique per branch. It is safe to rerun and deletes nothing.
-   For the **employee app (NAP boxes, installation and repair requests)**, also
+   For the **employee app (NAP boxes)**, also
    run `database/supabase/migrations/2026_10_17_nap_boxes_and_work_requests.sql`.
-   It adds the NAP box, port, work request and app sign-in tables and the item
+   It adds the NAP box, port and app sign-in tables (and the work request tables, which are no longer used) and the item
    out / return details of a stock request. It is safe to rerun and deletes
    nothing. Run it before the new app signs in: the app now needs the sign-in
    token that `employee_login.php` returns, so install the matching app version.

@@ -159,3 +159,14 @@
         min-width: 82px;
     }
 }
+
+.request-installation-note {
+    display: block;
+    margin-top: 0.35rem;
+    color: var(--text-muted);
+    text-decoration: none;
+}
+
+.request-installation-note:hover {
+    color: var(--accent);
+}

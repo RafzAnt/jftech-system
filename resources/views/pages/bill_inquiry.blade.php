@@ -40,11 +40,17 @@
             <a href="bill_inquiry.php" class="tab-btn {{ !$showArchived ? 'active' : '' }}">Active Clients</a>
             <a href="bill_inquiry.php?view=archived" class="tab-btn {{ $showArchived ? 'active' : '' }}">Archived ({{ $archivedCount }})</a>
         </div></div>
-        <!-- Branch, barangay, and client search filters -->
+        <!-- One search box: a branch, a barangay or a client -->
         <form method="GET" action="" class="card client-filter-card" id="clientFilterForm" style="margin-bottom: 1.5rem;">
             @if ($showArchived)<input type="hidden" name="view" value="archived">@endif
             @if ($showOverdue)<input type="hidden" name="overdue" value="1">@endif
             <div class="card-body">
+                @php
+                    $filterSubject = 'Clients';
+                    $filterSearchLabel = 'Search Clients';
+                    $filterIdPrefix = 'client';
+                    unset($filterDate);
+                @endphp
                 @include('pages.partials.client_location_filter')
             </div>
         </form>
@@ -60,44 +66,8 @@
                     <div class="alert alert-warning" style="margin-bottom: 1.25rem;">Showing active clients with at least one overdue bill.</div>
                     @endif
 
-                @if ($searchTerm !== '')
-                <div class="data-table-container">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Branch</th>
-                                <th>Barangay</th>
-                                <th>Mobile Number</th>
-                                <th>Email</th>
-                                <th>Plan</th>
-                                <th>Status</th>
-                                <th aria-label="Client actions"></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($searchResults as $client)
-                            <tr>
-                                <td>{{ htmlspecialchars($client['full_name']) }}</td>
-                                <td>{{ $client['branch_name'] ?: 'N/A' }}</td>
-                                <td>{{ $client['barangay_name'] ?: 'N/A' }}</td>
-                                <td>{{ $client['contact_number'] ?: '--' }}</td>
-                                <td>{{ $client['email'] ?: '--' }}</td>
-                                <td>{{ $client['wifi_plan'] }}</td>
-                                <td>@include('pages.partials.client_status_badge', ['status' => $client['status']])</td>
-                                <td>@include('pages.partials.client_record_actions', ['client' => $client, 'showArchived' => $showArchived])</td>
-                            </tr>
-                            @endforeach
-                            @if (empty($searchResults))
-                            <tr><td colspan="8" style="text-align: center; color: var(--text-muted);">No clients found</td></tr>
-                            @endif
-                        </tbody>
-                    </table>
-                </div>
-                @endif
-
                 <!-- Quick Select -->
-                <div class="section-title">Quick Select</div>
+                <div class="section-title">{{ $searchTerm !== '' ? 'Search Results' : 'Quick Select' }}</div>
                 <div class="data-table-container">
                     <table class="data-table">
                         <thead>

@@ -53,15 +53,7 @@
         <div class="card" style="margin-bottom: 1.5rem;">
             <div class="card-body">
                 <form method="GET" action="" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                    @if (! \App\Support\BranchScope::isRestricted())
-                    <select name="branch" class="form-select" onchange="this.form.submit()" style="width: auto; min-width: 150px;" aria-label="Branch">
-                        <option value="">All branches</option>
-                        @foreach ($historyBranches as $historyBranch)
-                        <option value="{{ $historyBranch }}" {{ $scopeBranch === $historyBranch ? 'selected' : '' }}>{{ $historyBranch }}</option>
-                        @endforeach
-                    </select>
-                    @endif
-                    <input type="text" name="search_user" class="form-input" placeholder="Search by username or name..." value="{{ htmlspecialchars($searchUser) }}" style="max-width: 400px;">
+                    <input type="text" name="search" class="form-input" placeholder="{{ \App\Support\LocationFilter::placeholder($scopeBranch, 'Users', false) }}" aria-label="Search login history" value="{{ htmlspecialchars($searchUser) }}" style="max-width: 400px;" autocomplete="off" data-suggest="users" data-suggest-url="{{ route('search.suggestions') }}">
                     <button type="submit" class="btn btn-primary">Search</button>
                     @if ($searchUser)
                     <a href="login_history.php" class="btn btn-secondary">Clear</a>
@@ -122,6 +114,7 @@
         </div>
     </div>
 
+    <script src="{{ asset('js/search_suggest.js') }}?{{ @filemtime(public_path('js/search_suggest.js')) ?: 1 }}"></script>
     <script src="{{ asset('js/jftech-main.js') }}?{{ $mainJsVersion }}"></script>
 </body>
 </html>

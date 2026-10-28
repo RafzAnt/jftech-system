@@ -10,6 +10,7 @@ return function (\Illuminate\Http\Request $request): array {
 
 $themeCssVersion = filemtime(public_path('css/jftech-theme.css'));
 $employeesCssVersion = filemtime(public_path('css/employees.css'));
+$clientFilterCssVersion = filemtime(public_path('css/client_filter.css'));
 
 $activeTab = $request->query('tab') ?? 'details';
 $success = '';
@@ -108,28 +109,21 @@ $stmt = $pdo->prepare($employeeListSql);
 $stmt->execute($employeeScopeParams);
 $employees = $stmt->fetchAll();
 
-// The branch filter of the page: it narrows the employee list of the Details tab and the Attendance tab alike. Left empty it
-// shows every branch the account may see.
-$selectedListBranch = trim((string) $request->query('branch', ''));
-foreach ($employeeBranches as $branchOption) {
-    if (strcasecmp($branchOption, $selectedListBranch) === 0) {
-        $selectedListBranch = $branchOption;
-        break;
-    }
-}
-if (!in_array($selectedListBranch, $employeeBranches, true)) {
-    $selectedListBranch = '';
-}
+// The one search box of the page: a branch, a barangay or an employee (a branch admin only has their own branch). It narrows the
+// employee list of the Details tab and the Attendance tab alike; left empty it shows every employee the account may see.
+$location = \App\Support\LocationFilter::fromRequest($request);
+$searchTerm = $location['searchTerm'];
 // The table shows the newest hire first; $employees stays in name order for the dropdowns.
-$listEmployees = static function (array $employees) use ($selectedListBranch): array {
-    $listed = $selectedListBranch === ''
-        ? $employees
-        : array_values(array_filter($employees, static fn (array $employee): bool => strcasecmp((string) $employee['branch_name'], $selectedListBranch) === 0));
+$listEmployees = static function () use ($pdo, $employeeScope, $employeeScopeParams, $location): array {
+    [$searchSql, $searchParams] = \App\Support\LocationFilter::employeeConditions($location, 'e');
+    $stmt = $pdo->prepare("SELECT e.*, u.username, u.status as user_status FROM employees e LEFT JOIN users u ON e.user_id = u.id WHERE 1 = 1" . $employeeScope . $searchSql . " ORDER BY e.full_name");
+    $stmt->execute([...$employeeScopeParams, ...$searchParams]);
+    $listed = $stmt->fetchAll();
     usort($listed, static fn (array $a, array $b): int => [(string) ($b['created_at'] ?? ''), (int) $b['id']] <=> [(string) ($a['created_at'] ?? ''), (int) $a['id']]);
 
     return $listed;
 };
-$listedEmployees = $listEmployees($employees);
+$listedEmployees = $listEmployees();
 
 // Get the selected date or month attendance view.
 $attendanceView = 'date';
@@ -373,14 +367,11 @@ if ($selectedEmployeeId !== '') {
     $attendanceQuery .= " AND e.id = ?";
     $attendanceParams[] = $selectedEmployeeId;
 }
-// Optional branch filter for the attendance table (the branch recorded that day, else the employee's branch).
-$selectedAttendanceBranch = trim((string) $request->query('branch', ''));
-if ($selectedAttendanceBranch !== '' && in_array($selectedAttendanceBranch, $employeeBranches, true)) {
-    $attendanceQuery .= " AND COALESCE(a.branch_name, e.branch_name) = ?";
-    $attendanceParams[] = $selectedAttendanceBranch;
-} else {
-    $selectedAttendanceBranch = '';
-}
+// The same search for the attendance table. The branch recorded that day also counts (a scan stays with the branch it was made in,
+// even when the employee has since moved), next to the employee's own branch.
+[$locationSql, $locationParams] = \App\Support\LocationFilter::employeeConditions($location, 'e', ["NULLIF(a.branch_name, '')"]);
+$attendanceQuery .= $locationSql;
+array_push($attendanceParams, ...$locationParams);
 $attendanceQuery .= " ORDER BY e.full_name";
 $stmt = $pdo->prepare($attendanceQuery);
 $stmt->execute($attendanceParams);
@@ -397,9 +388,13 @@ $stmt = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key
 $lateThresholdMinutes = (int) ($stmt->fetch()['setting_value'] ?? 30);
 
 // Calculate late minutes for each attendance record
+$sessionSchedule = \App\Support\AttendanceTime::schedule();
 foreach ($attendanceRecords as &$record) {
     $record['late_minutes_morning'] = null;
     $record['late_minutes_afternoon'] = null;
+    // Leaving a session before it ends (undertime): the minutes missing, shown next to the time out.
+    $record['undertime_minutes_morning'] = \App\Support\AttendanceTime::undertimeOf($record['morning_time_in'], $record['morning_time_out'], $sessionSchedule['morning']['end']);
+    $record['undertime_minutes_afternoon'] = \App\Support\AttendanceTime::undertimeOf($record['afternoon_time_in'], $record['afternoon_time_out'], $sessionSchedule['afternoon']['end']);
 
     if ($record['status_morning'] === 'late' && $record['morning_time_in']) {
         $stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'qr_morning_start'");
@@ -599,7 +594,7 @@ if ($request->isMethod('post') && $request->has('save_employee')) {
         $stmt = $pdo->prepare($employeeListSql);
         $stmt->execute($employeeScopeParams);
         $employees = $stmt->fetchAll();
-        $listedEmployees = $listEmployees($employees);
+        $listedEmployees = $listEmployees();
     } catch (Exception $e) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();

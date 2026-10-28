@@ -44,15 +44,10 @@ return function (\Illuminate\Http\Request $request): array {
     $summary  = $service->activitySummary($filters);
     $reportTypes = $service->reportTypes();
 
-    // Build a human readable period label.
-    if ($filters['date']) {
-        $rangeLabel = date('M d, Y', strtotime($filters['date']));
-    } elseif ($filters['from'] || $filters['to']) {
-        $rangeLabel = ($filters['from'] ? date('M d, Y', strtotime($filters['from'])) : 'Start')
-            . ' to ' . ($filters['to'] ? date('M d, Y', strtotime($filters['to'])) : date('M d, Y'));
-    } else {
-        $rangeLabel = 'All Dates';
-    }
+    // The dates the figures cover, worded for the heading of the report.
+    $rangeLabel = $filters['date']
+        ? \App\Support\ReportFormat::coverage($filters['date'], $filters['date'])
+        : \App\Support\ReportFormat::coverage($filters['from'], $filters['to']);
 
     // --- Enrich with breakdown / comparison / performance data ---
     $dailyBreakdown    = null;

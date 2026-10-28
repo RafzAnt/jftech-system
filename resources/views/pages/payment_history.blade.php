@@ -33,12 +33,14 @@
             </div>
         </div>
 
-        <!-- Branch, barangay and payment search -->
+        <!-- One search box: a branch, a barangay, a client, a bill or a reference number -->
         <form method="GET" action="" class="card client-filter-card" id="clientFilterForm" style="margin-bottom: 1.5rem;">
             <div class="card-body">
                 @php
+                    $filterSubject = 'Payments';
                     $filterSearchLabel = 'Search Payments';
-                    $filterSearchPlaceholder = 'Client, client code, bill or reference number';
+                    $filterIdPrefix = 'client';
+                    unset($filterDate);
                 @endphp
                 @include('pages.partials.client_location_filter')
             </div>
@@ -48,7 +50,7 @@
         <div class="card">
             <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
                 <span class="card-title">Payment History</span>
-                <span class="badge badge-info">{{ count($payments) }} payment(s){{ $selectedBranch ? ' · ' . $selectedBranch : '' }}{{ $selectedBarangays ? ' · ' . implode(', ', $selectedBarangays) : '' }}</span>
+                <span class="badge badge-info">{{ count($payments) }} payment(s){{ $searchTerm !== '' ? ' · ' . $searchTerm : '' }}</span>
             </div>
             <div class="card-body" style="padding: 0;">
                 <div class="data-table-container">

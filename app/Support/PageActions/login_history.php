@@ -10,22 +10,22 @@ return function (\Illuminate\Http\Request $request): array {
 $themeCssVersion = filemtime(public_path('css/jftech-theme.css'));
 $loginHistoryCssVersion = filemtime(public_path('css/login_history.css'));
 
-$searchUser = $request->query('search_user') ?? '';
+$searchUser = trim((string) $request->query('search', ''));
 
-// A branch admin sees the sign-ins of the accounts in their own branch; the super admin sees all or picks a branch.
-// A failed attempt with an unknown username belongs to no branch, so only the unfiltered super admin view lists it.
-$scopeBranch = \App\Support\BranchScope::resolve($request->query('branch'));
+// A branch admin sees the sign-ins of the accounts in their own branch; the super admin sees all.
+// A failed attempt with an unknown username belongs to no branch, so only the super admin's view lists it.
+$scopeBranch = \App\Support\BranchScope::current();
 [$historyScope, $historyScopeParams] = \App\Support\BranchScope::viaUser($scopeBranch, 'login_history.user_id');
-$historyBranches = array_keys(config('bohol_branches', []));
 
 $query = "SELECT * FROM login_history WHERE TRUE" . $historyScope;
 $params = $historyScopeParams;
 
-if ($searchUser) {
-    $query .= " AND (username LIKE ? OR full_name LIKE ?)";
-    $params[] = "%$searchUser%";
-    $params[] = "%$searchUser%";
-}
+// The one search box: a username or name, or the branch of the account, words narrowing each other (see LocationFilter).
+[$searchSql, $searchParams] = \App\Support\LocationFilter::wordConditions($searchUser, [
+    'login_history.username', 'login_history.full_name', '(SELECT users.branch_name FROM users WHERE users.id = login_history.user_id)',
+]);
+$query .= $searchSql;
+array_push($params, ...$searchParams);
 
 $query .= " ORDER BY login_time DESC, id DESC LIMIT 100";
 $stmt = $pdo->prepare($query);

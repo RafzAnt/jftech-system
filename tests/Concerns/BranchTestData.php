@@ -61,6 +61,11 @@ trait BranchTestData
             $table->string('branch_name', 100)->nullable();
             $table->string('registered_barangay_name')->nullable();
             $table->unsignedBigInteger('barangay_id')->nullable();
+            $table->decimal('latitude', 10, 7)->nullable();
+            $table->decimal('longitude', 10, 7)->nullable();
+            $table->string('payment_mode', 20)->nullable();
+            $table->string('ip_address', 45)->nullable();
+            $table->string('facebook_account', 150)->nullable();
             $table->timestamps();
         });
         Schema::create('bills', function ($table) {
@@ -208,6 +213,7 @@ trait BranchTestData
             $table->string('person_in_charge', 100)->nullable();
             $table->unsignedBigInteger('approved_by')->nullable();
             $table->timestamp('approved_at')->nullable();
+            $table->unsignedBigInteger('installation_id')->nullable();
             $table->timestamp('created_at')->nullable();
             $table->timestamp('updated_at')->nullable();
         });
@@ -217,6 +223,8 @@ trait BranchTestData
             $table->string('branch_name', 100);
             $table->string('barangay_name', 100);
             $table->string('location', 255)->nullable();
+            $table->decimal('latitude', 10, 7)->nullable();
+            $table->decimal('longitude', 10, 7)->nullable();
             $table->unsignedSmallInteger('total_ports');
             $table->string('status', 20)->default('active');
             $table->boolean('archived')->default(false);
@@ -275,6 +283,43 @@ trait BranchTestData
             $table->unsignedInteger('used_quantity')->default(0);
             $table->unsignedInteger('returned_quantity')->default(0);
             $table->unsignedInteger('damaged_quantity')->default(0);
+            $table->timestamps();
+        });
+        Schema::create('client_installations', function ($table) {
+            $table->id();
+            $table->string('branch_name', 100);
+            $table->unsignedBigInteger('employee_id');
+            $table->string('status', 20)->default('submitted');
+            $table->string('client_name', 100);
+            $table->string('contact_number', 20);
+            $table->string('email', 100)->nullable();
+            $table->string('barangay_name', 100);
+            $table->string('exact_address', 255);
+            $table->unsignedBigInteger('internet_plan_id')->nullable();
+            $table->string('payment_mode', 20);
+            $table->string('ip_address', 45)->nullable();
+            $table->string('facebook_account', 150)->nullable();
+            $table->date('installation_date');
+            $table->decimal('latitude', 10, 7);
+            $table->decimal('longitude', 10, 7);
+            $table->unsignedBigInteger('nap_box_id')->nullable();
+            $table->unsignedBigInteger('nap_port_id')->nullable();
+            $table->text('remarks')->nullable();
+            $table->text('admin_remarks')->nullable();
+            $table->unsignedBigInteger('client_id')->nullable();
+            $table->timestamp('submitted_at')->nullable();
+            $table->unsignedBigInteger('reviewed_by')->nullable();
+            $table->timestamp('reviewed_at')->nullable();
+            $table->timestamps();
+        });
+        Schema::create('client_installation_returns', function ($table) {
+            $table->id();
+            $table->unsignedBigInteger('installation_id');
+            $table->unsignedBigInteger('inventory_id')->nullable();
+            $table->string('item_name', 100);
+            $table->unsignedInteger('quantity');
+            $table->unsignedInteger('accepted_quantity')->nullable();
+            $table->string('item_condition', 30)->nullable();
             $table->timestamps();
         });
         Schema::create('employee_api_tokens', function ($table) {

@@ -21,6 +21,8 @@ class ResetBusinessData extends Command
         'payments' => 'Payments',
         'bills' => 'Bills',
         'client_plan_change_histories' => 'Client plan changes',
+        'client_installation_returns' => 'Items brought back in installation reports',
+        'client_installations' => 'Installation reports (made by employees)',
         'clients' => 'Clients',
         'inventory_requests' => 'Stock requests (made by employees)',
         'work_request_materials' => 'Materials of installation and repair requests',

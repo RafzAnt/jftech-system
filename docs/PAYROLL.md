@@ -1,8 +1,8 @@
 # Payroll
 
 Payroll is worked out from each employee's **daily rate** and their **attendance**, and the SSS, PhilHealth and Pag-IBIG
-shares come from the contribution tables. It can be made **automatically** or **by hand**; both use the same arithmetic
-(`app/Support/PayrollCalculator.php`), so the numbers always agree.
+shares come from the contribution tables. The payroll form fills everything in by itself and every box can be typed over;
+the form and the weekly command use the same arithmetic (`app/Support/PayrollCalculator.php`), so the numbers always agree.
 
 Run the updates first: `php artisan migrate` on local MySQL, or in the Supabase SQL Editor
 `database/supabase/migrations/2026_10_18_real_payroll.sql` and `database/supabase/migrations/2026_10_18_attendance_overtime.sql`
@@ -33,7 +33,10 @@ Run the updates first: `php artisan migrate` on local MySQL, or in the Supabase 
   the **overtime QR code** to start it and again to end it, or the admin enters the overtime in/out by hand in *Manual
   Attendance*. The minutes between the two go to the payroll (a week with only overtime still gets a payroll). A time out
   after 17:00 on the afternoon session is *not* overtime any more. See "Overtime in the attendance" below.
-* **Undertime** is typed in minutes (the clock does not track it) and is deducted like late.
+* **Undertime** comes from the attendance too: a session whose time out is more than 5 minutes before its end (12:00 for the
+  morning, 17:00 for the afternoon) is short by the minutes between the two, and the payroll deducts them like late (hourly rate
+  x minutes / 60). The Attendance table and the employee app's history show the same *Undertime N min*. The form fills the minutes
+  in and they can be typed over, like every other box.
 * Each payroll deducts the contributions once: the monthly share divided by the payrolls in a month (4). In a month with
   five Sundays that is five deductions; change *Payrolls in a month* in the settings if that is not wanted.
 * Net pay is gross pay (basic + overtime + the typed earnings) minus all deductions, and never below 0.
@@ -57,25 +60,27 @@ methods when the law changes them.
   holds at most 12 hours of overtime. A branch admin enters it for the technicians of their branch only.
 * The Attendance Records table and the printed attendance show the overtime and its minutes.
 
-## Automatic
+## The payroll form
 
-* `php artisan payroll:generate-weekly` creates one *processed* payroll for every employee who has attendance in that
-  Monday–Sunday week and no payroll for it yet. It is scheduled for Sunday 23:55 when the server runs
-  `php artisan schedule:run` every minute.
-* **+ New Payroll → Automatic** works out one employee and period on the form, shows how each number was computed, and
-  recomputes from the attendance every time it is saved. Only the undertime minutes and the extra earnings and deductions
-  (holiday pay, allowances, cash advance, loans, ...) are typed.
+There is no choice between automatic and manual. In **+ New Payroll** the admin picks an employee (type a name or code, then
+click it) and the period, and the form fills in the days worked, the late minutes, the overtime hours, every amount and the
+SSS, PhilHealth and Pag-IBIG straight away, with a note under *How it was worked out* for each number. Every box can then be
+typed over, and what is typed wins when the payroll is saved. A box left empty keeps the standard computation. Changing the
+days, minutes or hours recomputes the amount that follows from them, which can be typed over again. The earnings and
+deductions that have no formula (holiday pay, allowances, cash advance, loans, ...) are typed.
 
-## Manual
+The SSS, PhilHealth and Pag-IBIG boxes each show their **Standard** amount underneath, marked "changed" when it was typed over.
+**Recalculate from attendance** loads the standard numbers again (what was typed over is replaced), for example after the
+attendance was corrected. Saving an edited payroll keeps its boxes as they are; it does not recompute from the attendance
+unless the boxes are emptied or Recalculate was pressed. When an old payroll (made before the real computation) is edited, its
+contributions that are 0 are filled in with the standard amounts; type 0 on purpose for an employee who is not covered.
 
-**+ New Payroll → Manual** lets the admin type the days, the late minutes, the overtime hours, and every amount. The form
-starts from the standard computation; an amount left empty keeps it. Changing the days, minutes or hours recomputes the
-amount that follows from them, which can then be typed over.
+## Weekly command
 
-In a manual payroll the SSS, PhilHealth and Pag-IBIG boxes are filled in automatically as soon as an employee is chosen (they
-only depend on the daily rate), and each shows its **Standard** amount underneath, marked "changed" when it was typed over.
-**Fill standard amounts** loads the standard numbers again. When an old payroll (made before the automatic computation) is edited,
-its contributions that are 0 are filled in with the standard amounts; type 0 on purpose for an employee who is not covered.
+`php artisan payroll:generate-weekly` creates one *processed* payroll for every employee who has attendance in that
+Monday–Sunday week and no payroll for it yet. It is scheduled for Sunday 23:55 when the server runs
+`php artisan schedule:run` every minute. Those payrolls carry an AUTOMATIC badge on the payslip; a payroll made on the form
+has none.
 
 Who pays whom is unchanged: a branch admin generates payroll for the technicians of their branch, the super admin only for
 the Admin employees. One payroll per employee and period (an archived one does not count).
@@ -83,5 +88,5 @@ the Admin employees. One payroll per employee and period (an archived one does n
 ## Records from before
 
 Payroll made before this update keeps its numbers. Its *late*, *undertime* and *absent* amounts were stored but never
-deducted from the net pay, so its payslip does not list them under the deductions (new payslips do, and carry an
-AUTOMATIC / MANUAL badge). Editing an old record switches it to manual.
+deducted from the net pay, so its payslip does not list them under the deductions (new payslips do). Saving an old record
+on the form keeps its boxes as they are.
