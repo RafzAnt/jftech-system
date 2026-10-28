@@ -365,13 +365,16 @@ $afternoonQR = null;
                             <input type="time" name="manual_{{ $key }}_out" id="manual_{{ $key }}_out" class="form-input" value="{{ $manualOld("manual_{$key}_out") }}">
                         </div>
                     </div>
+                    @if ($key === 'afternoon')
+                    <small class="manual-session__hint" style="display:block;margin-top:.4rem;color:var(--text-muted);">Stayed after {{ formatScheduleTime($qrAfternoonEnd) }}? Type the time they finished here: the time after {{ formatScheduleTime($qrAfternoonEnd) }} is saved as overtime.</small>
+                    @endif
                 </div>
                 @endforeach
                 <div class="manual-session" data-session="overtime">
                     <div class="manual-session__title">Overtime</div>
                     <div class="form-grid manual-session__grid">
                         <div class="form-group">
-                            <label class="form-label" for="manual_overtime_in">Overtime in</label>
+                            <label class="form-label" for="manual_overtime_in">Overtime in <small>(optional)</small></label>
                             <input type="time" name="manual_overtime_in" id="manual_overtime_in" class="form-input" value="{{ $manualOld('manual_overtime_in') }}">
                         </div>
                         <div class="form-group">
@@ -382,6 +385,7 @@ $afternoonQR = null;
                             <label style="display:flex;align-items:center;gap:.5rem;"><input type="checkbox" name="manual_overtime_clear" value="1" {{ $manualOld('manual_overtime_clear') === '1' ? 'checked' : '' }}> No overtime (remove it)</label>
                         </div>
                     </div>
+                    <small class="manual-session__hint" style="display:block;margin-top:.4rem;color:var(--text-muted);">Type only the overtime out: the overtime starts when the afternoon ends ({{ formatScheduleTime($qrAfternoonEnd) }}) and the afternoon needs no time out. Overtime is paid from {{ \App\Support\AttendanceTime::MIN_OVERTIME_MINUTES }} minutes a day.</small>
                 </div>
                 <div class="form-group">
                     <label class="form-label" for="manualRemarks">Reason / remarks <span style="color: var(--text-muted);">(Optional)</span></label>

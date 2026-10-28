@@ -63,8 +63,12 @@ methods when the law changes them.
   paid, and the Attendance Records mark it "not paid". The branch admin looks at the Overtime column before the weekly payroll
   is made (Sunday 23:55) and removes a wrong one with *Manual Attendance → No overtime*. No migration is needed; the overtime
   QR codes of the earlier system are refused by the app.
-* **Manual Attendance** has an *Overtime in / out* block (and "No overtime" to remove it). Out must be after in and the day
-  holds at most 12 hours of overtime. A branch admin enters it for the technicians of their branch only.
+* **Manual Attendance** follows the same rule as the scan, so the admin never has to type the usual 17:00 time out for someone
+  who stayed on: a *Time out* of the afternoon after 17:00 is saved as 17:00 plus the overtime up to that time, and the
+  *Overtime* block needs only the **Overtime out** (the overtime starts when the afternoon ends; the afternoon of a day that was
+  scanned in gets its 17:00 time out too). *Overtime in* is optional, for overtime that starts at another time (for example a
+  Sunday). "No overtime" removes it, and the day holds at most 12 hours of overtime. A branch admin enters it for the
+  technicians of their branch only.
 * The Attendance Records table and the printed attendance show the overtime and its minutes.
 
 ## The payroll form

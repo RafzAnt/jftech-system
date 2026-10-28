@@ -241,6 +241,14 @@ if ($request->isMethod('post') && $request->has('manual_attendance')) {
             return strlen($value) === 5 ? $value . ':00' : $value;
         };
 
+        $existingStmt = $pdo->prepare('SELECT * FROM attendance WHERE employee_id = ? AND attendance_date = ?');
+        $existingStmt->execute([$manualEmployee['id'], $manualDate]);
+        $existing = $existingStmt->fetch() ?: [];
+
+        // The same rule as the scan: the afternoon ends at its usual time and what follows it is the overtime.
+        $afternoonEnd = \App\Support\AttendanceTime::clock(\App\Support\AttendanceTime::schedule()['afternoon']['end']);
+        $afternoonOverflow = null;
+
         $changes = [];
         $hours = [];
         foreach ($manualSessions as $key => $session) {
@@ -267,6 +275,12 @@ if ($request->isMethod('post') && $request->has('manual_attendance')) {
             if ($timeOut !== null && strcmp($timeOut, $timeIn) <= 0) {
                 throw new Exception($session['label'] . ' time out must be after time in.');
             }
+            // A time out after the end of the afternoon is the time the employee finished: the afternoon ends at its usual time
+            // and the rest is overtime (unless the overtime is typed below).
+            if ($key === 'afternoon' && $timeOut !== null && strcmp($timeIn, $afternoonEnd) < 0 && strcmp($timeOut, $afternoonEnd) > 0) {
+                $afternoonOverflow = $timeOut;
+                $timeOut = $afternoonEnd;
+            }
             if ($status === '') {
                 $lateAt = date('H:i:s', strtotime($session['start']) + ($manualLateThreshold * 60));
                 $status = strcmp($timeIn, $lateAt) > 0 ? 'late' : 'present';
@@ -276,35 +290,48 @@ if ($request->isMethod('post') && $request->has('manual_attendance')) {
             $changes["{$key}_time_out"] = $timeOut;
         }
 
-        // Overtime has no status: both times, or "no overtime" to take it away. The minutes in between go to the payroll.
+        // Overtime has no status: the time it ended (it starts when the afternoon ends, unless a start is typed), or "no overtime" to
+        // take it away. The minutes in between go to the payroll.
         $overtimeIn = $normalizeTime($request->input('manual_overtime_in'));
         $overtimeOut = $normalizeTime($request->input('manual_overtime_out'));
         if ($request->boolean('manual_overtime_clear')) {
             $changes['overtime_time_in'] = null;
             $changes['overtime_time_out'] = null;
             $changes['overtime_minutes'] = 0;
-        } elseif ($overtimeIn !== null || $overtimeOut !== null) {
-            if ($overtimeIn === null || $overtimeOut === null) {
-                throw new Exception('Enter both the overtime time in and the overtime time out.');
+        } else {
+            if ($overtimeIn === null && $overtimeOut === null && $afternoonOverflow !== null) {
+                $overtimeOut = $afternoonOverflow;
             }
-            if (strcmp($overtimeOut, $overtimeIn) <= 0) {
-                throw new Exception('Overtime time out must be after time in.');
+            if ($overtimeIn !== null && $overtimeOut === null) {
+                throw new Exception('Enter the overtime time out.');
             }
-            $overtimeMinutes = \App\Support\AttendanceTime::minutesBetween($overtimeIn, $overtimeOut);
-            if ($overtimeMinutes > \App\Support\AttendanceTime::MAX_OVERTIME_MINUTES) {
-                throw new Exception('Overtime cannot be longer than 12 hours in a day.');
+            if ($overtimeOut !== null) {
+                $startsWithTheAfternoon = $overtimeIn === null;
+                $overtimeIn ??= $afternoonEnd;
+                if (strcmp($overtimeOut, $overtimeIn) <= 0) {
+                    throw new Exception($startsWithTheAfternoon
+                        ? 'Overtime must end after the afternoon ends (' . date('g:i A', strtotime($afternoonEnd)) . ').'
+                        : 'Overtime time out must be after time in.');
+                }
+                $overtimeMinutes = \App\Support\AttendanceTime::minutesBetween($overtimeIn, $overtimeOut);
+                if ($overtimeMinutes > \App\Support\AttendanceTime::MAX_OVERTIME_MINUTES) {
+                    throw new Exception('Overtime cannot be longer than 12 hours in a day.');
+                }
+                $changes['overtime_time_in'] = $overtimeIn;
+                $changes['overtime_time_out'] = $overtimeOut;
+                $changes['overtime_minutes'] = $overtimeMinutes;
+
+                // Overtime that follows the afternoon means the employee stayed on: without a time out the afternoon ended at its usual time.
+                $afternoonIn = array_key_exists('afternoon_time_in', $changes) ? $changes['afternoon_time_in'] : ($existing['afternoon_time_in'] ?? null);
+                $afternoonOut = array_key_exists('afternoon_time_out', $changes) ? $changes['afternoon_time_out'] : ($existing['afternoon_time_out'] ?? null);
+                if ($afternoonIn && ! $afternoonOut && strcmp($overtimeIn, $afternoonEnd) >= 0) {
+                    $changes['afternoon_time_out'] = $afternoonEnd;
+                }
             }
-            $changes['overtime_time_in'] = $overtimeIn;
-            $changes['overtime_time_out'] = $overtimeOut;
-            $changes['overtime_minutes'] = $overtimeMinutes;
         }
         if (!$changes) {
             throw new Exception('Fill in at least one session (morning, afternoon or overtime).');
         }
-
-        $existingStmt = $pdo->prepare('SELECT * FROM attendance WHERE employee_id = ? AND attendance_date = ?');
-        $existingStmt->execute([$manualEmployee['id'], $manualDate]);
-        $existing = $existingStmt->fetch() ?: [];
 
         // Total hours come from every complete in/out pair, including sessions left unchanged.
         $totalSeconds = 0;

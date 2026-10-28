@@ -285,9 +285,9 @@ class AttendanceOvertimeTest extends TestCase
         $this->assertSame(240, (int) $this->yesterdayRow()->overtime_minutes);
     }
 
-    public function test_overtime_needs_both_times_in_the_right_order_and_no_more_than_12_hours(): void
+    public function test_overtime_needs_its_time_out(): void
     {
-        $this->assertSame('Enter both the overtime time in and the overtime time out.', $this->manual(['manual_overtime_in' => '17:00'])['error']);
+        $this->assertSame('Enter the overtime time out.', $this->manual(['manual_overtime_in' => '17:00'])['error']);
         $this->assertNull($this->yesterdayRow());
     }
 
@@ -315,6 +315,90 @@ class AttendanceOvertimeTest extends TestCase
         $this->assertNull($row->overtime_time_out);
         $this->assertSame(0, (int) $row->overtime_minutes);
         $this->assertSame('08:00:00', $row->morning_time_in);
+    }
+
+    // The same rule as the scan: the time after the end of the afternoon is the overtime.
+
+    public function test_a_manual_afternoon_time_out_after_the_afternoon_ends_is_saved_as_overtime(): void
+    {
+        $page = $this->manual(['manual_morning_in' => '08:00', 'manual_morning_out' => '12:00', 'manual_afternoon_in' => '13:00', 'manual_afternoon_out' => '18:30']);
+
+        $this->assertStringStartsWith('Attendance saved', $page['success']);
+        $row = $this->yesterdayRow();
+        $this->assertSame('17:00:00', $row->afternoon_time_out, 'the afternoon ends at its usual time');
+        $this->assertSame('17:00:00', $row->overtime_time_in);
+        $this->assertSame('18:30:00', $row->overtime_time_out);
+        $this->assertSame(90, (int) $row->overtime_minutes);
+        $this->assertEquals(8.0, (float) $row->total_hours, 'the hours are those of the sessions');
+    }
+
+    public function test_a_manual_afternoon_time_out_a_few_minutes_late_is_overtime_minutes_and_not_undertime(): void
+    {
+        $this->manual(['manual_afternoon_in' => '13:00', 'manual_afternoon_out' => '17:03']);
+
+        $row = $this->yesterdayRow();
+        $this->assertSame('17:00:00', $row->afternoon_time_out);
+        $this->assertSame(3, (int) $row->overtime_minutes);
+    }
+
+    public function test_a_manual_afternoon_time_out_before_the_end_has_no_overtime(): void
+    {
+        $this->manual(['manual_afternoon_in' => '13:00', 'manual_afternoon_out' => '16:30']);
+
+        $row = $this->yesterdayRow();
+        $this->assertSame('16:30:00', $row->afternoon_time_out);
+        $this->assertNull($row->overtime_time_in);
+        $this->assertSame(0, (int) $row->overtime_minutes);
+    }
+
+    public function test_only_the_overtime_out_is_enough_and_the_afternoon_ends_at_its_usual_time(): void
+    {
+        $page = $this->manual(['manual_afternoon_in' => '13:00', 'manual_overtime_out' => '19:00']);
+
+        $this->assertStringStartsWith('Attendance saved', $page['success']);
+        $row = $this->yesterdayRow();
+        $this->assertSame('17:00:00', $row->afternoon_time_out, 'no time out was typed for the afternoon');
+        $this->assertSame('17:00:00', $row->overtime_time_in, 'the overtime starts when the afternoon ends');
+        $this->assertSame('19:00:00', $row->overtime_time_out);
+        $this->assertSame(120, (int) $row->overtime_minutes);
+    }
+
+    public function test_the_overtime_out_of_a_day_that_was_scanned_in_closes_the_afternoon(): void
+    {
+        DB::table('attendance')->insert(['employee_id' => 1, 'attendance_date' => now()->subDay()->toDateString(), 'morning_time_in' => '08:00:00', 'afternoon_time_in' => '13:00:00', 'status_morning' => 'present', 'status_afternoon' => 'present', 'qr_code_used' => 'QR-AFTERNOON']);
+
+        $this->manual(['manual_overtime_out' => '18:30']);
+
+        $row = $this->yesterdayRow();
+        $this->assertSame('13:00:00', $row->afternoon_time_in, 'the scanned time in is kept');
+        $this->assertSame('17:00:00', $row->afternoon_time_out);
+        $this->assertSame(90, (int) $row->overtime_minutes);
+    }
+
+    public function test_the_overtime_that_is_typed_wins_over_an_afternoon_time_out_after_the_end(): void
+    {
+        $this->manual(['manual_afternoon_in' => '13:00', 'manual_afternoon_out' => '18:30', 'manual_overtime_in' => '17:30', 'manual_overtime_out' => '19:00']);
+
+        $row = $this->yesterdayRow();
+        $this->assertSame('17:00:00', $row->afternoon_time_out);
+        $this->assertSame('17:30:00', $row->overtime_time_in);
+        $this->assertSame(90, (int) $row->overtime_minutes);
+    }
+
+    public function test_no_overtime_takes_it_away_even_with_an_afternoon_time_out_after_the_end(): void
+    {
+        $this->manual(['manual_afternoon_in' => '13:00', 'manual_afternoon_out' => '18:30', 'manual_overtime_clear' => 1]);
+
+        $row = $this->yesterdayRow();
+        $this->assertSame('17:00:00', $row->afternoon_time_out);
+        $this->assertNull($row->overtime_time_in);
+        $this->assertSame(0, (int) $row->overtime_minutes);
+    }
+
+    public function test_an_overtime_out_before_the_afternoon_ends_is_refused_when_no_start_is_typed(): void
+    {
+        $this->assertSame('Overtime must end after the afternoon ends (5:00 PM).', $this->manual(['manual_afternoon_in' => '13:00', 'manual_overtime_out' => '16:00'])['error']);
+        $this->assertNull($this->yesterdayRow());
     }
 
     public function test_a_manual_record_still_needs_at_least_one_session(): void
