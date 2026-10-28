@@ -166,17 +166,10 @@
                             </div>
                         </div>
                         <div class="form-group">
-                            <label class="form-label" for="overtimeStartTime">Overtime QR Start Time</label>
-                            <div class="time-input-control">
-                                <input type="time" id="overtimeStartTime" name="settings[qr_overtime_start]" class="form-input" value="{{ substr($settings['qr_overtime_start']['setting_value'] ?? '17:00', 0, 5) }}">
-                                <button type="button" class="time-picker-button" onclick="openTimePicker('overtimeStartTime')" aria-label="Choose overtime QR start time"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><path d="M12 8v4l3 2"></path></svg></button>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label" for="overtimeEndTime">Overtime QR End Time</label>
+                            <label class="form-label" for="overtimeEndTime">Last Scan of the Day (overtime ends)</label>
                             <div class="time-input-control">
                                 <input type="time" id="overtimeEndTime" name="settings[qr_overtime_end]" class="form-input" value="{{ substr($settings['qr_overtime_end']['setting_value'] ?? '22:00', 0, 5) }}">
-                                <button type="button" class="time-picker-button" onclick="openTimePicker('overtimeEndTime')" aria-label="Choose overtime QR end time"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><path d="M12 8v4l3 2"></path></svg></button>
+                                <button type="button" class="time-picker-button" onclick="openTimePicker('overtimeEndTime')" aria-label="Choose the last scan of the day"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><path d="M12 8v4l3 2"></path></svg></button>
                             </div>
                         </div>
                         <div class="form-group">

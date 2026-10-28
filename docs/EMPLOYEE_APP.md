@@ -20,11 +20,11 @@ rows are still in the database; nothing reads or writes them any more.
 
 1. **Login** – `employee_login.php` returns a sign-in `token`. The app sends it as `Authorization: Bearer <token>` on
    every other call, so a request can only act as the employee who signed in (24 hours, or until log out).
-2. **Attendance** – the employee scans the branch QR code (`scan_attendance.php`); `me.php` gives today's times. The
-   overtime QR code starts overtime on the first scan and ends it on the second (`Overtime In` / `Overtime Out`); its
-   minutes go to the payroll (`docs/PAYROLL.md`). The overtime code is the branch's own (made by the branch admin) and only
-   works for that branch's employees. Run `2026_10_18_attendance_overtime.sql` and `2026_10_20_overtime_qr_per_branch.sql`
-   (or `php artisan migrate`) first.
+2. **Attendance** – the employee scans the branch QR code (`scan_attendance.php`); `me.php` gives today's times. There is no
+   overtime QR code: the afternoon code works until the last scan of the day (22:00 by default), and the scan after the end of
+   the afternoon is the time out of the day, so the time after 17:00 is the **overtime** (the answer of the scan carries
+   `overtime_minutes`, `overtime_counted` and `overtime_minimum_minutes`). A day of overtime is paid only from 1 hour; its
+   minutes go to the payroll (`docs/PAYROLL.md`).
    A session's first scan is its **Time In** and the next one its **Time Out** (the answer says which). The hours of the day are worked out when
    the time out is saved, and leaving a session more than 5 minutes before it ends is **undertime** (shown in the app's history and in the
    website's Attendance table; the payroll still takes undertime minutes as typed, see `docs/PAYROLL.md`). A second scan within a minute of the

@@ -54,15 +54,9 @@ $attendanceRecords = \App\Support\AttendanceOrder::latestFirst($stmt->fetchAll()
 
 // Include today's active attendance QR codes in the printable report so staff
 // can scan them directly from the same printed attendance sheet.
-// The overtime code belongs to a branch: a branch admin's sheet has their own, the super admin's has none.
-$qrSql = "SELECT qr_code, qr_type, valid_from, valid_until FROM qr_codes WHERE valid_date = ? AND status = 'active' AND (qr_type IN ('morning', 'afternoon')";
-$qrParams = [date('Y-m-d')];
-if ($scopeBranch !== null && $scopeBranch !== '') {
-    $qrSql .= " OR (qr_type = 'overtime' AND LOWER(COALESCE(branch_name, '')) = LOWER(?))";
-    $qrParams[] = $scopeBranch;
-}
-$stmt = $pdo->prepare($qrSql . ') ORDER BY qr_type');
-$stmt->execute($qrParams);
+$qrSql = "SELECT qr_code, qr_type, valid_from, valid_until FROM qr_codes WHERE valid_date = ? AND status = 'active' AND qr_type IN ('morning', 'afternoon') ORDER BY qr_type";
+$stmt = $pdo->prepare($qrSql);
+$stmt->execute([date('Y-m-d')]);
 $attendanceQrCodes = $stmt->fetchAll();
 
 // Get employees for filter

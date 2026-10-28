@@ -34,7 +34,7 @@ class PayrollService
     /**
      * What the attendance of the period says: every session with a time in is half a day; a session marked late costs the
      * minutes between its start and the time in; a session left more than the grace period before it ends is undertime (the minutes
-     * it was short); the overtime session (scanned or entered by hand) adds its minutes.
+     * it was short); the overtime session (scanned or entered by hand) adds its minutes when the day reaches the minimum overtime.
      *
      * @return array{days_worked: float, late_minutes: int, undertime_minutes: int, overtime_minutes: int, absent_sessions: int, total_hours: float, records: int}
      */
@@ -66,7 +66,10 @@ class PayrollService
             if ($overtime === 0 && ! empty($row->overtime_time_in) && ! empty($row->overtime_time_out)) {
                 $overtime = AttendanceTime::minutesBetween($row->overtime_time_in, $row->overtime_time_out);
             }
-            $summary['overtime_minutes'] += $overtime;
+            // A day of overtime counts only from the minimum (one hour) up, and then by the minute.
+            if ($overtime >= AttendanceTime::MIN_OVERTIME_MINUTES) {
+                $summary['overtime_minutes'] += $overtime;
+            }
         }
 
         return $summary;

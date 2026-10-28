@@ -41,14 +41,15 @@ if ($request->isMethod('post')) {
                 'payroll_hours_per_day' => [1, 24, 'Working hours in a day'],
                 'payroll_overtime_rate' => [1, 3, 'Overtime pay multiplier'],
             ];
-            $ensureSettings = ['qr_overtime_start' => 'Overtime QR Start Time', 'qr_overtime_end' => 'Overtime QR End Time'];
+            // The last scan of the day: the afternoon QR code works until then, and the time after the end of the afternoon is overtime.
+            $ensureSettings = ['qr_overtime_end' => 'Last scan of the day (overtime ends)'];
             foreach (array_keys($ensureSettings) as $timeKey) {
                 if (isset($submittedSettings[$timeKey]) && ! preg_match('/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/', (string) $submittedSettings[$timeKey])) {
-                    throw new Exception('Enter the overtime QR times as valid times.');
+                    throw new Exception('Enter the last scan of the day as a valid time.');
                 }
             }
-            if (isset($submittedSettings['qr_overtime_start'], $submittedSettings['qr_overtime_end']) && strcmp(substr($submittedSettings['qr_overtime_end'], 0, 5), substr($submittedSettings['qr_overtime_start'], 0, 5)) <= 0) {
-                throw new Exception('The overtime QR end time must be after its start time.');
+            if (isset($submittedSettings['qr_afternoon_end'], $submittedSettings['qr_overtime_end']) && strcmp(substr($submittedSettings['qr_overtime_end'], 0, 5), substr($submittedSettings['qr_afternoon_end'], 0, 5)) <= 0) {
+                throw new Exception('The last scan of the day must be after the afternoon QR end time.');
             }
             foreach ($submittedSettings as $key => $value) {
                 if (str_starts_with((string) $key, 'payroll_') && (! is_numeric($value) || (float) $value < 0)) {

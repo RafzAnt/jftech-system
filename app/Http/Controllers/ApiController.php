@@ -65,7 +65,7 @@ class ApiController extends Controller
             ->get(['a.*', 'e.position', DB::raw('COALESCE(a.branch_name, e.branch_name) AS branch_name')]);
 
         $schedule = \App\Support\AttendanceTime::schedule();
-        $summary = ['days_recorded' => 0, 'days_worked' => 0.0, 'late_minutes' => 0, 'undertime_minutes' => 0, 'overtime_minutes' => 0, 'total_hours' => 0.0, 'absent_sessions' => 0];
+        $summary = ['days_recorded' => 0, 'days_worked' => 0.0, 'late_minutes' => 0, 'undertime_minutes' => 0, 'overtime_minutes' => 0, 'overtime_minimum_minutes' => \App\Support\AttendanceTime::MIN_OVERTIME_MINUTES, 'total_hours' => 0.0, 'absent_sessions' => 0];
         foreach ($rows as $row) {
             $figures = \App\Support\AttendanceTime::dayFigures($row, $schedule);
             $row->late_minutes = $figures['late_minutes'];
@@ -223,28 +223,35 @@ class ApiController extends Controller
         $employee = $request->attributes->get('employee');
         $qr = DB::table('qr_codes')->where('qr_code', $data['qr_code'])->where('status', 'active')->whereDate('valid_date', today())->first();
         if (! $employee || ! $qr) return response()->json(['success' => false, 'message' => 'Invalid or expired QR code.'], 422);
-        $now = now();
-        if ($now->format('H:i:s') < $qr->valid_from || $now->format('H:i:s') > $qr->valid_until) return response()->json(['success' => false, 'message' => 'QR code is outside its valid time window.'], 422);
+        // Overtime has no QR code of its own any more (it is worked out from the afternoon time out), and a code of the earlier kind
+        // must not be taken for an afternoon one.
         if ($qr->qr_type === 'overtime') {
-            // Each branch approves its own overtime days and makes its own code, so a code only works for the employees of its branch.
-            if (strcasecmp(trim((string) ($qr->branch_name ?? '')), trim((string) $employee->branch_name)) !== 0) {
-                return response()->json(['success' => false, 'message' => "This overtime QR code is not for your branch. Ask your branch admin for your branch's overtime QR code."], 422);
-            }
-
-            return $this->scanOvertime($employee, $qr, $now);
+            return response()->json(['success' => false, 'message' => 'The overtime QR code is no longer used. Scan the afternoon QR code when you finish work: the time after the afternoon ends is your overtime.'], 422);
         }
-        $settings = DB::table('system_settings')->pluck('setting_value', 'setting_key');
-        $time = $now->format('H:i:s');
-        $startTime = $qr->qr_type === 'morning' ? ($settings['qr_morning_start'] ?? '08:00:00') : ($settings['qr_afternoon_start'] ?? '13:00:00');
-        $lateThreshold = (int) ($settings['late_threshold_minutes'] ?? 30);
-        $thresholdTime = date('H:i:s', strtotime($startTime) + ($lateThreshold * 60));
-        $status = $time > $thresholdTime ? 'late' : 'present';
         $part = $qr->qr_type === 'morning' ? 'morning' : 'afternoon';
+        $session = \App\Support\AttendanceTime::schedule()[$part];
 
-        // The first scan of a session is the time in and the next one the time out. The row is locked so two scans at once cannot make two rows for the day.
-        $outcome = DB::transaction(function () use ($employee, $qr, $time, $status, $part) {
+        $now = now();
+        $time = $now->format('H:i:s');
+        // The afternoon code works until the last scan of the day (so people who work late can scan out) whatever end it was made with,
+        // the morning one until its own end.
+        $validUntil = $part === 'afternoon' ? max(\App\Support\AttendanceTime::clock($session['end']), \App\Support\AttendanceTime::lastScan()) : $qr->valid_until;
+        if ($time < $qr->valid_from || $time > $validUntil) return response()->json(['success' => false, 'message' => 'QR code is outside its valid time window.'], 422);
+
+        $lateThreshold = (int) (DB::table('system_settings')->where('setting_key', 'late_threshold_minutes')->value('setting_value') ?? 30);
+        $thresholdTime = date('H:i:s', strtotime($session['start']) + ($lateThreshold * 60));
+        $status = $time > $thresholdTime ? 'late' : 'present';
+        // A scan after the end of the afternoon can only be the time out of the day; the time after the end is the overtime.
+        $sessionEnd = \App\Support\AttendanceTime::clock($session['end']);
+        $afterEnd = $part === 'afternoon' && strcmp($time, $sessionEnd) > 0;
+
+        // The first scan of a session is the time in and the next one the time out; the last scan of the day is the time out. The row is locked so two scans at once cannot make two rows for the day.
+        $outcome = DB::transaction(function () use ($employee, $qr, $time, $status, $part, $afterEnd, $sessionEnd) {
             $attendance = DB::table('attendance')->where('employee_id', $employee->id)->whereDate('attendance_date', today())->lockForUpdate()->first();
 
+            if ($afterEnd && (! $attendance || ! $attendance->afternoon_time_in)) {
+                return ['error' => 'The afternoon session has ended, so you can no longer time in. Ask your branch admin to record your attendance.'];
+            }
             if (! $attendance) {
                 DB::table('attendance')->insert([
                     'employee_id' => $employee->id, 'attendance_date' => today(), 'qr_code_used' => $qr->qr_code, 'branch_name' => $employee->branch_name,
@@ -265,66 +272,43 @@ class ApiController extends Controller
             }
 
             $row = (array) $attendance;
-            $row["{$part}_time_out"] = $time;
-            DB::table('attendance')->where('id', $attendance->id)->update([
-                "{$part}_time_out" => $time, 'total_hours' => \App\Support\AttendanceTime::totalHours($row),
+            $overtime = 0;
+            if ($afterEnd) {
+                // The afternoon ends at its usual time and what follows is the overtime, kept in the overtime columns of the day.
+                $overtime = \App\Support\AttendanceTime::overtimeAfter($sessionEnd, $time);
+                $row['afternoon_time_out'] = $sessionEnd;
+                $changes = ['afternoon_time_out' => $sessionEnd, 'overtime_time_in' => $sessionEnd, 'overtime_time_out' => $time, 'overtime_minutes' => $overtime];
+            } else {
+                $row["{$part}_time_out"] = $time;
+                $changes = ["{$part}_time_out" => $time];
+            }
+            DB::table('attendance')->where('id', $attendance->id)->update($changes + [
+                'total_hours' => \App\Support\AttendanceTime::totalHours($row),
                 'qr_code_used' => $qr->qr_code, 'branch_name' => $attendance->branch_name ?: $employee->branch_name,
             ]);
 
             // The status of a session is the one its time in earned; a time out does not change it.
-            return ['scan_type' => 'Time Out', 'status' => $attendance->{"status_{$part}"} ?: 'present'];
+            return ['scan_type' => 'Time Out', 'status' => $attendance->{"status_{$part}"} ?: 'present', 'overtime_minutes' => $overtime];
         });
 
         if (isset($outcome['error'])) {
             return response()->json(['success' => false, 'message' => $outcome['error']], 422);
         }
 
-        return response()->json(['success' => true, 'message' => 'Attendance recorded.', 'status' => $outcome['status'], 'scan_type' => $outcome['scan_type'], 'time' => $now->format('h:i A'), 'employee_name' => $employee->full_name, 'position' => $employee->position, 'branch_name' => $employee->branch_name]);
-    }
-    /**
-     * The overtime QR code: the first scan of the day starts the overtime, the second one ends it, and the minutes in between
-     * go to the payroll. Overtime that was entered by hand counts as the scan it replaces.
-     */
-    private function scanOvertime(object $employee, object $qr, \Illuminate\Support\Carbon $now): JsonResponse
-    {
-        $time = $now->format('H:i:s');
-
-        $outcome = DB::transaction(function () use ($employee, $qr, $time) {
-            $attendance = DB::table('attendance')->where('employee_id', $employee->id)->whereDate('attendance_date', today())->lockForUpdate()->first();
-
-            if (! $attendance) {
-                DB::table('attendance')->insert([
-                    'employee_id' => $employee->id, 'attendance_date' => today(), 'qr_code_used' => $qr->qr_code, 'branch_name' => $employee->branch_name,
-                    'overtime_time_in' => $time, 'overtime_minutes' => 0, 'created_at' => now(),
-                ]);
-
-                return ['scan_type' => 'Overtime In', 'minutes' => 0];
-            }
-            if (! $attendance->overtime_time_in) {
-                DB::table('attendance')->where('id', $attendance->id)->update(['overtime_time_in' => $time, 'overtime_minutes' => 0, 'qr_code_used' => $qr->qr_code, 'branch_name' => $attendance->branch_name ?: $employee->branch_name]);
-
-                return ['scan_type' => 'Overtime In', 'minutes' => 0];
-            }
-            if ($attendance->overtime_time_out) {
-                return ['error' => 'Your overtime for today is already recorded.'];
-            }
-
-            $minutes = \App\Support\AttendanceTime::minutesBetween($attendance->overtime_time_in, $time);
-            if ($minutes < 1) {
-                return ['error' => 'You have just timed in for overtime. Scan again when your overtime ends.'];
-            }
-            DB::table('attendance')->where('id', $attendance->id)->update(['overtime_time_out' => $time, 'overtime_minutes' => $minutes, 'qr_code_used' => $qr->qr_code]);
-
-            return ['scan_type' => 'Overtime Out', 'minutes' => $minutes];
-        });
-
-        if (isset($outcome['error'])) {
-            return response()->json(['success' => false, 'message' => $outcome['error']], 422);
+        // Overtime is recorded whatever its length, but paid only from the minimum; the employee is told which it is.
+        $overtime = (int) ($outcome['overtime_minutes'] ?? 0);
+        $minimum = \App\Support\AttendanceTime::MIN_OVERTIME_MINUTES;
+        $message = 'Attendance recorded.';
+        if ($overtime >= $minimum) {
+            $message .= ' Overtime: ' . \App\Support\PayrollCalculator::duration($overtime) . '.';
+        } elseif ($overtime > 0) {
+            $message .= ' Your overtime of ' . \App\Support\PayrollCalculator::duration($overtime) . ' is noted, but overtime is paid only from ' . \App\Support\PayrollCalculator::duration($minimum) . ' a day.';
         }
 
         return response()->json([
-            'success' => true, 'message' => 'Overtime recorded.', 'status' => 'present', 'scan_type' => $outcome['scan_type'], 'overtime_minutes' => $outcome['minutes'],
-            'time' => $now->format('h:i A'), 'employee_name' => $employee->full_name, 'position' => $employee->position, 'branch_name' => $employee->branch_name,
+            'success' => true, 'message' => $message, 'status' => $outcome['status'], 'scan_type' => $outcome['scan_type'], 'time' => $now->format('h:i A'),
+            'overtime_minutes' => $overtime, 'overtime_counted' => $overtime >= $minimum, 'overtime_minimum_minutes' => $minimum,
+            'employee_name' => $employee->full_name, 'position' => $employee->position, 'branch_name' => $employee->branch_name,
         ]);
     }
 }

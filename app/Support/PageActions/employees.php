@@ -97,11 +97,9 @@ if ($scopeBranch !== null) {
     $employeeBranches = array_values(array_filter($employeeBranches, static fn (string $name): bool => strcasecmp($name, $scopeBranch) === 0));
 }
 [$employeeScope, $employeeScopeParams] = \App\Support\BranchScope::employees($scopeBranch, 'e');
-// The morning and afternoon QR codes are shared by every branch, so the super admin makes them. The overtime QR code belongs to a branch:
-// each branch admin makes the one of their own branch (each branch approves its own overtime days), and the super admin never does.
+// The morning and afternoon QR codes are shared by every branch, so the super admin makes them. There is no overtime QR code: the
+// overtime is the time between the end of the afternoon and the afternoon time out.
 $canGenerateQr = auth()->user()?->isSuperAdmin() ?? false;
-$overtimeQrBranch = auth()->user()?->isBranchAdmin() ? \App\Support\BranchScope::current() : null;
-$canGenerateOvertimeQr = $overtimeQrBranch !== null && $overtimeQrBranch !== '';
 
 // Get all employees
 $employeeListSql = "SELECT e.*, u.username, u.status as user_status FROM employees e LEFT JOIN users u ON e.user_id = u.id WHERE 1 = 1" . $employeeScope . " ORDER BY e.full_name";
@@ -423,80 +421,50 @@ foreach ($attendanceRecords as &$record) {
 unset($record);
 
 // Get attendance schedule settings for QR display and generation
-$stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('qr_morning_start', 'qr_morning_end', 'qr_afternoon_start', 'qr_afternoon_end', 'qr_overtime_start', 'qr_overtime_end')");
+$stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('qr_morning_start', 'qr_morning_end', 'qr_afternoon_start', 'qr_afternoon_end', 'qr_overtime_end')");
 $attendanceSettings = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 $qrMorningStart = $attendanceSettings['qr_morning_start'] ?? '08:00:00';
 $qrMorningEnd = $attendanceSettings['qr_morning_end'] ?? '12:00:00';
 $qrAfternoonStart = $attendanceSettings['qr_afternoon_start'] ?? '13:00:00';
 $qrAfternoonEnd = $attendanceSettings['qr_afternoon_end'] ?? '17:00:00';
-$qrOvertimeStart = $attendanceSettings['qr_overtime_start'] ?? '17:00:00';
-$qrOvertimeEnd = $attendanceSettings['qr_overtime_end'] ?? '22:00:00';
+// The last time of the day a code can be scanned: the afternoon code works until then, and what follows the end of the afternoon is overtime.
+$qrLastScan = \App\Support\AttendanceTime::lastScan();
 
-// Today's QR codes: the shared morning and afternoon ones, and the overtime one of the branch admin's own branch. The super admin sees the
-// overtime codes of every branch in a list ($overtimeQrByBranch), but has no overtime code of their own.
+// Today's QR codes: the morning and the afternoon one, shared by every branch.
 $qrToday = date('Y-m-d');
-$loadQrCodes = static function () use ($pdo, $qrToday, $canGenerateOvertimeQr, $overtimeQrBranch): array {
-    $sql = "SELECT * FROM qr_codes WHERE valid_date = ? AND status = 'active' AND (qr_type IN ('morning', 'afternoon')";
-    $params = [$qrToday];
-    if ($canGenerateOvertimeQr) {
-        $sql .= " OR (qr_type = 'overtime' AND LOWER(COALESCE(branch_name, '')) = LOWER(?))";
-        $params[] = $overtimeQrBranch;
-    }
-    $stmt = $pdo->prepare($sql . ') ORDER BY created_at DESC, id DESC LIMIT 9');
-    $stmt->execute($params);
+$loadQrCodes = static function () use ($pdo, $qrToday): array {
+    $stmt = $pdo->prepare("SELECT * FROM qr_codes WHERE valid_date = ? AND status = 'active' AND qr_type IN ('morning', 'afternoon') ORDER BY created_at DESC, id DESC LIMIT 9");
+    $stmt->execute([$qrToday]);
 
     return $stmt->fetchAll();
 };
 $qrCodes = $loadQrCodes();
-$overtimeQrByBranch = [];
-if (auth()->user()?->isSuperAdmin()) {
-    $stmt = $pdo->prepare("SELECT branch_name, qr_code, valid_from, valid_until FROM qr_codes WHERE valid_date = ? AND qr_type = 'overtime' AND status = 'active' AND branch_name IS NOT NULL ORDER BY branch_name");
-    $stmt->execute([$qrToday]);
-    $overtimeQrByBranch = $stmt->fetchAll();
-}
 
 // Generate QR Code if requested
 if ($request->isMethod('post') && $request->has('generate_qr')) {
     $qrType = (string) $request->input('qr_type');
-    abort_unless($qrType === 'overtime' ? $canGenerateOvertimeQr : $canGenerateQr, 403);
+    abort_unless($canGenerateQr, 403);
     try {
-        if (!in_array($qrType, ['morning', 'afternoon', 'overtime'], true)) {
-            throw new Exception('Choose the morning, afternoon or overtime QR code.');
+        if (!in_array($qrType, ['morning', 'afternoon'], true)) {
+            throw new Exception('Choose the morning or afternoon QR code.');
         }
         $validDate = date('Y-m-d');
 
-        // The time window of the session, from the settings (overtime: 5 PM to 10 PM unless changed).
-        $qrDefaults = ['morning' => ['08:00:00', '12:00:00'], 'afternoon' => ['13:00:00', '17:00:00'], 'overtime' => ['17:00:00', '22:00:00']];
-        $stmt = $pdo->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN (?, ?)");
-        $stmt->execute(["qr_{$qrType}_start", "qr_{$qrType}_end"]);
-        $qrWindow = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-        $startTime = $qrWindow["qr_{$qrType}_start"] ?? $qrDefaults[$qrType][0];
-        $endTime = $qrWindow["qr_{$qrType}_end"] ?? $qrDefaults[$qrType][1];
-        if (strlen($startTime) === 5) {
-            $startTime .= ':00';
-        }
-        if (strlen($endTime) === 5) {
-            $endTime .= ':00';
-        }
-        
-        // The overtime code is the branch's own: it replaces only that branch's code of the day, and carries the branch. The morning and
-        // afternoon codes are shared, so they have no branch.
-        $qrBranch = $qrType === 'overtime' ? $overtimeQrBranch : null;
+        // The time window of the session, from the settings. The afternoon code works until the last scan of the day, so people who
+        // work past the end of the afternoon can scan out (what follows the end of the afternoon is their overtime).
+        $schedule = \App\Support\AttendanceTime::schedule();
+        $startTime = \App\Support\AttendanceTime::clock($schedule[$qrType]['start']);
+        $endTime = $qrType === 'afternoon' ? max(\App\Support\AttendanceTime::clock($schedule['afternoon']['end']), \App\Support\AttendanceTime::lastScan()) : \App\Support\AttendanceTime::clock($schedule[$qrType]['end']);
 
         // Deactivate old QR codes of same type
-        if ($qrBranch !== null) {
-            $stmt = $pdo->prepare("UPDATE qr_codes SET status = 'expired' WHERE qr_type = ? AND valid_date = ? AND LOWER(COALESCE(branch_name, '')) = LOWER(?)");
-            $stmt->execute([$qrType, $validDate, $qrBranch]);
-        } else {
-            $stmt = $pdo->prepare("UPDATE qr_codes SET status = 'expired' WHERE qr_type = ? AND valid_date = ?");
-            $stmt->execute([$qrType, $validDate]);
-        }
+        $stmt = $pdo->prepare("UPDATE qr_codes SET status = 'expired' WHERE qr_type = ? AND valid_date = ?");
+        $stmt->execute([$qrType, $validDate]);
 
         // Generate new QR code
         $qrCode = 'JFTECH-' . strtoupper($qrType) . '-' . date('Ymd') . '-' . bin2hex(random_bytes(4));
 
-        $stmt = $pdo->prepare("INSERT INTO qr_codes (qr_code, qr_type, valid_date, valid_from, valid_until, status, created_by, branch_name) VALUES (?, ?, ?, ?, ?, 'active', ?, ?)");
-        $stmt->execute([$qrCode, $qrType, $validDate, $startTime, $endTime, auth()->id(), $qrBranch]);
+        $stmt = $pdo->prepare("INSERT INTO qr_codes (qr_code, qr_type, valid_date, valid_from, valid_until, status, created_by, branch_name) VALUES (?, ?, ?, ?, ?, 'active', ?, NULL)");
+        $stmt->execute([$qrCode, $qrType, $validDate, $startTime, $endTime, auth()->id()]);
 
         $success = ucfirst($qrType) . ' QR Code generated successfully!';
 

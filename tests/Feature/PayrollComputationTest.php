@@ -87,9 +87,29 @@ class PayrollComputationTest extends TestCase
 
     public function test_the_overtime_of_every_day_is_added_up(): void
     {
-        DB::table('attendance')->where('attendance_date', '2026-03-03')->update(['overtime_time_in' => '17:00:00', 'overtime_time_out' => '17:45:00', 'overtime_minutes' => 45]);
+        DB::table('attendance')->where('attendance_date', '2026-03-03')->update(['overtime_time_in' => '17:00:00', 'overtime_time_out' => '18:15:00', 'overtime_minutes' => 75]);
 
-        $this->assertSame(105, app(PayrollService::class)->attendance(1, self::START, self::END)['overtime_minutes']);
+        $this->assertSame(135, app(PayrollService::class)->attendance(1, self::START, self::END)['overtime_minutes'], 'a day over the minimum counts by the minute');
+    }
+
+    public function test_a_day_of_overtime_shorter_than_an_hour_is_not_counted(): void
+    {
+        DB::table('attendance')->where('attendance_date', '2026-03-03')->update(['overtime_time_in' => '17:00:00', 'overtime_time_out' => '17:59:00', 'overtime_minutes' => 59]);
+        DB::table('attendance')->where('attendance_date', '2026-03-04')->update(['overtime_time_in' => '17:00:00', 'overtime_time_out' => '17:30:00', 'overtime_minutes' => 30]);
+
+        $this->assertSame(60, app(PayrollService::class)->attendance(1, self::START, self::END)['overtime_minutes'], 'only Monday (60 minutes) is paid');
+    }
+
+    public function test_the_short_overtime_days_do_not_add_up_to_an_hour(): void
+    {
+        DB::table('attendance')->where('attendance_date', '2026-03-02')->update(['overtime_time_in' => null, 'overtime_time_out' => null, 'overtime_minutes' => 0]);
+        DB::table('attendance')->where('attendance_date', '2026-03-03')->update(['overtime_time_in' => '17:00:00', 'overtime_time_out' => '17:40:00', 'overtime_minutes' => 40]);
+        DB::table('attendance')->where('attendance_date', '2026-03-04')->update(['overtime_time_in' => '17:00:00', 'overtime_time_out' => '17:40:00', 'overtime_minutes' => 40]);
+
+        $lines = app(PayrollService::class)->compute(1, 500, self::START, self::END);
+
+        $this->assertSame(0.0, (float) $lines['overtime_hours']);
+        $this->assertSame(0.0, (float) $lines['overtime_pay']);
     }
 
     public function test_overtime_with_times_but_no_minutes_is_worked_out_from_the_times(): void

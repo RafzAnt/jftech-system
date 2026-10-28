@@ -42,6 +42,8 @@ class EmployeeApiController extends Controller
                 'morning_time_in' => $today?->morning_time_in, 'morning_time_out' => $today?->morning_time_out,
                 'afternoon_time_in' => $today?->afternoon_time_in, 'afternoon_time_out' => $today?->afternoon_time_out,
                 'overtime_time_in' => $today?->overtime_time_in, 'overtime_time_out' => $today?->overtime_time_out, 'overtime_minutes' => (int) ($today?->overtime_minutes ?? 0),
+                // Overtime comes from the afternoon time out; a day is paid for it from this many minutes.
+                'overtime_minimum_minutes' => \App\Support\AttendanceTime::MIN_OVERTIME_MINUTES,
                 'status_morning' => $today?->status_morning, 'status_afternoon' => $today?->status_afternoon,
                 'total_hours' => $today?->total_hours !== null ? (float) $today->total_hours : null,
                 'checked_in' => (bool) $firstIn,

@@ -23,11 +23,38 @@ final class AttendanceTime
     /** The longest overtime a single day can hold, in minutes. */
     public const MAX_OVERTIME_MINUTES = 720;
 
+    /** The shortest overtime a day must reach to be paid; a day with less is recorded but not counted in the payroll. */
+    public const MIN_OVERTIME_MINUTES = 60;
+
     /**
      * Leaving a session this many minutes before it ends still counts as the full session: the QR code of a session only works until
      * its end, so someone who works to the end scans a few minutes before it.
      */
     public const UNDERTIME_GRACE_MINUTES = 5;
+
+    /** "17:00" or "17:00:00" as "17:00:00". */
+    public static function clock(string $time): string
+    {
+        return gmdate('H:i:s', self::secondsOfDay($time));
+    }
+
+    /**
+     * The last time of the day a QR code can be scanned (the "Last scan of the day" of the settings, 22:00 by default). The afternoon
+     * code works until then, so someone who works past the end of the afternoon can still scan out; the time after the end of the
+     * afternoon is the overtime.
+     */
+    public static function lastScan(): string
+    {
+        $value = DB::table('system_settings')->where('setting_key', 'qr_overtime_end')->value('setting_value');
+
+        return self::clock($value ?: '22:00:00');
+    }
+
+    /** The overtime of a time out after the end of the session: the minutes from the end to the time out (at most a day's maximum). */
+    public static function overtimeAfter(string $sessionEnd, string $timeOut): int
+    {
+        return min(self::MAX_OVERTIME_MINUTES, self::minutesBetween($sessionEnd, $timeOut));
+    }
 
     /**
      * The start and the end of the morning and afternoon sessions, from the business settings.
