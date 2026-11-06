@@ -44,6 +44,25 @@
     box-shadow: var(--ui-focus);
 }
 
+/* The branch box and its suggestions: the card must not clip the list. */
+.card.report-print-card {
+    position: relative;
+    z-index: 5;
+    overflow: visible;
+}
+
+.report-branch {
+    width: 190px;
+}
+
+.report-filter .report-branch input {
+    width: 100%;
+}
+
+.report-branch .location-suggestions {
+    z-index: 40;
+}
+
 .filter-or {
     padding-bottom: 0.6rem;
     color: var(--text-muted);
@@ -55,6 +74,44 @@
     margin-bottom: 1.25rem;
     padding: 1.25rem;
 }
+
+/* ===== REPORT SUMMARY CARDS ===== */
+.report-metrics {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.report-metric {
+    min-height: 142px;
+    margin: 0;
+    padding: 1.1rem 1.2rem;
+    border-top: 3px solid var(--accent);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.report-metric.success { border-top-color: var(--success); }
+.report-metric.warning { border-top-color: var(--warning); }
+.report-metric.danger { border-top-color: var(--danger); }
+
+.report-metric span,
+.report-metric small {
+    color: var(--text-muted);
+    font-size: 0.78rem;
+}
+
+.report-metric strong {
+    display: block;
+    margin: 0.4rem 0;
+    color: var(--text-primary);
+    font-size: 1.5rem;
+    line-height: 1.2;
+}
+
+.report-metric small { color: var(--text-secondary); }
 
 /* ===== THE SUMMARY AS TABLES ===== */
 .report-tables {
@@ -90,6 +147,10 @@
 
 /* ===== RESPONSIVE ===== */
 @media (max-width: 700px) {
+    .report-metrics {
+        grid-template-columns: 1fr;
+    }
+
     .report-filter {
         width: 100%;
     }

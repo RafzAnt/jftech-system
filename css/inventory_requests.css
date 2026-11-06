@@ -83,6 +83,27 @@
     transform: translateY(-1px);
 }
 
+/* Keep the Stock Requests table compact. */
+.inventory-requests-page .data-table {
+    font-size: 0.7rem;
+}
+
+.inventory-requests-page .data-table th {
+    font-size: 0.58rem;
+}
+
+.inventory-requests-page .badge {
+    font-size: 0.58rem;
+}
+
+.inventory-requests-page .status-badge {
+    font-size: 0.65rem;
+}
+
+.inventory-requests-page .filter-tab {
+    font-size: 0.72rem;
+}
+
 @media (max-width: 768px) {
     .request-actions {
         flex-direction: row;

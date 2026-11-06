@@ -7,7 +7,6 @@
     $endOf = 'Payslip';
     $reportCoverage = ReportFormat::coverage($record->payroll_period_start, $record->payroll_period_end);
     $reportBranch = $record->employee_branch ? $record->employee_branch . ' Branch' : ReportFormat::branch();
-    $orientation = 'portrait';
 
     // The employee acknowledges the payslip; the preparer and the approver are the same as on the other reports.
     $preparedBy = ReportFormat::preparedBy();
@@ -22,7 +21,7 @@
     $earnings = [
         'Basic Salary' => $record->basic_salary, 'Overtime Pay' => $record->overtime_pay,
         'Regular Holiday' => $record->regular_holiday, 'Special Holiday' => $record->special_holiday,
-        'Night Differential' => $record->night_differential, 'Incentives' => $record->incentives,
+        'Incentives' => $record->incentives,
         'Allowances' => $record->allowances, 'Leave Pay' => $record->leave_pay,
         'Rest Day Pay' => $record->rest_day_pay, 'Salary Adjustment' => $record->salary_adjustment,
         'Other Earnings' => $record->other_earnings,
@@ -31,8 +30,7 @@
     $computed = ! empty($record->computation_mode);
     $deductions = ($computed ? ['Late' . ($record->late_minutes ? ' (' . (int) $record->late_minutes . ' min)' : '') => $record->late, 'Undertime' . ($record->undertime_minutes ? ' (' . (int) $record->undertime_minutes . ' min)' : '') => $record->undertime] : []) + [
         'SSS' => $record->sss, 'PhilHealth' => $record->philhealth, 'Pag-IBIG' => $record->pagibig,
-        'Withholding Tax' => $record->withholding_tax, 'Cash Advance' => $record->cash_advance,
-        'Salary Loan' => $record->salary_loan, 'HDMF Loan' => $record->hdmf_loan,
+        'Cash Advance' => $record->cash_advance, 'Salary Loan' => $record->salary_loan,
         'Other Deductions' => $record->other_deductions,
     ];
 @endphp

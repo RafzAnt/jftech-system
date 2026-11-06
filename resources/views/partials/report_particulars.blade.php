@@ -1,9 +1,9 @@
 {{--
-    A two-column "Particulars | Figure" table of a summary report: $rows = ['Present' => '12'].
+    A two-column "Details | Amount / Count" table of a summary report: $rows = ['Present' => '12'].
     $total (optional) = ['NET PAY', '₱3,000.00'] adds a TOTAL row at the bottom.
 --}}
 <table class="report-table particulars">
-    <thead><tr><th>Particulars</th><th class="num">Figure</th></tr></thead>
+    <thead><tr><th>Details</th><th class="num">Amount / Count</th></tr></thead>
     <tbody>
         @foreach ($rows as $label => $value)
             <tr><td>{{ $label }}</td><td class="num">{{ $value }}</td></tr>

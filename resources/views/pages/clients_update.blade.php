@@ -139,6 +139,7 @@
                                 </option>
                                 @endforeach
                             </select>
+                            <small style="color: var(--text-muted);">A new plan starts with the next bill. Bills already made (paid, pending or overdue) keep their old amount.</small>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Monthly Rate (₱)</label>

@@ -75,6 +75,67 @@ class AttendanceScanTest extends TestCase
         $this->assertNull($this->today()->morning_time_out);
     }
 
+    private function earlyScanMinutes(int $minutes): void
+    {
+        DB::table('system_settings')->updateOrInsert(['setting_key' => 'early_scan_minutes'], ['setting_value' => (string) $minutes, 'setting_label' => 'Early scan']);
+    }
+
+    public function test_a_morning_time_in_before_the_session_starts_is_accepted_and_not_paid_as_hours(): void
+    {
+        // No setting saved: the default of an hour before the 08:00 start.
+        $this->scan('morning', '07:20')->assertOk()->assertJson(['success' => true, 'scan_type' => 'Time In', 'status' => 'present']);
+        $this->assertSame('07:20:00', $this->today()->morning_time_in, 'the real scan time is kept');
+
+        $this->scan('morning', '12:00')->assertOk()->assertJson(['scan_type' => 'Time Out']);
+        $this->assertEquals(4.0, (float) $this->today()->total_hours, 'the hours count from the start of the session, not from the early scan');
+    }
+
+    public function test_an_afternoon_time_in_during_the_lunch_break_is_accepted(): void
+    {
+        $this->scan('afternoon', '12:10')->assertOk()->assertJson(['scan_type' => 'Time In', 'status' => 'present']);
+        $this->assertSame('12:10:00', $this->today()->afternoon_time_in);
+        $this->scan('afternoon', '17:00')->assertOk()->assertJson(['scan_type' => 'Time Out']);
+        $this->assertEquals(4.0, (float) $this->today()->total_hours);
+    }
+
+    public function test_a_scan_before_the_early_window_is_refused_and_says_when_it_opens(): void
+    {
+        $this->scan('morning', '06:59')->assertStatus(422)->assertJson(['success' => false])
+            ->assertJsonPath('message', 'It is too early to scan. This QR code works from 07:00 AM.');
+        $this->assertNull($this->today());
+
+        $this->scan('afternoon', '11:59')->assertStatus(422)->assertJsonPath('message', 'It is too early to scan. This QR code works from 12:00 PM.');
+        $this->assertNull($this->today());
+    }
+
+    public function test_the_early_window_follows_the_setting(): void
+    {
+        $this->earlyScanMinutes(15);
+        $this->scan('morning', '07:44')->assertStatus(422);
+        $this->scan('morning', '07:45')->assertOk()->assertJson(['scan_type' => 'Time In']);
+
+        $this->earlyScanMinutes(0);
+        $this->scan('afternoon', '12:59')->assertStatus(422);
+        $this->scan('afternoon', '13:00')->assertOk()->assertJson(['scan_type' => 'Time In']);
+    }
+
+    public function test_leaving_early_is_accepted_and_counted_as_undertime(): void
+    {
+        $this->scan('morning', '07:50')->assertOk();
+        $this->scan('morning', '10:30')->assertOk()->assertJson(['scan_type' => 'Time Out']);
+        $this->scan('afternoon', '12:30')->assertOk()->assertJson(['scan_type' => 'Time In']);
+        $this->scan('afternoon', '15:00')->assertOk()->assertJson(['scan_type' => 'Time Out']);
+
+        $row = $this->today();
+        $this->assertSame('10:30:00', $row->morning_time_out);
+        $this->assertSame('15:00:00', $row->afternoon_time_out);
+        $this->assertEquals(2.5 + 2.0, (float) $row->total_hours);
+
+        $figures = \App\Support\AttendanceTime::dayFigures($row, \App\Support\AttendanceTime::schedule());
+        $this->assertSame(0, $figures['late_minutes'], 'being early is never late');
+        $this->assertSame(90 + 120, $figures['undertime_minutes']);
+    }
+
     public function test_the_hours_of_a_whole_day_add_both_sessions(): void
     {
         $this->scan('morning', '08:00');

@@ -19,7 +19,7 @@
     @include('layouts.sidebar')
     <main class="main-content">
         <div class="top-bar report-heading">
-            <div><p class="report-eyebrow">Reports</p><h1 class="page-title">Business Summary Report</h1><p>{{ $periodLabel }} &middot; Showing: <strong>{{ $branchLabel }}</strong></p></div>
+            <div><p class="report-eyebrow">Reports</p><h1 class="page-title">Business Report</h1><p>{{ $periodLabel }} &middot; Showing: <strong>{{ $branchLabel }}</strong></p></div>
         </div>
 
         {{-- The summary as plain tables on the screen. The standard report format (letterhead, signatures) is only the Print report button. --}}
@@ -30,13 +30,12 @@
                 <div><label for="from">Start Date</label><input id="from" type="date" name="from" value="{{ $periodStart }}" required></div>
                 <div><label for="to">End Date</label><input id="to" type="date" name="to" value="{{ $periodEnd }}" required></div>
                 @if (auth()->user()?->isSuperAdmin())
-                <div><label for="branch">Branch</label>
-                    <select id="branch" name="branch">
-                        <option value="">All branches</option>
-                        @foreach ($reportBranches as $reportBranch)
-                        <option value="{{ $reportBranch }}" {{ $branch === $reportBranch ? 'selected' : '' }}>{{ $reportBranch }}</option>
-                        @endforeach
-                    </select>
+                <div class="report-branch"><label for="branch">Branch</label>
+                    {{-- Type a branch and pick it from the suggestions; left empty it is every branch. --}}
+                    <div class="location-field">
+                        <input id="branch" type="text" name="branch" value="{{ $branch }}" placeholder="All branches" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="branchSuggestions" aria-expanded="false">
+                        <div id="branchSuggestions" class="location-suggestions" role="listbox" hidden></div>
+                    </div>
                 </div>
                 @else
                 <input type="hidden" name="branch" value="{{ $branch }}">
@@ -57,9 +56,36 @@
             $hours = rtrim(rtrim(number_format($att['hours'], 2), '0'), '.');
         @endphp
 
+        <section class="report-metrics" aria-label="Report summary">
+            <article class="card report-metric">
+                <span>Total billed</span>
+                <strong>{{ $peso($b['amount']) }}</strong>
+                <small>{{ number_format($b['count']) }} bill{{ $b['count'] === 1 ? '' : 's' }} for this period</small>
+            </article>
+            <article class="card report-metric success">
+                <span>Payments received</span>
+                <strong>{{ $peso($pay['collected']) }}</strong>
+                <small>{{ number_format($pay['count']) }} payment{{ $pay['count'] === 1 ? '' : 's' }} received</small>
+            </article>
+            <article class="card report-metric warning">
+                <span>Outstanding balance</span>
+                <strong>{{ $peso($b['outstanding']) }}</strong>
+                <small>{{ number_format($b['overdueClients']) }} client{{ $b['overdueClients'] === 1 ? '' : 's' }} with overdue bills</small>
+            </article>
+            <article class="card report-metric danger">
+                <span>Net payroll</span>
+                <strong>{{ $peso($payroll['net']) }}</strong>
+                <small>{{ number_format($payroll['entries']) }} payroll {{ $payroll['entries'] === 1 ? 'entry' : 'entries' }}</small>
+            </article>
+        </section>
+
         <div class="report-tables">
+            {{-- The tables stay on the page even when nothing was recorded; they just read zero. --}}
+            @if (\App\Support\PeriodReport::isEmpty($report))
+            <p class="empty report-wide">No data for {{ $periodLabel }} &middot; {{ $branchLabel }}. The tables below show zero.</p>
+            @endif
             <article class="card">
-                <div class="card-header"><span class="card-title">1. Billing Summary</span></div>
+                <div class="card-header"><span class="card-title">1. Billing</span></div>
                 <div class="data-table-container">
                     <table class="data-table">
                         <thead><tr><th>Status</th><th class="num">No. of Bills</th><th class="num">Amount</th><th class="num">% of Total Billed</th></tr></thead>
@@ -73,7 +99,7 @@
                 </div>
                 <div class="data-table-container">
                     <table class="data-table">
-                        <thead><tr><th>Particulars</th><th class="num">Figure</th></tr></thead>
+                        <thead><tr><th>Details</th><th class="num">Amount / Count</th></tr></thead>
                         <tbody>
                             <tr><td>Clients billed</td><td class="num">{{ number_format($b['billedClients']) }}</td></tr>
                             <tr><td>Clients with overdue bills</td><td class="num">{{ number_format($b['overdueClients']) }}</td></tr>
@@ -87,7 +113,7 @@
             </article>
 
             <article class="card">
-                <div class="card-header"><span class="card-title">2. Collection Summary</span></div>
+                <div class="card-header"><span class="card-title">2. Collections</span></div>
                 <div class="data-table-container">
                     <table class="data-table">
                         <thead><tr><th>Payment Method</th><th class="num">No. of Payments</th><th class="num">Amount</th><th class="num">% of Collections</th></tr></thead>
@@ -104,10 +130,10 @@
             </article>
 
             <article class="card">
-                <div class="card-header"><span class="card-title">3. Client Summary</span></div>
+                <div class="card-header"><span class="card-title">3. Clients</span></div>
                 <div class="data-table-container">
                     <table class="data-table">
-                        <thead><tr><th>Particulars</th><th class="num">Figure</th></tr></thead>
+                        <thead><tr><th>Details</th><th class="num">Amount / Count</th></tr></thead>
                         <tbody>
                             <tr><td>New installations</td><td class="num">{{ number_format($report['clients']['new']) }}</td></tr>
                             <tr><td>Monthly rate of the new installations</td><td class="num">{{ $peso($report['clients']['monthly']) }}</td></tr>
@@ -117,12 +143,12 @@
             </article>
 
             <article class="card">
-                <div class="card-header"><span class="card-title">4. Attendance Summary</span></div>
+                <div class="card-header"><span class="card-title">4. Attendance</span></div>
                 <div class="data-table-container">
                     <table class="data-table">
-                        <thead><tr><th>Particulars</th><th class="num">Figure</th></tr></thead>
+                        <thead><tr><th>Details</th><th class="num">Amount / Count</th></tr></thead>
                         <tbody>
-                            <tr><td>Employees with attendance</td><td class="num">{{ number_format($att['employees']) }}</td></tr>
+                            <tr><td>Employees on record</td><td class="num">{{ number_format($att['employees']) }}</td></tr>
                             <tr><td>Attendance records</td><td class="num">{{ number_format($att['records']) }}</td></tr>
                             <tr><td>Present</td><td class="num">{{ number_format($att['present']) }}</td></tr>
                             <tr><td>Late</td><td class="num">{{ number_format($att['late']) }}</td></tr>
@@ -134,10 +160,10 @@
             </article>
 
             <article class="card">
-                <div class="card-header"><span class="card-title">5. Payroll Summary</span></div>
+                <div class="card-header"><span class="card-title">5. Payroll</span></div>
                 <div class="data-table-container">
                     <table class="data-table">
-                        <thead><tr><th>Particulars</th><th class="num">Figure</th></tr></thead>
+                        <thead><tr><th>Details</th><th class="num">Amount / Count</th></tr></thead>
                         <tbody>
                             <tr><td>Payroll entries</td><td class="num">{{ number_format($payroll['entries']) }}</td></tr>
                             <tr><td>Gross pay</td><td class="num">{{ $peso($payroll['gross']) }}</td></tr>
@@ -151,7 +177,7 @@
             @if ($report['requests'] !== null)
             @php($req = $report['requests'])
             <article class="card">
-                <div class="card-header"><span class="card-title">6. Inventory Requests Summary</span></div>
+                <div class="card-header"><span class="card-title">6. Inventory Requests</span></div>
                 <div class="data-table-container">
                     <table class="data-table">
                         <thead><tr><th>Status</th><th class="num">No. of Requests</th></tr></thead>
@@ -169,7 +195,7 @@
             @if ($report['branches'] !== null)
             @php($br = $report['branches'])
             <article class="card report-wide">
-                <div class="card-header"><span class="card-title">{{ $report['requests'] !== null ? '7' : '6' }}. Summary by Branch</span></div>
+                <div class="card-header"><span class="card-title">{{ $report['requests'] !== null ? '7' : '6' }}. By Branch</span></div>
                 <div class="data-table-container">
                     <table class="data-table">
                         <thead><tr><th>Branch</th><th class="num">New Clients</th><th class="num">Billed</th><th class="num">Collected</th><th class="num">Outstanding</th><th class="num">Net Payroll</th></tr></thead>
@@ -194,7 +220,41 @@
             const [year, month] = this.value.split('-');
             document.getElementById('from').value = `${year}-${month}-01`;
             document.getElementById('to').value = `${year}-${month}-${new Date(year, month, 0).getDate().toString().padStart(2, '0')}`;
-            document.getElementById('reportFilter').submit();
+            document.getElementById('reportFilter').requestSubmit();
+        });
+
+        // The branch box (super admin): suggestions while typing. What is typed must be one branch, or nothing for every branch.
+        document.addEventListener('DOMContentLoaded', function () {
+            const box = document.getElementById('branch');
+            if (!box || box.tagName !== 'INPUT') return;
+            const branches = @json($reportBranches);
+            createSuggestionList(
+                box,
+                document.getElementById('branchSuggestions'),
+                function () { return branches; },
+                function (name) { box.value = name; box.setCustomValidity(''); },
+                { emptyText: 'No branch matches.' }
+            );
+            box.addEventListener('focus', function () { box.select(); });
+            box.addEventListener('input', function () { box.setCustomValidity(''); });
+
+            // A name typed in full, or the start of only one branch, is completed; anything else is not a branch.
+            function settle() {
+                const typed = box.value.trim().toLocaleLowerCase();
+                if (typed === '') { box.value = ''; return true; }
+                const exact = branches.filter(function (name) { return name.toLocaleLowerCase() === typed; });
+                const starts = branches.filter(function (name) { return name.toLocaleLowerCase().startsWith(typed); });
+                const found = exact.length === 1 ? exact : starts;
+                if (found.length !== 1) return false;
+                box.value = found[0];
+                return true;
+            }
+            document.getElementById('reportFilter').addEventListener('submit', function (event) {
+                if (settle()) return;
+                event.preventDefault();
+                box.setCustomValidity('Choose a branch from the suggestions, or leave it empty for every branch.');
+                box.reportValidity();
+            });
         });
     </script>
     <script src="{{ asset('js/jftech-main.js') }}?{{ $mainJsVersion }}"></script>

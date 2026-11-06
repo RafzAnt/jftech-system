@@ -168,7 +168,6 @@
                                                 <tr><td>Overtime Pay</td><td>₱{{ number_format((float) $record['overtime_pay'], 2) }}</td></tr>
                                                 <tr><td>Regular Holiday</td><td>₱{{ number_format((float) $record['regular_holiday'], 2) }}</td></tr>
                                                 <tr><td>Special Holiday</td><td>₱{{ number_format((float) $record['special_holiday'], 2) }}</td></tr>
-                                                <tr><td>Night Differential</td><td>₱{{ number_format((float) $record['night_differential'], 2) }}</td></tr>
                                                 <tr><td>Incentives</td><td>₱{{ number_format((float) $record['incentives'], 2) }}</td></tr>
                                                 <tr><td>Allowances</td><td>₱{{ number_format((float) $record['allowances'], 2) }}</td></tr>
                                                 <tr><td>Leave Pay</td><td>₱{{ number_format((float) $record['leave_pay'], 2) }}</td></tr>
@@ -194,10 +193,8 @@
                                                 <tr><td>SSS</td><td>₱{{ number_format((float) $record['sss'], 2) }}</td></tr>
                                                 <tr><td>PhilHealth</td><td>₱{{ number_format((float) $record['philhealth'], 2) }}</td></tr>
                                                 <tr><td>Pag-IBIG</td><td>₱{{ number_format((float) $record['pagibig'], 2) }}</td></tr>
-                                                <tr><td>Withholding Tax</td><td>₱{{ number_format((float) $record['withholding_tax'], 2) }}</td></tr>
                                                 <tr><td>Cash Advance</td><td>₱{{ number_format((float) $record['cash_advance'], 2) }}</td></tr>
                                                 <tr><td>Salary Loan</td><td>₱{{ number_format((float) $record['salary_loan'], 2) }}</td></tr>
-                                                <tr><td>HDMF Loan</td><td>₱{{ number_format((float) $record['hdmf_loan'], 2) }}</td></tr>
                                                 <tr><td>Other Deductions</td><td>₱{{ number_format((float) $record['other_deductions'], 2) }}</td></tr>
                                                 <tr class="total"><td>Total Deductions</td><td>₱{{ number_format($prDeductions, 2) }}</td></tr>
                                             </tbody>
@@ -314,7 +311,6 @@
                         <div class="form-group"><label class="form-label">Overtime Pay</label><input type="number" name="overtime_pay" id="overtime_pay" class="form-input" step="0.01" min="0" value="0" oninput="computePayroll();"></div>
                         <div class="form-group"><label class="form-label">Regular Holiday</label><input type="number" name="regular_holiday" id="regular_holiday" class="form-input" step="0.01" min="0" value="0" oninput="computePayroll();"></div>
                         <div class="form-group"><label class="form-label">Special Holiday</label><input type="number" name="special_holiday" id="special_holiday" class="form-input" step="0.01" min="0" value="0" oninput="computePayroll();"></div>
-                        <div class="form-group"><label class="form-label">Night Differential</label><input type="number" name="night_differential" id="night_differential" class="form-input" step="0.01" min="0" value="0" oninput="computePayroll();"></div>
                         <div class="form-group"><label class="form-label">Incentives</label><input type="number" name="incentives" id="incentives" class="form-input" step="0.01" min="0" value="0" oninput="computePayroll();"></div>
                         <div class="form-group"><label class="form-label">Allowances</label><input type="number" name="allowances" id="allowances" class="form-input" step="0.01" min="0" value="0" oninput="computePayroll();"></div>
                         <div class="form-group"><label class="form-label">Leave Pay</label><input type="number" name="leave_pay" id="leave_pay" class="form-input" step="0.01" min="0" value="0" oninput="computePayroll();"></div>
@@ -331,11 +327,9 @@
                         <div class="form-group"><label class="form-label">Undertime</label><input type="number" name="undertime" id="undertime" class="form-input" step="0.01" min="0" value="0" oninput="computePayroll();"></div>
                         <div class="form-group"><label class="form-label">SSS</label><input type="number" name="sss" id="sss" class="form-input" step="0.01" min="0" value="0" oninput="computePayroll();"><small class="field-hint" id="hint_sss"></small></div>
                         <div class="form-group"><label class="form-label">PhilHealth</label><input type="number" name="philhealth" id="philhealth" class="form-input" step="0.01" min="0" value="0" oninput="computePayroll();"><small class="field-hint" id="hint_philhealth"></small></div>
-                        <div class="form-group"><label class="form-label">Pag-IBIG / HDMF</label><input type="number" name="pagibig" id="pagibig" class="form-input" step="0.01" min="0" value="0" oninput="computePayroll();"><small class="field-hint" id="hint_pagibig"></small></div>
-                        <div class="form-group"><label class="form-label">Withholding Tax</label><input type="number" name="withholding_tax" id="withholding_tax" class="form-input" step="0.01" min="0" value="0" oninput="computePayroll();"></div>
+                        <div class="form-group"><label class="form-label">Pag-IBIG</label><input type="number" name="pagibig" id="pagibig" class="form-input" step="0.01" min="0" value="0" oninput="computePayroll();"><small class="field-hint" id="hint_pagibig"></small></div>
                         <div class="form-group"><label class="form-label">Cash Advance</label><input type="number" name="cash_advance" id="cash_advance" class="form-input" step="0.01" min="0" value="0" oninput="computePayroll();"></div>
                         <div class="form-group"><label class="form-label">Salary Loan</label><input type="number" name="salary_loan" id="salary_loan" class="form-input" step="0.01" min="0" value="0" oninput="computePayroll();"></div>
-                        <div class="form-group"><label class="form-label">HDMF Loan</label><input type="number" name="hdmf_loan" id="hdmf_loan" class="form-input" step="0.01" min="0" value="0" oninput="computePayroll();"></div>
                         <div class="form-group"><label class="form-label">Other Deductions</label><input type="number" name="other_deductions" id="other_deductions" class="form-input" step="0.01" min="0" value="0" oninput="computePayroll();"></div>
                     </div>
                 </div>
@@ -371,8 +365,8 @@
     // Quantities the attendance gives, and the amounts that follow from them. The system fills them in when an employee and a
     // period are chosen; the admin may type over every one of them.
     const COMPUTED_FIELDS = ['total_days_worked', 'late_minutes', 'undertime_minutes', 'overtime_hours', 'absent', 'basic_salary', 'overtime_pay', 'late', 'undertime', 'sss', 'philhealth', 'pagibig'];
-    const EXTRA_EARNINGS = ['regular_holiday', 'special_holiday', 'night_differential', 'incentives', 'allowances', 'leave_pay', 'rest_day_pay', 'salary_adjustment', 'other_earnings'];
-    const EXTRA_DEDUCTIONS = ['withholding_tax', 'cash_advance', 'salary_loan', 'hdmf_loan', 'other_deductions'];
+    const EXTRA_EARNINGS = ['regular_holiday', 'special_holiday', 'incentives', 'allowances', 'leave_pay', 'rest_day_pay', 'salary_adjustment', 'other_earnings'];
+    const EXTRA_DEDUCTIONS = ['cash_advance', 'salary_loan', 'other_deductions'];
     const EARNING_FIELDS = ['basic_salary', 'overtime_pay'].concat(EXTRA_EARNINGS);
     const DEDUCTION_FIELDS = ['late', 'undertime', 'sss', 'philhealth', 'pagibig'].concat(EXTRA_DEDUCTIONS);
     const NUM_FIELDS = ['total_days_worked', 'late_minutes', 'undertime_minutes', 'overtime_hours', 'absent'].concat(EARNING_FIELDS, DEDUCTION_FIELDS);
@@ -462,7 +456,8 @@
             function(label) {
                 const choice = employeeChoices.find(function(item) { return item.label === label; });
                 if (choice) setEmployee(choice.id);
-            }
+            },
+            { emptyText: @json($isSuperAdminPayroll ? 'No Admin employee matches. The super admin generates payroll for Admin employees only.' : 'No technician of your branch matches.') }
         );
         // Typing over a chosen employee un-chooses them until another one is picked.
         search.addEventListener('input', function() {
@@ -664,7 +659,6 @@
             ['Overtime Pay', rv('overtime_pay')],
             ['Regular Holiday', rv('regular_holiday')],
             ['Special Holiday', rv('special_holiday')],
-            ['Night Differential', rv('night_differential')],
             ['Incentives', rv('incentives')],
             ['Allowances', rv('allowances')],
             ['Leave Pay', rv('leave_pay')],
@@ -676,10 +670,8 @@
             ['SSS', rv('sss')],
             ['PhilHealth', rv('philhealth')],
             ['Pag-IBIG', rv('pagibig')],
-            ['Withholding Tax', rv('withholding_tax')],
             ['Cash Advance', rv('cash_advance')],
             ['Salary Loan', rv('salary_loan')],
-            ['HDMF Loan', rv('hdmf_loan')],
             ['Other Deductions', rv('other_deductions')]
         ];
         const earningHtml = earningRows.map(function(r) {

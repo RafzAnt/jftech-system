@@ -19,13 +19,13 @@ class StandardReportFormatTest extends TestCase
 
     /** Every report of the system, with the title it prints. */
     private const REPORTS = [
-        '/print-payments' => 'Payment Transactions Report',
+        '/print-payments' => 'Payment Collection Report',
         '/print-bills' => 'Billing Report',
-        '/print-clients' => 'Client Masterlist Report',
-        '/print-employees' => 'Employee Masterlist Report',
-        '/print-inventory' => 'Inventory Stock Report',
+        '/print-clients' => 'Client Report',
+        '/print-employees' => 'Employee Report',
+        '/print-inventory' => 'Inventory Report',
         '/print-attendance' => 'Attendance Report',
-        '/print-monthly-reports' => 'Business Summary Report',
+        '/print-monthly-reports' => 'Profit and Loss Report',
         '/print-payroll?id=1' => 'Payslip',
         '/print-reports' => 'JFTECH Activity Report',
     ];
@@ -58,6 +58,32 @@ class StandardReportFormatTest extends TestCase
             $this->assertStringContainsString('*** END OF ' . ($title === 'Payslip' ? 'PAYSLIP' : 'REPORT') . ' ***', $html, $url);
             $this->assertStringContainsString('Page " counter(page) " of " counter(pages)', $html, $url);
             $this->assertStringContainsString('css/print_report.css', $html, $url);
+            $this->assertStringContainsString('function fitOnePage()', $html, "{$url} is not scaled to one page when it is long");
+        }
+        $this->assertStringContainsString('zoom: var(--fit', file_get_contents(public_path('css/print_report.css')));
+    }
+
+    public function test_the_totals_are_at_the_bottom_of_a_report_not_in_a_box_on_top(): void
+    {
+        $this->signIn(1);
+
+        foreach (self::REPORTS as $url => $title) {
+            if ($title === 'Payslip') {
+                continue;
+            }
+            $html = $this->get($url)->assertOk()->getContent();
+            $this->assertStringNotContainsString('<div class="summary">', $html, "{$url} still has the box of figures on top");
+            $totals = strpos($html, '<div class="section-heading">Totals</div>');
+            $this->assertNotFalse($totals, "{$url} has no Totals");
+            $this->assertLessThan(strpos($html, '<section class="signatories">'), $totals, "{$url}: the totals come before the signatures");
+            $this->assertGreaterThan(strpos($html, '<div class="report-info">'), $totals, "{$url}: the totals are below the report, not on top");
+        }
+
+        // The four figures that were in the box on top of the business report are now the totals at its bottom.
+        $business = $this->get('/print-monthly-reports')->getContent();
+        $totals = strpos($business, '<div class="section-heading">Totals</div>');
+        foreach (['Total Billed', 'Payments Received', 'Outstanding Balance', 'Net Payroll'] as $figure) {
+            $this->assertNotFalse(strpos($business, $figure, $totals), "{$figure} is listed in the totals at the bottom");
         }
     }
 
@@ -111,28 +137,68 @@ class StandardReportFormatTest extends TestCase
         $this->assertStringContainsString('As of ' . now()->format('F j, Y'), $this->get('/print-clients')->getContent());
     }
 
-    public function test_the_rows_are_numbered_and_end_in_a_total_row(): void
+    public function test_the_summary_tables_add_up_to_a_total_row_and_list_no_records(): void
     {
         $this->signIn(1);
 
         $clients = $this->get('/print-clients')->assertOk()->getContent();
-        $this->assertStringContainsString('<th class="no">No.</th>', $clients);
-        $this->assertStringContainsString('<td class="no">3</td>', $clients);
-        $this->assertStringContainsString('TOTAL (3 clients)', $clients);
+        $this->assertStringContainsString('By Plan', $clients);
+        $this->assertMatchesRegularExpression('~<td>TOTAL</td>\s*<td class="num">3</td>~', $clients);
+        $this->assertStringNotContainsString('<th class="no">No.</th>', $clients, 'no record-by-record list');
+        $this->assertStringNotContainsString('Ana Reyes', $clients, 'a summary names no client');
+        $this->assertStringNotContainsString('JFT-1', $clients);
 
         $payments = $this->get('/print-payments')->assertOk()->getContent();
-        $this->assertStringContainsString('TOTAL (2 payments)', $payments);
-        $this->assertStringContainsString('₱3,000.00', $payments);
+        $this->assertStringContainsString('By Payment Method', $payments);
+        $this->assertMatchesRegularExpression('~<td>TOTAL COLLECTED</td>\s*<td class="num">2</td>\s*<td class="num">₱3,000.00</td>\s*<td class="num">100.0%</td>~', $payments);
+        $this->assertStringContainsString('₱1,500.00', $payments, 'the average payment');
+        $this->assertStringNotContainsString('Ben Cruz', $payments);
+        $this->assertStringNotContainsString('<th class="no">No.</th>', $payments);
     }
 
-    public function test_a_name_with_an_ampersand_is_not_escaped_twice(): void
+    public function test_the_long_breakdowns_are_not_on_the_printed_reports(): void
     {
-        DB::table('clients')->where('id', 1)->update(['full_name' => 'Ana & Sons']);
+        $this->signIn(1);
+
+        // A printed report is one short page: no table per date, month, branch or barangay.
+        foreach (self::REPORTS as $url => $title) {
+            $html = $this->get($url)->assertOk()->getContent();
+            foreach (['By Date', 'By Month', 'By Branch', 'By Barangay', 'By Billing Month', 'Daily Breakdown', 'Monthly Breakdown'] as $long) {
+                $this->assertStringNotContainsString($long, $html, "{$url} still prints {$long}");
+            }
+        }
+    }
+
+    public function test_the_employee_report_groups_by_position_when_no_employee_has_a_department(): void
+    {
+        $this->signIn(1);
+
+        $html = $this->get('/print-employees')->assertOk()->getContent();
+        $this->assertStringContainsString('By Position', $html);
+        $this->assertStringNotContainsString('By Department', $html);
+        $this->assertStringNotContainsString('Not specified', $html);
+    }
+
+    public function test_every_list_report_is_a_summary_without_a_record_list(): void
+    {
+        $this->signIn(1);
+
+        foreach (['/print-payments', '/print-bills', '/print-clients', '/print-employees', '/print-inventory', '/print-attendance', '/print-reports'] as $url) {
+            $html = $this->get($url)->assertOk()->getContent();
+            $this->assertStringNotContainsString('<th class="no">No.</th>', $html, "{$url} still lists records");
+            $this->assertStringContainsString('<div class="section-heading">', $html, $url);
+        }
+        $this->assertStringContainsString('By Record Type', $this->get('/print-reports')->getContent());
+    }
+
+    public function test_a_plan_name_with_an_ampersand_is_not_escaped_twice(): void
+    {
+        DB::table('clients')->where('id', 1)->update(['wifi_plan' => 'Home & Office']);
         $this->signIn(1);
 
         $html = $this->get('/print-clients')->assertOk()->getContent();
 
-        $this->assertStringContainsString('Ana &amp; Sons', $html);
+        $this->assertStringContainsString('Home &amp; Office', $html);
         $this->assertStringNotContainsString('&amp;amp;', $html);
     }
 

@@ -156,8 +156,10 @@ trait BranchTestData
         Schema::create('client_plan_change_histories', function ($table) {
             $table->id();
             $table->unsignedBigInteger('client_id');
+            $table->unsignedBigInteger('previous_internet_plan_id')->nullable();
             $table->string('previous_plan_name')->nullable();
             $table->decimal('previous_monthly_rate', 10, 2)->default(0);
+            $table->unsignedBigInteger('new_internet_plan_id')->nullable();
             $table->string('new_plan_name')->nullable();
             $table->decimal('new_monthly_rate', 10, 2)->default(0);
             $table->string('reason')->nullable();

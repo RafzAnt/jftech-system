@@ -4,7 +4,7 @@ return function (\Illuminate\Http\Request $request): array {
 
 /**
  * JFTECH WiFi Billing & Management System
- * Printable Inventory Stock Report
+ * Printable Inventory Report
  */
 
 $selectedCategory = $request->query('category') ?? '';
@@ -43,6 +43,13 @@ $totalItems = count($inventoryItems);
 $totalQuantity = array_sum(array_map(function($i) { return (int) $i['quantity']; }, $inventoryItems));
 $totalValue = array_sum(array_map(function($i) { return (float) $i['quantity'] * (float) $i['unit_price']; }, $inventoryItems));
 $lowStockItems = count(array_filter($inventoryItems, function($i) { return (int) $i['quantity'] <= (int) $i['reorder_level']; }));
+
+// The report is a summary: the items are counted and their stock and value added up, not listed one by one.
+$stockFigures = [
+    'quantity' => fn ($i) => (int) $i['quantity'],
+    'value' => fn ($i) => (float) $i['quantity'] * (float) $i['unit_price'],
+];
+$byCategory = \App\Support\ReportBreakdown::group($inventoryItems, fn ($i) => $i['category'], $stockFigures, [], 15);
 
 $categories = array_unique(array_filter(array_column($inventoryItems, 'category')));
 sort($categories);

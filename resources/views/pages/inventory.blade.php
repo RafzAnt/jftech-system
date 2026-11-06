@@ -122,7 +122,7 @@
                                 <th>Category</th>
                                 <th>Stock</th>
                                 <th>Reserved</th>
-                                <th>Available</th>
+                                <th>Available Stock</th>
                                 <th>Unit Price</th>
                                 <th>Total Value</th>
                                 <th>Status</th>

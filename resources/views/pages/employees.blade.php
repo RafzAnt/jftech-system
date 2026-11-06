@@ -15,7 +15,7 @@
     <link rel="stylesheet" href="{{ asset('css/jftech-theme.css') }}?{{ $themeCssVersion }}">
     <link rel="stylesheet" href="{{ asset('css/employees.css') }}?{{ $employeesCssVersion }}">
     <link rel="stylesheet" href="{{ asset('css/client_filter.css') }}?{{ $clientFilterCssVersion }}">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="{{ asset('js/qrcode.min.js') }}"></script>
 </head>
 <body>
     <div class="grid-overlay"></div>

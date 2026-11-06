@@ -69,6 +69,12 @@ $totalPresent = count(array_filter($attendanceRecords, function($a) { return $a[
 $totalLate = count(array_filter($attendanceRecords, function($a) { return $a['status_morning'] === 'late' || $a['status_afternoon'] === 'late'; }));
 $totalAbsent = count(array_filter($attendanceRecords, function($a) { return $a['status_morning'] === 'absent' && $a['status_afternoon'] === 'absent'; }));
 
+// The report is a summary: the days are counted and the hours added up, not listed employee by employee.
+$employeesCounted = count(array_unique(array_column($attendanceRecords, 'employee_id')));
+$totalHours = array_sum(array_map(fn ($a) => (float) $a['total_hours'], $attendanceRecords));
+$overtimeDays = count(array_filter($attendanceRecords, fn ($a) => (int) $a['overtime_minutes'] > 0));
+$overtimeMinutes = array_sum(array_map(fn ($a) => (int) $a['overtime_minutes'], $attendanceRecords));
+
 // The same dates the query above used: the range when one is given, otherwise the single day, otherwise every date.
 $periodLabel = ($selectedStart || $selectedEnd)
     ? \App\Support\ReportFormat::coverage($selectedStart, $selectedEnd)

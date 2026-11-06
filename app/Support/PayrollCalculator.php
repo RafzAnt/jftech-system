@@ -27,18 +27,22 @@ final class PayrollCalculator
 
     /** Everything that is added to the gross pay. */
     public const EARNINGS = [
-        'basic_salary', 'overtime_pay', 'regular_holiday', 'special_holiday', 'night_differential', 'incentives',
+        'basic_salary', 'overtime_pay', 'regular_holiday', 'special_holiday', 'incentives',
         'allowances', 'leave_pay', 'rest_day_pay', 'salary_adjustment', 'other_earnings',
     ];
 
     /** Everything that is taken from the gross pay. */
     public const DEDUCTIONS = [
-        'late', 'undertime', 'sss', 'philhealth', 'pagibig', 'withholding_tax', 'cash_advance', 'salary_loan', 'hdmf_loan', 'other_deductions',
+        'late', 'undertime', 'sss', 'philhealth', 'pagibig', 'cash_advance', 'salary_loan', 'other_deductions',
     ];
 
-    /** Earnings and deductions that are always typed by the admin; they have no formula. */
-    public const EXTRA_EARNINGS = ['regular_holiday', 'special_holiday', 'night_differential', 'incentives', 'allowances', 'leave_pay', 'rest_day_pay', 'salary_adjustment', 'other_earnings'];
-    public const EXTRA_DEDUCTIONS = ['withholding_tax', 'cash_advance', 'salary_loan', 'hdmf_loan', 'other_deductions'];
+    /**
+     * Earnings and deductions that are always typed by the admin; they have no formula. Night differential (work is recorded only until
+     * 10 PM), withholding tax (the daily rates are far below the tax-exempt income) and the HDMF loan (a salary loan) are not used; their
+     * columns stay in the payroll table, so nothing is lost.
+     */
+    public const EXTRA_EARNINGS = ['regular_holiday', 'special_holiday', 'incentives', 'allowances', 'leave_pay', 'rest_day_pay', 'salary_adjustment', 'other_earnings'];
+    public const EXTRA_DEDUCTIONS = ['cash_advance', 'salary_loan', 'other_deductions'];
 
     /** The amounts the formulas produce; in a manual payroll the admin may overwrite each of them. */
     public const COMPUTED = ['basic_salary', 'overtime_pay', 'late', 'undertime', 'absent', 'sss', 'philhealth', 'pagibig'];

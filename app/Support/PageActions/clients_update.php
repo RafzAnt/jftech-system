@@ -116,11 +116,11 @@ if ($request->isMethod('post') && $request->has('update_client')) {
             $historyStmt = $pdo->prepare("INSERT INTO client_plan_change_histories (client_id, previous_internet_plan_id, previous_plan_name, previous_monthly_rate, new_internet_plan_id, new_plan_name, new_monthly_rate, reason, changed_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
             $historyStmt->execute([$clientId, $currentClient['internet_plan_id'], $currentClient['wifi_plan'], $currentClient['monthly_rate'], $planId, $wifiPlan, $monthlyRate, 'Administrator selected a different internet plan.', auth()->id()]);
 
-            // A plan migration changes the client’s active service price, so
-            // align unpaid bills as well. Paid bills are historical receipts
-            // and must never be rewritten.
-            $billStmt = $pdo->prepare("UPDATE bills SET amount = ? WHERE client_id = ? AND status IN ('pending', 'overdue')");
-            $billStmt->execute([$monthlyRate, $clientId]);
+            // The new price starts with the next billing period. A bill whose period has begun was charged under the previous
+            // plan, so it keeps its amount whether it is paid, pending or overdue (and a part-paid balance stays right). Only the
+            // incoming bill, for a period that has not begun and has no payment yet, takes the new price.
+            $billStmt = $pdo->prepare("UPDATE bills SET amount = ? WHERE client_id = ? AND status = 'pending' AND billing_period_start > ? AND NOT EXISTS (SELECT 1 FROM payments p WHERE p.bill_id = bills.id)");
+            $billStmt->execute([$monthlyRate, $clientId, date('Y-m-d')]);
         }
 
         $success = 'Client updated successfully!';

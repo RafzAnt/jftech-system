@@ -4,7 +4,7 @@ return function (\Illuminate\Http\Request $request): array {
 
 /**
  * JFTECH WiFi Billing & Management System
- * Printable Payment Transactions Report (PDF via browser print-to-PDF)
+ * Printable Payment Collection Report (PDF via browser print-to-PDF)
  */
 
 $from = $request->query('from') ?? '';
@@ -26,7 +26,7 @@ if ($to) {
 }
 
     $sql = "
-        SELECT p.*, c.full_name AS client_name, c.client_code,
+        SELECT p.*, c.full_name AS client_name, c.client_code, c.branch_name,
               b.bill_number, b.amount AS bill_amount,
               (COALESCE(b.amount, 0) - COALESCE((SELECT SUM(amount) FROM payments WHERE bill_id = p.bill_id), 0)) AS balance
         FROM payments p
@@ -44,6 +44,11 @@ $payments = $stmt->fetchAll();
 
 $total = (float) array_sum(array_map(function ($p) { return (float) $p['amount']; }, $payments));
 $count = count($payments);
+$clientsPaid = count(array_unique(array_column($payments, 'client_id')));
+
+// The report is a summary: the payments are counted and added up, not listed one by one.
+$amountOf = ['amount' => fn ($p) => (float) $p['amount']];
+$byMethod = \App\Support\ReportBreakdown::group($payments, fn ($p) => \App\Support\ReportFormat::paymentMethod($p['payment_method']), $amountOf);
 $rangeLabel = \App\Support\ReportFormat::coverage($from, $to);
     return get_defined_vars();
 };

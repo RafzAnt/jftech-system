@@ -4,7 +4,7 @@ return function (\Illuminate\Http\Request $request): array {
 
 /**
  * JFTECH WiFi Billing & Management System
- * Printable Client Masterlist Report
+ * Printable Client Report
  */
 
 $selectedBarangay = $request->query('barangay') ?? '';
@@ -39,6 +39,11 @@ $totalClients = count($clients);
 $activeClients = count(array_filter($clients, function($c) { return $c['status'] === 'active'; }));
 $inactiveClients = count(array_filter($clients, function($c) { return $c['status'] === 'inactive'; }));
 $suspendedClients = count(array_filter($clients, function($c) { return $c['status'] === 'suspended'; }));
+
+// The report is a summary: the clients are counted and their monthly rates added up, not listed one by one.
+$totalMonthlyRate = array_sum(array_map(fn ($c) => (float) $c['monthly_rate'], $clients));
+$rateOf = ['rate' => fn ($c) => (float) $c['monthly_rate']];
+$byPlan = \App\Support\ReportBreakdown::group($clients, fn ($c) => $c['wifi_plan'], $rateOf, [], 12);
 
 $barangayLabel = '';
 if ($selectedBarangay) {

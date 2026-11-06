@@ -12,7 +12,7 @@ $selectedClient = $request->query('client_id') ?? '';
 $selectedStart = $request->query('start') ?? '';
 $selectedEnd = $request->query('end') ?? '';
 
-$query = "SELECT b.*, c.full_name, c.client_code, c.wifi_plan 
+$query = "SELECT b.*, c.full_name, c.client_code, c.wifi_plan, c.branch_name 
           FROM bills b 
           JOIN clients c ON b.client_id = c.id 
           WHERE TRUE";
@@ -52,6 +52,9 @@ $totalPaid = array_sum(array_map(function($b) { return $b['status'] === 'paid' ?
 $totalOverdue = array_sum(array_map(function($b) { return $b['status'] === 'overdue' ? (float) $b['amount'] : 0; }, $bills));
 
 $periodLabel = \App\Support\ReportFormat::coverage($selectedStart, $selectedEnd);
+
+// The report is a summary: the bills are counted and added up, not listed one by one.
+$clientsBilled = count(array_unique(array_column($bills, 'client_id')));
 
 $statusLabel = '';
 if ($selectedStatus) {

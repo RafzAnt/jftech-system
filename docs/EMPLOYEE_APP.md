@@ -12,6 +12,13 @@ and *Installation* (the report after installing a client, see below). The bottom
 and **Profile**. The Profile shows who is signed in and holds **Transaction history**,
 **Server settings** (the address of the server) and **Log out**.
 
+**Testing the local server from a phone (same Wi-Fi):** on the computer run `./serve.sh` (it listens on the whole network on port 8001
+and prints the computer's IP; stop any plain `php artisan serve` on 8001 first, that one only listens on the computer itself). In the app
+open **Server settings** (the gear on the login screen, or the Profile), type **only the IP**, for example `192.168.1.22`, press **Test
+connection** and **Save**. The app builds `http://192.168.1.22:8001/backend/api` itself (`192.168.1.22:8080` keeps another port; a full
+address is left as typed). If the test times out, allow the port in the computer's firewall (`sudo ufw allow 8001/tcp`). *Use the deployed
+Vercel server* in the same screen goes back to the default. Port 8000 on the development computer is another, older project.
+
 The installation and repair **work requests** (the bell on the Home, **My work requests** in the Profile and **Work Requests**
 in the website's sidebar) were removed on 2026-10-22. Their tables (`work_requests`, `work_request_materials`) and the old
 rows are still in the database; nothing reads or writes them any more.
@@ -29,6 +36,10 @@ rows are still in the database; nothing reads or writes them any more.
    the time out is saved, and leaving a session more than 5 minutes before it ends is **undertime** (shown in the app's history and in the
    website's Attendance table; the payroll still takes undertime minutes as typed, see `docs/PAYROLL.md`). A second scan within a minute of the
    time in is refused (it is almost always a double scan).
+   **Early in and early out:** a session's QR code already works before the session starts (the setting *Early Scan Allowed*, 60
+   minutes by default, 0 to 180, in Settings; "too early" answers with the time it opens). The real scan time is kept and it is never
+   late, but the hours count from the start of the session. Scanning out early is accepted at any time before the end: the minutes
+   left before the end are undertime (after the 5-minute grace).
 3. **Inventory** – *Item Out* and *Item Return* become stock requests (`inventory_request_create.php`, with
    `request_type`, condition, area used and person in charge). The branch admin approves them in **Inventory →
    Requests**; an approved item out leaves the stock, an accepted return goes back in.

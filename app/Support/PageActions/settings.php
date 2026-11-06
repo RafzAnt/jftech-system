@@ -34,12 +34,13 @@ if ($request->isMethod('post')) {
             if (isset($submittedSettings['company_contact']) && ! preg_match('/^\d{11}$/', trim((string) $submittedSettings['company_contact']))) {
                 throw new Exception('Business mobile number must contain exactly 11 digits.');
             }
-            // The working rules of the payroll, with the range each may take and the name it is saved under.
+            // The numeric working rules (the payroll's and the early scan of the attendance), with the range each may take and the name it is saved under.
             $payrollRules = [
                 'payroll_days_per_month' => [1, 31, 'Working days in a month'],
                 'payroll_weeks_per_month' => [1, 5, 'Payrolls in a month (contributions are divided by this)'],
                 'payroll_hours_per_day' => [1, 24, 'Working hours in a day'],
                 'payroll_overtime_rate' => [1, 3, 'Overtime pay multiplier'],
+                'early_scan_minutes' => [0, \App\Support\AttendanceTime::MAX_EARLY_SCAN_MINUTES, 'Early scan allowed (minutes before a session starts)'],
             ];
             // The last scan of the day: the afternoon QR code works until then, and the time after the end of the afternoon is overtime.
             $ensureSettings = ['qr_overtime_end' => 'Last scan of the day (overtime ends)'];
@@ -54,6 +55,9 @@ if ($request->isMethod('post')) {
             foreach ($submittedSettings as $key => $value) {
                 if (str_starts_with((string) $key, 'payroll_') && (! is_numeric($value) || (float) $value < 0)) {
                     throw new Exception('The payroll settings must be valid positive numbers.');
+                }
+                if ($key === 'early_scan_minutes' && (! preg_match('/^\d+$/', trim((string) $value)))) {
+                    throw new Exception('Early scan allowed must be a whole number of minutes.');
                 }
                 if (isset($payrollRules[$key]) && ((float) $value < $payrollRules[$key][0] || (float) $value > $payrollRules[$key][1])) {
                     throw new Exception($payrollRules[$key][2] . ' must be between ' . $payrollRules[$key][0] . ' and ' . $payrollRules[$key][1] . '.');

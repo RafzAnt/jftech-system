@@ -1639,14 +1639,18 @@ html:not([data-theme]) .btn-primary {
 /* Page backdrop: one soft blue wash from the top, otherwise quiet neutral. */
 body:not(.login-page) {
     background:
-        radial-gradient(64rem 26rem at 72% -9rem, rgba(37, 99, 235, 0.08), transparent 70%),
+        radial-gradient(56rem 26rem at 76% -9rem, rgba(37, 99, 235, 0.11), transparent 70%),
+        radial-gradient(40rem 24rem at 4% 10%, rgba(124, 58, 237, 0.06), transparent 70%),
+        radial-gradient(46rem 26rem at 100% 100%, rgba(13, 148, 136, 0.06), transparent 70%),
         linear-gradient(180deg, #f8fafd 0%, var(--primary) 24rem);
     background-attachment: fixed;
 }
 
 html[data-theme="dark"] body:not(.login-page) {
     background:
-        radial-gradient(64rem 26rem at 72% -9rem, rgba(59, 130, 246, 0.13), transparent 70%),
+        radial-gradient(56rem 26rem at 76% -9rem, rgba(59, 130, 246, 0.18), transparent 70%),
+        radial-gradient(40rem 24rem at 4% 10%, rgba(139, 92, 246, 0.10), transparent 70%),
+        radial-gradient(46rem 26rem at 100% 100%, rgba(20, 184, 166, 0.08), transparent 70%),
         linear-gradient(180deg, #0d1627 0%, var(--primary) 24rem);
     background-attachment: fixed;
 }
@@ -1702,6 +1706,89 @@ html[data-theme="dark"] {
 
 .stat-card-link:hover {
     box-shadow: var(--card-edge), var(--shadow-md);
+}
+
+/* ===== VISUAL LIFT (colour, depth, motion; still no font size, family or weight) ===== */
+
+/* Each key figure gets its own colour (a page can set --stat-color on the card; otherwise they rotate through the palette). */
+.stat-card { --stat-color: var(--accent); }
+.stat-card:nth-child(6n + 2) { --stat-color: var(--info); }
+.stat-card:nth-child(6n + 3) { --stat-color: var(--warning); }
+.stat-card:nth-child(6n + 4) { --stat-color: var(--success); }
+.stat-card:nth-child(6n + 5) { --stat-color: var(--violet, var(--accent-secondary)); }
+.stat-card:nth-child(6n) { --stat-color: var(--danger); }
+
+:root { --violet: #7c3aed; }
+html[data-theme="dark"] { --violet: #a78bfa; }
+
+/* A tinted surface with a soft glow in the corner and a lit top edge, instead of the grey corner brackets. */
+.stat-card {
+    background:
+        radial-gradient(120% 150% at 100% 0%, color-mix(in srgb, var(--stat-color) 15%, transparent) 0%, transparent 58%),
+        linear-gradient(180deg, var(--card-bg) 0%, var(--header-tint) 100%);
+    border-color: color-mix(in srgb, var(--stat-color) 20%, var(--border-color));
+}
+
+.stat-card::before {
+    inset: 0 0 auto 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--stat-color) 0%, color-mix(in srgb, var(--stat-color) 0%, transparent) 92%);
+}
+
+.stat-card-link:hover {
+    border-color: color-mix(in srgb, var(--stat-color) 55%, var(--border-color));
+    box-shadow: var(--card-edge), 0 18px 32px -16px color-mix(in srgb, var(--stat-color) 60%, transparent);
+    transform: translateY(-3px);
+}
+
+/* Cards, rows and menu items answer the pointer. */
+.card:hover {
+    border-color: var(--border-strong);
+}
+
+.data-table tbody tr {
+    transition: background-color 0.15s ease;
+}
+
+.data-table tbody tr:hover td:first-child {
+    box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.nav-item {
+    transition: background-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.nav-item:not(.active):hover {
+    transform: translateX(2px);
+}
+
+/* Slim scrollbars in the theme colours. */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
+}
+
+/* Pages come in with a short rise, one card after the other. */
+@media (prefers-reduced-motion: no-preference) {
+    @keyframes liftIn {
+        from { opacity: 0; transform: translateY(8px); }
+        to { opacity: 1; transform: none; }
+    }
+
+    .main-content > .card,
+    .main-content > .stats-grid > .stat-card,
+    .main-content > .dashboard-row > .card,
+    .main-content > .report-tables > .card {
+        animation: liftIn 0.38s var(--lift-ease, ease-out) both;
+    }
+
+    .main-content > .stats-grid > .stat-card:nth-child(2) { animation-delay: 0.04s; }
+    .main-content > .stats-grid > .stat-card:nth-child(3) { animation-delay: 0.08s; }
+    .main-content > .stats-grid > .stat-card:nth-child(4) { animation-delay: 0.12s; }
+    .main-content > .stats-grid > .stat-card:nth-child(5) { animation-delay: 0.16s; }
+    .main-content > .stats-grid > .stat-card:nth-child(6) { animation-delay: 0.2s; }
+    .main-content > .card:nth-of-type(2) { animation-delay: 0.05s; }
+    .main-content > .card:nth-of-type(3) { animation-delay: 0.1s; }
 }
 
 /* Buttons: a soft top-light and a tinted shadow on every solid colour. */
@@ -1855,7 +1942,7 @@ fieldset:disabled .form-select {
 
 .nav-item.active {
     background: linear-gradient(90deg, rgba(59, 130, 246, 0.3) 0%, rgba(59, 130, 246, 0.07) 100%);
-    box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.16);
+    box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.2), 0 10px 22px -12px rgba(59, 130, 246, 0.75);
 }
 
 .nav-item.active::before {
@@ -2099,6 +2186,11 @@ html[data-theme="light"] body .client-record-actions summary:hover {
 .location-suggestion-option:hover,
 .location-suggestion-option[aria-selected="true"] {
     background: rgba(41, 121, 255, 0.12);
+}
+
+.location-suggestion-empty {
+    padding: 0.6rem 0.75rem;
+    color: var(--text-muted, #6b7280);
 }
 
 /* ===== PAGES (see the pagination script at the end of js/jftech-main.js) ===== */

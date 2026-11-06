@@ -50,6 +50,17 @@ class PeriodReport
         return date('M d, Y', strtotime($start)) . ' – ' . date('M d, Y', strtotime($end));
     }
 
+    /** True when nothing was recorded in the period (for the branch chosen), so the report shows a message instead of tables of zeros. */
+    public static function isEmpty(array $report): bool
+    {
+        return $report['bills']['count'] + $report['bills']['cancelledCount'] === 0
+            && $report['payments']['count'] === 0
+            && $report['clients']['new'] === 0
+            && $report['attendance']['records'] === 0
+            && $report['payroll']['entries'] === 0
+            && ($report['requests']['total'] ?? 0) === 0;
+    }
+
     /** Limit a query to one branch (null = every branch), using a BranchScope fragment. */
     private static function inBranch($query, array $fragment)
     {
@@ -161,6 +172,104 @@ class PeriodReport
             ],
             // Side by side, one line per branch; only for the report that covers every branch.
             'branches' => $branch === null ? self::byBranch($start, $end) : null,
+        ];
+    }
+
+    /** The most branch columns the printed profit and loss statement has (so the amounts fit on one sheet); with more branches the smallest are added together in the last column. */
+    public const STATEMENT_BRANCH_COLUMNS = 9;
+
+    /**
+     * The profit and loss statement of the printed report, one column per branch (the biggest receiver first) and a total.
+     * Income is what was received (the payments, one line per payment method); expenditure is the payroll of the period
+     * (gross pay), the only cost the system records. A branch's report has the one column. Every line is
+     * ['label' => ..., 'amounts' => [one per column], 'total' => ...]; the sums and the profit have the same shape without a label.
+     * The totals are the same as the payments collected and the payroll gross pay of build().
+     */
+    public static function statement(string $start, string $end, ?string $branch = null): array
+    {
+        // A branch's report is one column named after it, whatever spelling its records use.
+        $branchName = static fn (?string $name): string => $branch !== null && $branch !== ''
+            ? $branch
+            : (trim((string) $name) !== '' ? trim((string) $name) : 'No branch');
+
+        $received = self::inBranch(DB::table('payments')->leftJoin('clients', 'clients.id', '=', 'payments.client_id')->whereBetween('payments.payment_date', [$start, $end]), BranchScope::viaClient($branch, 'payments.client_id'))
+            ->groupBy('clients.branch_name', 'payments.payment_method')
+            ->selectRaw('clients.branch_name AS branch, payments.payment_method AS method, COALESCE(SUM(payments.amount), 0) AS total')->get();
+        $wages = self::inBranch(DB::table('payroll')->leftJoin('employees', 'employees.id', '=', 'payroll.employee_id')->where('payroll.archived', 0)->whereBetween('payroll.payroll_period_end', [$start, $end]), BranchScope::viaEmployee($branch, 'payroll.employee_id'))
+            ->groupBy('employees.branch_name')
+            ->selectRaw('employees.branch_name AS branch, COALESCE(SUM(payroll.gross_pay), 0) AS total')->get();
+
+        $income = [];   // payment method => branch => pesos
+        $expense = [];  // line => branch => pesos
+        $size = [];     // branch => pesos collected, to put the biggest first
+        foreach ($received as $row) {
+            $method = strtolower(trim((string) $row->method)) ?: 'other';
+            $name = $branchName($row->branch);
+            $income[$method][$name] = ($income[$method][$name] ?? 0.0) + (float) $row->total;
+            $size[$name] = ($size[$name] ?? 0.0) + (float) $row->total;
+        }
+        foreach ($wages as $row) {
+            $name = $branchName($row->branch);
+            $expense['Employee pay (before deductions)'][$name] = ($expense['Employee pay (before deductions)'][$name] ?? 0.0) + (float) $row->total;
+            $size[$name] ??= 0.0;
+        }
+
+        $names = array_keys($size);
+        usort($names, static fn (string $a, string $b): int => [$size[$b], $a] <=> [$size[$a], $b]);
+        $shown = count($names) > self::STATEMENT_BRANCH_COLUMNS ? array_slice($names, 0, self::STATEMENT_BRANCH_COLUMNS - 1) : $names;
+        $others = count($names) - count($shown);
+        $columns = $shown === [] ? [$branch !== null && $branch !== '' ? $branch : 'All Branches'] : $shown;
+        if ($others > 0) {
+            $columns[] = 'Other branches (' . $others . ')';
+        }
+        $column = [];
+        foreach ($names as $index => $name) {
+            $column[$name] = min($index, count($columns) - 1);
+        }
+
+        $line = static function (string $label, array $byBranch) use ($column, $columns): array {
+            $amounts = array_fill(0, count($columns), 0.0);
+            foreach ($byBranch as $name => $pesos) {
+                $amounts[$column[$name]] += $pesos;
+            }
+
+            return ['label' => $label, 'amounts' => $amounts, 'total' => array_sum($amounts)];
+        };
+        $sum = static function (array $lines) use ($columns): array {
+            $amounts = array_fill(0, count($columns), 0.0);
+            foreach ($lines as $one) {
+                foreach ($one['amounts'] as $index => $pesos) {
+                    $amounts[$index] += $pesos;
+                }
+            }
+
+            return ['amounts' => $amounts, 'total' => array_sum($amounts)];
+        };
+
+        uasort($income, static fn (array $a, array $b): int => array_sum($b) <=> array_sum($a));
+        $incomeLines = [];
+        foreach ($income as $method => $byBranch) {
+            $incomeLines[] = $line($method, $byBranch);
+        }
+        $expenseLines = [];
+        foreach ($expense as $label => $byBranch) {
+            $expenseLines[] = $line($label, $byBranch);
+        }
+
+        $netIncome = $sum($incomeLines);
+        $netExpenditure = $sum($expenseLines);
+        $profit = [
+            'amounts' => array_map(static fn (float $in, float $out): float => $in - $out, $netIncome['amounts'], $netExpenditure['amounts']),
+            'total' => $netIncome['total'] - $netExpenditure['total'],
+        ];
+
+        return [
+            'columns' => $columns,
+            'income' => $incomeLines,
+            'netIncome' => $netIncome,
+            'expenses' => $expenseLines,
+            'netExpenditure' => $netExpenditure,
+            'profit' => $profit,
         ];
     }
 

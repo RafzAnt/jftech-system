@@ -597,14 +597,36 @@ class AttendanceOvertimeTest extends TestCase
         $this->assertSame(0, DB::table('system_settings')->where('setting_key', 'like', 'qr_overtime%')->count());
     }
 
-    public function test_the_printed_attendance_lists_the_overtime(): void
+    public function test_the_super_admin_sets_how_early_the_qr_code_can_be_scanned(): void
+    {
+        $this->signIn(1);
+
+        $page = $this->page('settings', [], ['update_settings' => 1, 'settings' => ['early_scan_minutes' => '45']]);
+
+        $this->assertSame('System settings updated successfully!', $page['success']);
+        $this->assertSame('45', DB::table('system_settings')->where('setting_key', 'early_scan_minutes')->value('setting_value'), 'a database without the row gets it');
+        $this->assertSame(45, \App\Support\AttendanceTime::earlyScanMinutes());
+    }
+
+    public function test_the_early_scan_setting_must_be_a_whole_number_in_range(): void
+    {
+        $this->signIn(1);
+
+        $this->assertSame('Error: Early scan allowed must be a whole number of minutes.', $this->page('settings', [], ['update_settings' => 1, 'settings' => ['early_scan_minutes' => 'soon']])['error']);
+        $this->assertStringContainsString('must be between 0 and 180', $this->page('settings', [], ['update_settings' => 1, 'settings' => ['early_scan_minutes' => '500']])['error']);
+        $this->assertSame(0, DB::table('system_settings')->where('setting_key', 'early_scan_minutes')->count());
+        $this->assertSame(60, \App\Support\AttendanceTime::earlyScanMinutes(), 'without a saved setting it is an hour');
+    }
+
+    public function test_the_printed_attendance_summarises_the_overtime(): void
     {
         DB::table('attendance')->where('id', 1)->update(['overtime_time_in' => '17:00:00', 'overtime_time_out' => '18:30:00', 'overtime_minutes' => 90]);
         $this->signIn(1);
 
         $html = $this->get('/print-attendance?start=' . now()->startOfMonth()->toDateString() . '&end=' . now()->endOfMonth()->toDateString())->assertOk()->getContent();
 
-        $this->assertStringContainsString('Overtime', $html);
-        $this->assertStringContainsString('05:00 PM - 06:30 PM (90 min)', $html);
+        $this->assertMatchesRegularExpression('~<td>Days with overtime</td>\s*<td class="num">1</td>~', $html);
+        $this->assertMatchesRegularExpression('~<td>Overtime worked</td>\s*<td class="num">1 hr 30 min</td>~', $html);
+        $this->assertStringNotContainsString('05:00 PM - 06:30 PM', $html, 'the day itself is not listed');
     }
 }

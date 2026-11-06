@@ -43,6 +43,7 @@ class InstallationApiController extends Controller
         }
 
         $input = $request->validate([
+            'client_id' => ['nullable', 'integer', 'min:1'],
             'full_name' => ['required', 'string', 'max:100'],
             'contact_number' => ['required', 'string', 'max:20'],
             'email' => ['nullable', 'string', 'max:100'],

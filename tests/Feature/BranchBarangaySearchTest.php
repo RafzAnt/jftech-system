@@ -399,6 +399,11 @@ class BranchBarangaySearchTest extends TestCase
         $this->assertStringContainsString('id="employeeSearch"', $html);
         $this->assertStringContainsString('<input type="hidden" name="employee_id" id="employeeId">', $html);
         $this->assertStringNotContainsString('<select name="employee_id"', $html);
+        // Typing a name that is not one of the employees this account pays is answered, not met with silence.
+        $this->assertStringContainsString('No Admin employee matches.', $html);
+
+        $this->signIn(2);
+        $this->assertStringContainsString('No technician of your branch matches.', $this->get('/payroll')->assertOk()->getContent());
     }
 
     public function test_the_payroll_has_one_search_box_and_the_branch_of_each_payslip_is_shown(): void

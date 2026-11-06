@@ -1,11 +1,11 @@
 {{--
     The standard printed report of the system. A report view extends this and sets, before its content:
-      $reportTitle     the title, e.g. 'Payment Transactions Report' (also the name of the saved PDF)
+      $reportTitle     the title, e.g. 'Payment Collection Report' (also the name of the saved PDF)
       $documentTitle   optional; the name of the saved PDF when it should differ from the title, e.g. 'Payslip - Ana Reyes'
       $reportCoverage  the line under the title, e.g. ReportFormat::coverage($from, $to)
       $reportBranch    optional; defaults to the branch of the signed-in admin ("All Branches" for the super admin)
       $reportDetails   optional ['Status' => 'Paid Bills'] shown beside the branch
-      $orientation     'landscape' (default) or 'portrait'
+      $orientation     'portrait' (default) or 'landscape'
       $signatories     optional [['role' => 'Prepared by', 'name' => '', 'title' => '', 'caption' => '']]
       $endOf           optional; what ends in "*** END OF REPORT ***", e.g. 'Payslip'
       $printDelay      optional milliseconds to wait before the print dialog opens
@@ -14,7 +14,7 @@
 @use('App\Support\ReportFormat')
 @php
     $company = config('company');
-    $orientation = $orientation ?? 'landscape';
+    $orientation = $orientation ?? 'portrait';
     $preparedBy = ReportFormat::preparedBy();
     $printedAt = ReportFormat::dateTime(now());
     $printedBy = $preparedBy['name'] !== '' ? $preparedBy['name'] : 'System';
@@ -96,7 +96,25 @@
 
     @stack('scripts')
     <script>
-        window.addEventListener('load', function () { window.setTimeout(function () { window.print(); }, {{ (int) ($printDelay ?? 0) }}); });
+        // A report is one page: when its content is taller than the paper, it is scaled down (--fit, used by print_report.css) to fit.
+        function fitOnePage() {
+            var sheet = document.querySelector('.report');
+            if (!sheet) return;
+            var landscape = document.body.classList.contains('landscape');
+            var probe = document.createElement('div');
+            probe.style.cssText = 'position:absolute;visibility:hidden;width:' + (landscape ? 273 : 186) + 'mm;height:' + (landscape ? 178 : 265) + 'mm';
+            document.body.appendChild(probe);
+            var room = probe.offsetHeight, width = probe.offsetWidth;
+            document.body.removeChild(probe);
+            // The height the report takes at the width of the paper, before any scaling.
+            var saved = sheet.style.cssText;
+            sheet.style.cssText = 'max-width:none;width:' + width + 'px;padding:0;box-shadow:none;zoom:1';
+            var needed = sheet.getBoundingClientRect().height;
+            sheet.style.cssText = saved;
+            document.documentElement.style.setProperty('--fit', needed > room ? Math.max(0.4, room / needed * 0.92).toFixed(3) : '1');
+        }
+        window.addEventListener('beforeprint', fitOnePage);
+        window.addEventListener('load', function () { fitOnePage(); window.setTimeout(function () { window.print(); }, {{ (int) ($printDelay ?? 0) }}); });
     </script>
 </body>
 </html>

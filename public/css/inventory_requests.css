@@ -170,3 +170,125 @@
 .request-installation-note:hover {
     color: var(--accent);
 }
+
+
+.request-details-dialog {
+    width: min(560px, calc(100vw - 28px));
+    max-height: min(82vh, 760px);
+    padding: 1.25rem;
+    color: var(--text-primary);
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    box-shadow: var(--shadow-lg);
+}
+
+.request-details-dialog::backdrop {
+    background: rgba(2, 8, 20, 0.72);
+    backdrop-filter: blur(3px);
+}
+
+.request-details-header,
+.request-details-actions,
+.request-details-items li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.request-details-header h2 {
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+.request-details-close {
+    width: 34px;
+    height: 34px;
+    color: var(--text-secondary);
+    background: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 1.35rem;
+    cursor: pointer;
+}
+
+.request-details-meta {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.85rem;
+    margin: 1.1rem 0;
+}
+
+.request-details-meta div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.request-details-meta span,
+.request-details-items small {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+}
+
+.request-details-dialog h3 {
+    margin: 1.1rem 0 0.45rem;
+    font-size: 0.9rem;
+}
+
+.request-details-items {
+    display: grid;
+    gap: 0.45rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.request-details-items li {
+    flex-wrap: wrap;
+    padding: 0.75rem;
+    background: var(--surface-bg, rgba(255, 255, 255, 0.04));
+    border: 1px solid var(--border-color);
+    border-radius: 9px;
+}
+
+.request-details-items small {
+    flex-basis: 100%;
+}
+
+.request-details-notes {
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    white-space: pre-line;
+}
+
+.request-details-actions {
+    justify-content: flex-end;
+    margin-top: 1.25rem;
+}
+
+.request-details-actions[hidden] {
+    display: none;
+}
+
+.request-details-actions button {
+    min-width: 112px;
+    padding: 0.65rem 1rem;
+    color: #fff;
+    background: var(--success);
+    border: 0;
+    border-radius: 8px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.request-details-actions .request-details-deny {
+    background: var(--danger);
+}
+
+@media (max-width: 520px) {
+    .request-details-meta {
+        grid-template-columns: 1fr;
+    }
+}

@@ -176,6 +176,10 @@
                             <label class="form-label">Mark as Late After (minutes)</label>
                             <input type="number" name="settings[late_threshold_minutes]" class="form-input" value="{{ $settings['late_threshold_minutes']['setting_value'] ?? '30' }}" min="1" max="120">
                         </div>
+                        <div class="form-group">
+                            <label class="form-label">Early Scan Allowed (minutes before a session starts)</label>
+                            <input type="number" name="settings[early_scan_minutes]" class="form-input" value="{{ $settings['early_scan_minutes']['setting_value'] ?? \App\Support\AttendanceTime::DEFAULT_EARLY_SCAN_MINUTES }}" min="0" max="{{ \App\Support\AttendanceTime::MAX_EARLY_SCAN_MINUTES }}" step="1">
+                        </div>
                     </div>
                     @if($canEditSettings)<div class="settings-form-actions"><button type="submit" class="btn btn-primary">Save Time Settings</button></div>@endif
                 </fieldset></form>

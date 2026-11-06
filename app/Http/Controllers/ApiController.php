@@ -6,6 +6,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 class ApiController extends Controller
@@ -156,6 +157,10 @@ class ApiController extends Controller
             'area_used' => isset($data['area_used']) ? trim($data['area_used']) ?: null : null,
             'person_in_charge' => isset($data['person_in_charge']) ? trim($data['person_in_charge']) ?: null : null,
         ];
+        // Each selected item remains its own stock row, but shares one ID so the admin can review and decide the set together.
+        if (Schema::hasColumn('inventory_requests', 'request_group_id')) {
+            $details['request_group_id'] = (string) Str::uuid();
+        }
 
         $createdIds = [];
         try {
@@ -229,14 +234,21 @@ class ApiController extends Controller
             return response()->json(['success' => false, 'message' => 'The overtime QR code is no longer used. Scan the afternoon QR code when you finish work: the time after the afternoon ends is your overtime.'], 422);
         }
         $part = $qr->qr_type === 'morning' ? 'morning' : 'afternoon';
-        $session = \App\Support\AttendanceTime::schedule()[$part];
+        $schedule = \App\Support\AttendanceTime::schedule();
+        $session = $schedule[$part];
 
         $now = now();
         $time = $now->format('H:i:s');
         // The afternoon code works until the last scan of the day (so people who work late can scan out) whatever end it was made with,
         // the morning one until its own end.
         $validUntil = $part === 'afternoon' ? max(\App\Support\AttendanceTime::clock($session['end']), \App\Support\AttendanceTime::lastScan()) : $qr->valid_until;
-        if ($time < $qr->valid_from || $time > $validUntil) return response()->json(['success' => false, 'message' => 'QR code is outside its valid time window.'], 422);
+        // Scanning in early is allowed: the code works from a few minutes (the setting) before the session starts. Time out has no early limit:
+        // leaving before the end is accepted and counts as undertime.
+        $earliest = \App\Support\AttendanceTime::earliestScan($qr->valid_from);
+        if ($time < $earliest) {
+            return response()->json(['success' => false, 'message' => 'It is too early to scan. This QR code works from ' . date('h:i A', strtotime($earliest)) . '.'], 422);
+        }
+        if ($time > $validUntil) return response()->json(['success' => false, 'message' => 'QR code is outside its valid time window.'], 422);
 
         $lateThreshold = (int) (DB::table('system_settings')->where('setting_key', 'late_threshold_minutes')->value('setting_value') ?? 30);
         $thresholdTime = date('H:i:s', strtotime($session['start']) + ($lateThreshold * 60));
@@ -246,7 +258,7 @@ class ApiController extends Controller
         $afterEnd = $part === 'afternoon' && strcmp($time, $sessionEnd) > 0;
 
         // The first scan of a session is the time in and the next one the time out; the last scan of the day is the time out. The row is locked so two scans at once cannot make two rows for the day.
-        $outcome = DB::transaction(function () use ($employee, $qr, $time, $status, $part, $afterEnd, $sessionEnd) {
+        $outcome = DB::transaction(function () use ($employee, $qr, $time, $status, $part, $afterEnd, $sessionEnd, $schedule) {
             $attendance = DB::table('attendance')->where('employee_id', $employee->id)->whereDate('attendance_date', today())->lockForUpdate()->first();
 
             if ($afterEnd && (! $attendance || ! $attendance->afternoon_time_in)) {
@@ -283,7 +295,7 @@ class ApiController extends Controller
                 $changes = ["{$part}_time_out" => $time];
             }
             DB::table('attendance')->where('id', $attendance->id)->update($changes + [
-                'total_hours' => \App\Support\AttendanceTime::totalHours($row),
+                'total_hours' => \App\Support\AttendanceTime::totalHours($row, $schedule),
                 'qr_code_used' => $qr->qr_code, 'branch_name' => $attendance->branch_name ?: $employee->branch_name,
             ]);
 

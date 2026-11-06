@@ -453,28 +453,92 @@ class BranchPagesTest extends TestCase
         $this->assertSame(0, PeriodReport::build($start, $end, '')['bills']['count']);
     }
 
-    public function test_the_business_summary_print_view_is_a_summary_without_the_records(): void
+    public function test_the_printed_report_is_a_profit_and_loss_statement_with_a_column_per_branch(): void
     {
+        // The seeded payroll rows only have a net pay; the statement reads the gross pay.
+        DB::table('payroll')->where('id', 1)->update(['gross_pay' => 3500]);
+        DB::table('payroll')->where('id', 2)->update(['gross_pay' => 4600]);
+        $start = now()->startOfMonth()->toDateString();
+        $end = now()->endOfMonth()->toDateString();
+
+        // The biggest receiver is the first column, and the lines add up to the report's own figures.
+        $statement = PeriodReport::statement($start, $end);
+        $this->assertSame(['Loon', 'Balilihan'], $statement['columns']);
+        $this->assertSame(['gcash', 'cash'], array_column($statement['income'], 'label'));
+        $this->assertEquals([2000, 0], $statement['income'][0]['amounts']);
+        $this->assertEquals([0, 1000], $statement['income'][1]['amounts']);
+        $this->assertEquals([4600, 3500], $statement['expenses'][0]['amounts']);
+        $this->assertEquals(PeriodReport::build($start, $end)['payments']['collected'], $statement['netIncome']['total']);
+        $this->assertEquals(PeriodReport::build($start, $end)['payroll']['gross'], $statement['netExpenditure']['total']);
+        $this->assertEquals([-2600, -2500], $statement['profit']['amounts']);
+        $this->assertEquals(-5100, $statement['profit']['total']);
+
         $this->signIn(1);
         $html = view('pages.print_monthly_reports', $this->page('print_monthly_reports'))->render();
-
         foreach ([
-            'Business Summary Report', '1. Billing Summary', 'TOTAL BILLED', '₱3,500.00', '2. Collection Summary', 'TOTAL PAYMENTS RECEIVED',
-            'GCash', '3. Client Summary', '4. Attendance Summary', '5. Payroll Summary', 'NET PAY', '₱7,000.00',
-            '6. Inventory Requests Summary', '7. Summary by Branch',
+            'Income and Expenses Report', 'Description', '<th class="num">Loon</th>', '<th class="num">Balilihan</th>', '<th class="num">Total</th>',
+            'Money Received', 'GCash payments', 'Total Money Received (A)', '₱3,000.00', 'Money Spent', 'Employee pay (before deductions)',
+            'Total Money Spent (B)', '₱8,100.00', 'Money Left / (Loss) [A-B]', '(₱5,100.00)', 'size: A4 portrait',
+            'Totals', 'Total Billed', 'Unpaid Balance',
         ] as $text) {
-            $this->assertStringContainsString($text, $html);
+            $this->assertStringContainsString($text, $html, $text);
         }
-        foreach (['Ana Reyes', 'Ben Cruz', 'Eli Santos', 'B-3'] as $record) {
-            $this->assertStringNotContainsString($record, $html, "{$record} is a record, not a summary figure");
+        foreach (['Ana Reyes', 'Ben Cruz', 'Eli Santos', 'B-3', 'Inventory Requests', '1. Billing'] as $record) {
+            $this->assertStringNotContainsString($record, $html, "{$record} does not belong on the profit and loss report");
         }
 
-        // A branch admin's report has no stock requests and no branches to compare.
+        // A branch admin's report is their own branch, one column with no total column.
         $this->signIn(2);
         $own = view('pages.print_monthly_reports', $this->page('print_monthly_reports'))->render();
-        $this->assertStringNotContainsString('Inventory Requests Summary', $own);
-        $this->assertStringNotContainsString('Summary by Branch', $own);
+        $this->assertStringContainsString('<th class="num">Balilihan</th>', $own);
+        $this->assertStringNotContainsString('<th class="num">Total</th>', $own);
+        $this->assertStringNotContainsString('Loon', $own);
         $this->assertStringContainsString('₱1,000.00', $own);
+        $this->assertStringContainsString('(₱2,500.00)', $own);
+    }
+
+    public function test_the_profit_and_loss_report_adds_the_smallest_branches_together_and_turns_sideways(): void
+    {
+        $start = now()->startOfMonth()->toDateString();
+        $end = now()->endOfMonth()->toDateString();
+        foreach (range(1, 10) as $number) {
+            $id = 100 + $number;
+            DB::table('employees')->insert(['id' => $id, 'employee_code' => "EMP-{$id}", 'full_name' => "Staff {$number}", 'position' => 'Technician I', 'branch_name' => sprintf('Town %02d', $number), 'status' => 'active']);
+            DB::table('payroll')->insert(['employee_id' => $id, 'payroll_period_start' => $start, 'payroll_period_end' => $end, 'gross_pay' => 100 * $number, 'net_pay' => 90 * $number, 'status' => 'processed']);
+        }
+
+        $statement = PeriodReport::statement($start, $end);
+        // Twelve branches: the biggest eight have a column and the other four are added together in the ninth.
+        $this->assertCount(PeriodReport::STATEMENT_BRANCH_COLUMNS, $statement['columns']);
+        $this->assertSame(['Loon', 'Balilihan', 'Town 01'], array_slice($statement['columns'], 0, 3));
+        $this->assertSame('Other branches (4)', end($statement['columns']));
+        $this->assertEquals(100 * 7 + 100 * 8 + 100 * 9 + 100 * 10, end($statement['expenses'][0]['amounts']));
+        $this->assertEquals(3000, $statement['netIncome']['total']);
+        $this->assertEquals(PeriodReport::build($start, $end)['payroll']['gross'], $statement['netExpenditure']['total']);
+
+        $this->signIn(1);
+        $html = view('pages.print_monthly_reports', $this->page('print_monthly_reports'))->render();
+        $this->assertStringContainsString('size: A4 landscape', $html);
+        $this->assertStringContainsString('Other branches (4)', $html);
+    }
+
+    public function test_a_period_with_no_records_keeps_the_tables_on_the_page_and_prints_a_no_data_message(): void
+    {
+        $this->signIn(1);
+        $query = ['month' => '2020-03', 'from' => '2020-03-01', 'to' => '2020-03-31'];
+
+        // The Reports page never loses its tables: an empty period says so and the tables read zero.
+        $screen = view('pages.reports', $this->page('reports', $query))->render();
+        $this->assertStringContainsString('No data for March 2020', $screen);
+        $this->assertStringContainsString('1. Billing', $screen);
+        $this->assertStringContainsString('<table class="data-table">', $screen);
+
+        $print = view('pages.print_monthly_reports', $this->page('print_monthly_reports', $query))->render();
+        $this->assertStringContainsString('No data for', $print);
+        $this->assertStringNotContainsString('1. Billing', $print);
+
+        // The period that does have records still shows its tables.
+        $this->assertStringContainsString('1. Billing', view('pages.reports', $this->page('reports'))->render());
     }
 
     public function test_the_reports_page_shows_the_summary_as_plain_tables_and_the_standard_format_opens_from_print(): void
@@ -483,7 +547,7 @@ class BranchPagesTest extends TestCase
         $html = view('pages.reports', $this->page('reports'))->render();
 
         // The summary is on the screen as tables: every section of the report, with its figures and its total row.
-        foreach (['1. Billing Summary', '2. Collection Summary', '3. Client Summary', '4. Attendance Summary', '5. Payroll Summary', '6. Inventory Requests Summary', '7. Summary by Branch', 'Total billed', '₱3,500.00', 'Total payments received', 'Outstanding balance', 'Net pay', '₱7,000.00'] as $text) {
+        foreach (['1. Billing', '2. Collections', '3. Clients', '4. Attendance', '5. Payroll', '6. Inventory Requests', '7. By Branch', 'Total billed', '₱3,500.00', 'Total payments received', 'Outstanding balance', 'Net pay', '₱7,000.00'] as $text) {
             $this->assertStringContainsString($text, $html, $text);
         }
         $this->assertGreaterThanOrEqual(8, substr_count($html, '<table class="data-table">'));
@@ -498,12 +562,18 @@ class BranchPagesTest extends TestCase
         $this->assertStringContainsString('>View report</button>', $html);
         $this->assertMatchesRegularExpression('~<button class="btn btn-secondary" type="submit" formaction="[^"]*/pages/print_monthly_reports\.php" formtarget="_blank"[^>]*>Print report</button>~', $html);
 
+        // The super admin types the branch and picks it from the suggestions (no drop-down); left empty it is every branch.
+        $this->assertStringContainsString('<input id="branch" type="text" name="branch" value=""', $html);
+        $this->assertStringContainsString('id="branchSuggestions"', $html);
+        $this->assertStringNotContainsString('<select id="branch"', $html);
+
         // A branch admin has no branch to choose, and no per-branch table: the tables and the print are their own branch's.
         $this->signIn(3);
         $own = view('pages.reports', $this->page('reports'))->render();
         $this->assertStringNotContainsString('<select id="branch"', $own);
+        $this->assertStringNotContainsString('id="branchSuggestions"', $own);
         $this->assertStringContainsString('<input type="hidden" name="branch" value="Loon">', $own);
-        $this->assertStringNotContainsString('Summary by Branch', $own);
+        $this->assertStringNotContainsString('By Branch', $own);
     }
 
     // ---- user accounts ---------------------------------------------------------------------------------

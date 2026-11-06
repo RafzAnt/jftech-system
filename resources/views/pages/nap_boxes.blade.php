@@ -92,7 +92,7 @@
                                 <th>Ports</th>
                                 <th>Occupied</th>
                                 <th>Faulty</th>
-                                <th>Available</th>
+                                <th>Available Ports</th>
                                 <th>Status</th>
                                 <th></th>
                             </tr>
@@ -152,7 +152,7 @@
                 <div class="nap-summary">
                     <span>Total <strong>{{ $selectedBox['total_ports'] }}</strong></span>
                     <span>Occupied <strong>{{ $selectedBox['occupied_ports'] }}</strong></span>
-                    <span>Available <strong>{{ $selectedBox['available_ports'] }}</strong></span>
+                    <span>Available ports <strong>{{ $selectedBox['available_ports'] }}</strong></span>
                 </div>
             </div>
             <div class="card-body" style="padding: 0;">
@@ -304,7 +304,7 @@
                     <div class="form-group" style="grid-column: 1 / -1;">
                         <label class="form-label" for="boxCoordinates">Google coordinates *</label>
                         <input type="text" name="coordinates" id="boxCoordinates" class="form-input" maxlength="300" placeholder="9.6541, 124.1234" autocomplete="off" required>
-                        <small style="color: var(--text-muted);">Exactly where the NAP box hangs. On Google Maps, press and hold (or right-click) the spot and copy the numbers at the top, or paste the map address.</small>
+                        <small id="boxCoordinatesNote" style="color: var(--text-muted);">Fills in by itself when the barangay is chosen. To make it exact, copy the spot from Google Maps (press and hold or right-click) and paste the coordinates here.</small>
                     </div>
                     <div class="form-group" style="grid-column: 1 / -1;">
                         <label class="form-label" for="boxPhoto">Photo of the NAP box</label>
@@ -374,6 +374,7 @@
         document.getElementById('boxBarangay').value = editing ? box.barangay_name : '';
         document.getElementById('boxLocation').value = editing ? (box.location || '') : '';
         document.getElementById('boxCoordinates').value = editing ? (box.coordinates || '') : '';
+        prepareNapBoxCoordinates(editing);
         document.getElementById('boxStatus').value = editing ? box.status : 'active';
         document.getElementById('boxStatusGroup').style.display = editing ? '' : 'none';
         // A new box is taken from the stock; an existing one is only changed.
@@ -392,6 +393,87 @@
         preview.src = hasPhoto ? '{{ url('/nap-boxes') }}/' + box.id + '/photo?v=' + box.photo_version : '';
         document.getElementById('boxPhotoRemoveGroup').hidden = !hasPhoto;
         openModal('boxModal');
+    }
+
+    // New NAP boxes begin at the selected barangay. A coordinate that the admin types or pastes is
+    // never overwritten, because the actual pole or wall can be somewhere else within the barangay.
+    const napBoxBarangayInput = document.getElementById('boxBarangay');
+    const napBoxCoordinatesInput = document.getElementById('boxCoordinates');
+    const napBoxCoordinatesNote = document.getElementById('boxCoordinatesNote');
+    const napBoxBarangays = @json($branchBarangays, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT);
+    const napBoxCoordinatesHint = napBoxCoordinatesNote ? napBoxCoordinatesNote.textContent : '';
+    let napBoxCoordinatesAuto = true;
+    let napBoxCoordinatesFor = '';
+    let napBoxCoordinatesTicket = 0;
+
+    function selectedNapBoxBarangay() {
+        const typed = napBoxBarangayInput.value.trim().toLocaleLowerCase();
+        return napBoxBarangays.find(name => name.toLocaleLowerCase() === typed) || '';
+    }
+
+    function clearNapBoxAutoCoordinates() {
+        if (!napBoxCoordinatesAuto) return;
+        napBoxCoordinatesInput.value = '';
+        napBoxCoordinatesNote.textContent = napBoxCoordinatesHint;
+    }
+
+    function setNapBoxAutoCoordinates(coordinates, note) {
+        if (napBoxCoordinatesInput.value.trim() !== '' && !napBoxCoordinatesAuto) return;
+        napBoxCoordinatesInput.value = coordinates;
+        napBoxCoordinatesAuto = true;
+        napBoxCoordinatesNote.textContent = note;
+    }
+
+    async function fillNapBoxCoordinatesFromBarangay() {
+        const barangay = selectedNapBoxBarangay();
+        if (barangay === napBoxCoordinatesFor) return;
+        napBoxCoordinatesFor = barangay;
+        const ticket = ++napBoxCoordinatesTicket;
+
+        if (!barangay) {
+            clearNapBoxAutoCoordinates();
+            return;
+        }
+        if (napBoxCoordinatesInput.value.trim() !== '' && !napBoxCoordinatesAuto) return;
+
+        napBoxCoordinatesNote.textContent = 'Looking up ' + barangay + '…';
+        try {
+            const url = new URL(@json(route('locations.geocode')), window.location.href);
+            url.searchParams.set('barangay', barangay);
+            const response = await fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
+            if (!response.ok) throw new Error('lookup failed');
+            const place = await response.json();
+            if (ticket !== napBoxCoordinatesTicket) return;
+            if (place.found) {
+                const where = place.precision === 'barangay' ? place.label : place.label + ' (the barangay is not on the map, so this is the town)';
+                setNapBoxAutoCoordinates(place.coordinates, 'Filled in from ' + where + '. Copy the exact NAP box location from Google Maps if needed.');
+            } else {
+                clearNapBoxAutoCoordinates();
+                napBoxCoordinatesNote.textContent = place.error ? 'The map could not be asked now. Paste the coordinates from Google Maps.' : 'The place was not found on the map. Paste the coordinates from Google Maps.';
+                if (place.error) napBoxCoordinatesFor = '';
+            }
+        } catch (error) {
+            if (ticket !== napBoxCoordinatesTicket) return;
+            napBoxCoordinatesFor = '';
+            napBoxCoordinatesNote.textContent = 'The map could not be asked now. Paste the coordinates from Google Maps.';
+        }
+    }
+
+    function prepareNapBoxCoordinates(editing) {
+        napBoxCoordinatesTicket++;
+        napBoxCoordinatesFor = '';
+        napBoxCoordinatesAuto = !editing && napBoxCoordinatesInput.value.trim() === '';
+        napBoxCoordinatesNote.textContent = napBoxCoordinatesHint;
+        if (!editing) fillNapBoxCoordinatesFromBarangay();
+    }
+
+    if (napBoxBarangayInput) {
+        napBoxBarangayInput.addEventListener('input', fillNapBoxCoordinatesFromBarangay);
+        napBoxBarangayInput.addEventListener('change', fillNapBoxCoordinatesFromBarangay);
+        napBoxCoordinatesInput.addEventListener('input', () => {
+            napBoxCoordinatesAuto = false;
+            napBoxCoordinatesNote.textContent = napBoxCoordinatesHint;
+        });
     }
 
     // The chosen picture is shrunk in the browser (longest side 1000 px, JPEG) and sent as text, so a phone photo of several

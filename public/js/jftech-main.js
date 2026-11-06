@@ -281,7 +281,8 @@ function startQRTimer(duration, display) {
 // Suggestion list: a text box with a dropdown of matches. Type to filter, then click
 // or use the arrow keys + Enter to pick. Styles: .location-suggestions in jftech-theme.css.
 // With acceptExactOnEnter, Enter on a fully typed option picks it instead of submitting the form.
-function createSuggestionList(input, list, getOptions, onPick, { acceptExactOnEnter = true } = {}) {
+// With emptyText, typing something that matches nothing shows that text under the box instead of leaving it silent.
+function createSuggestionList(input, list, getOptions, onPick, { acceptExactOnEnter = true, emptyText = '' } = {}) {
     let active = -1;
 
     function close() {
@@ -313,7 +314,14 @@ function createSuggestionList(input, list, getOptions, onPick, { acceptExactOnEn
             });
             list.appendChild(option);
         });
-        list.hidden = options.length === 0;
+        const showEmpty = options.length === 0 && emptyText !== '' && query !== '';
+        if (showEmpty) {
+            const note = document.createElement('div');
+            note.className = 'location-suggestion-empty';
+            note.textContent = emptyText;
+            list.appendChild(note);
+        }
+        list.hidden = options.length === 0 && !showEmpty;
         input.setAttribute('aria-expanded', String(options.length > 0));
         if (!list.hidden) fitToContainer(list);
     }

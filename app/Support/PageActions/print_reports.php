@@ -40,18 +40,16 @@ return function (\Illuminate\Http\Request $request): array {
         $filters['to']   = sprintf('%04d-12-31', $filterYear);
     }
 
-    $records  = $service->activityFeed($filters, 5000);
+    // The report is a summary: the activity is counted by kind of record, not listed entry by entry.
+    $byRecordType = $service->summaryByReportType($filters);
     $summary  = $service->activitySummary($filters);
-    $reportTypes = $service->reportTypes();
 
     // The dates the figures cover, worded for the heading of the report.
     $rangeLabel = $filters['date']
         ? \App\Support\ReportFormat::coverage($filters['date'], $filters['date'])
         : \App\Support\ReportFormat::coverage($filters['from'], $filters['to']);
 
-    // --- Enrich with breakdown / comparison / performance data ---
-    $dailyBreakdown    = null;
-    $monthlyBreakdown  = null;
+    // --- Enrich with comparison / performance data ---
     $previousSummary   = null;
     $comparisonPeriod  = '';
     $percentageChanges = [];
@@ -59,13 +57,8 @@ return function (\Illuminate\Http\Request $request): array {
     $selectedYear      = $filterYear;
     $selectedMonth     = (int) ($request->query('month') ?? (int) date('m'));
 
-    if (in_array($reportViewType, ['monthly', 'yearly', 'custom'])) {
-        $dailyBreakdown = $service->dailyBreakdown($filters);
-    }
-
     if ($reportViewType === 'yearly') {
         $selectedYear = $filterYear;
-        $monthlyBreakdown = $service->monthlyBreakdown($selectedYear, $filters);
         $performance = $service->performanceSummary($reportViewType, $filters, $selectedYear, $selectedMonth, $summary);
 
         // Previous year comparison

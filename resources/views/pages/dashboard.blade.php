@@ -44,7 +44,7 @@
         @endif
 
         <!-- Stats Grid -->
-        <div class="stats-grid">
+        <div class="stats-grid dashboard-stats">
             <a href="clients_browse.php" class="stat-card stat-card-link" style="--stat-color: var(--accent)" aria-label="View clients">
                 <div class="stat-value">{{ number_format($stats['total_clients']) }}</div>
                 <div class="stat-label">Total Clients</div>

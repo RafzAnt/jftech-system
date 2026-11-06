@@ -23,7 +23,7 @@ final class ClientRegistration
      *
      * @return array<string, mixed>
      */
-    public static function clean(array $input, string $branch, bool $emailRequired, bool $napRequired): array
+    public static function clean(array $input, string $branch, bool $emailRequired, bool $napRequired, ?int $existingClientId = null): array
     {
         $text = static fn (string $key): string => trim((string) ($input[$key] ?? ''));
 
@@ -74,7 +74,20 @@ final class ClientRegistration
             }
         }
 
-        $plan = DB::table('internet_plans')->where('id', (int) ($input['internet_plan_id'] ?? 0))->where('status', 'active')->where('archived', 0)->first();
+        $planQuery = DB::table('internet_plans')->where('id', (int) ($input['internet_plan_id'] ?? 0));
+        if ($existingClientId !== null) {
+            $currentPlanId = DB::table('clients')->where('id', $existingClientId)
+                ->whereRaw('LOWER(branch_name) = LOWER(?)', [$branch])->value('internet_plan_id');
+            $planQuery->where(function ($query) use ($currentPlanId): void {
+                $query->where(fn ($active) => $active->where('status', 'active')->where('archived', 0));
+                if ($currentPlanId !== null) {
+                    $query->orWhere('id', $currentPlanId);
+                }
+            });
+        } else {
+            $planQuery->where('status', 'active')->where('archived', 0);
+        }
+        $plan = $planQuery->first();
         if (! $plan) {
             throw new DomainException('Please select an active internet plan.');
         }
@@ -135,6 +148,53 @@ final class ClientRegistration
             if ($port) {
                 DB::table('nap_ports')->where('id', $port->id)->update(['status' => 'occupied', 'client_id' => $clientId, 'occupied_at' => now(), 'updated_at' => now()]);
             }
+
+            return $clientId;
+        });
+    }
+
+    /** Lock and validate a branch client's record while an employee reports their first installation. */
+    public static function lockUninstalledClient(int $clientId, string $branch, ?int $exceptInstallation = null): object
+    {
+        $client = DB::table('clients')->where('id', $clientId)
+            ->whereRaw('LOWER(branch_name) = LOWER(?)', [$branch])->lockForUpdate()->first();
+        if (! $client || $client->status !== 'active' || (int) ($client->archived ?? 0) !== 0) {
+            throw new DomainException('That client is no longer available for installation. Refresh the list and choose another client.');
+        }
+        if (DB::table('nap_ports')->where('client_id', $clientId)->where('status', 'occupied')->exists()) {
+            throw new DomainException('That client is already connected to a NAP port. Refresh the list and choose another client.');
+        }
+        if (DB::table('client_installations')->where('client_id', $clientId)->where('status', 'submitted')
+            ->when($exceptInstallation !== null, fn ($query) => $query->where('id', '<>', $exceptInstallation))->exists()) {
+            throw new DomainException('An installation report is already waiting for this client. Refresh the list and try again.');
+        }
+
+        return $client;
+    }
+
+    /** Complete the installation of a pre-registered client without creating a duplicate client or first bill. */
+    public static function updateUninstalled(int $clientId, array $data, ?int $exceptInstallation = null): int
+    {
+        return DB::transaction(function () use ($clientId, $data, $exceptInstallation): int {
+            self::lockUninstalledClient($clientId, (string) $data['branch_name'], $exceptInstallation);
+            $port = self::lockPort((int) $data['nap_port_id'], (string) $data['branch_name'], $exceptInstallation);
+            $plan = $data['plan'];
+            $barangayId = strcasecmp((string) $data['branch_name'], 'Balilihan') === 0
+                ? DB::table('barangays')->where('barangay_name', $data['barangay_name'])->value('id')
+                : null;
+
+            DB::table('clients')->where('id', $clientId)->update([
+                'full_name' => $data['full_name'], 'contact_number' => $data['contact_number'],
+                'registered_barangay_name' => $data['barangay_name'], 'barangay_id' => $barangayId,
+                'exact_address' => $data['exact_address'], 'wifi_plan' => $plan->plan_name, 'internet_plan_id' => $plan->id,
+                'monthly_rate' => $plan->monthly_price, 'installation_fee' => $plan->installation_fee,
+                'installation_date' => $data['installation_date'], 'payment_mode' => $data['payment_mode'],
+                'ip_address' => $data['ip_address'], 'facebook_account' => $data['facebook_account'],
+                'latitude' => $data['latitude'], 'longitude' => $data['longitude'], 'updated_at' => now(),
+            ]);
+            DB::table('nap_ports')->where('id', $port->id)->update([
+                'status' => 'occupied', 'client_id' => $clientId, 'occupied_at' => now(), 'updated_at' => now(),
+            ]);
 
             return $clientId;
         });

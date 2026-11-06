@@ -148,10 +148,10 @@ if ($request->isMethod('post') && $request->input('payroll_action') === 'auto_ge
             'total_days_worked' => 'Days worked', 'late_minutes' => 'Late minutes', 'undertime_minutes' => 'Undertime minutes', 'overtime_hours' => 'Overtime hours',
             'basic_salary' => 'Basic salary', 'overtime_pay' => 'Overtime pay', 'late' => 'Late', 'undertime' => 'Undertime', 'absent' => 'Absent',
             'sss' => 'SSS', 'philhealth' => 'PhilHealth', 'pagibig' => 'Pag-IBIG',
-            'regular_holiday' => 'Regular holiday', 'special_holiday' => 'Special holiday', 'night_differential' => 'Night differential',
+            'regular_holiday' => 'Regular holiday', 'special_holiday' => 'Special holiday',
             'incentives' => 'Incentives', 'allowances' => 'Allowances', 'leave_pay' => 'Leave pay', 'rest_day_pay' => 'Rest day pay',
             'salary_adjustment' => 'Salary adjustment', 'other_earnings' => 'Other earnings',
-            'withholding_tax' => 'Withholding tax', 'cash_advance' => 'Cash advance', 'salary_loan' => 'Salary loan', 'hdmf_loan' => 'HDMF loan', 'other_deductions' => 'Other deductions',
+            'cash_advance' => 'Cash advance', 'salary_loan' => 'Salary loan', 'other_deductions' => 'Other deductions',
         ];
         // A number the admin typed, or null when the field was left empty.
         $typed = static function (string $key) use ($request, $labels): ?float {

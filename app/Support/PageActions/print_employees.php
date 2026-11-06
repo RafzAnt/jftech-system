@@ -4,7 +4,7 @@ return function (\Illuminate\Http\Request $request): array {
 
 /**
  * JFTECH WiFi Billing & Management System
- * Printable Employee Masterlist Report
+ * Printable Employee Report
  */
 
 $selectedDepartment = $request->query('department') ?? '';
@@ -39,6 +39,12 @@ $totalEmployees = count($employees);
 $activeEmployees = count(array_filter($employees, function($e) { return $e['status'] === 'active'; }));
 $inactiveEmployees = count(array_filter($employees, function($e) { return $e['status'] === 'inactive'; }));
 $terminatedEmployees = count(array_filter($employees, function($e) { return $e['status'] === 'terminated'; }));
+
+// The report is a summary: the employees are counted and their daily rates added up, not listed one by one.
+$totalDailyRate = array_sum(array_map(fn ($e) => (float) $e['daily_rate'], $employees));
+$rateOf = ['rate' => fn ($e) => (float) $e['daily_rate']];
+$byPosition = \App\Support\ReportBreakdown::group($employees, fn ($e) => $e['position'], $rateOf, [], 12);
+$byDepartment = \App\Support\ReportBreakdown::group($employees, fn ($e) => $e['department'], $rateOf, [], 12);
 
 $departments = array_unique(array_filter(array_column($employees, 'department')));
 sort($departments);

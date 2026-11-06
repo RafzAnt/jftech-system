@@ -32,6 +32,28 @@ final class AttendanceTime
      */
     public const UNDERTIME_GRACE_MINUTES = 5;
 
+    /** How early before a session starts the QR code can be scanned, when the setting `early_scan_minutes` has not been saved. */
+    public const DEFAULT_EARLY_SCAN_MINUTES = 60;
+
+    /** The most minutes the early scan can be set to. */
+    public const MAX_EARLY_SCAN_MINUTES = 180;
+
+    /** Minutes before a session starts that its QR code already works (the setting `early_scan_minutes`, 0 = only from the start). */
+    public static function earlyScanMinutes(): int
+    {
+        $value = DB::table('system_settings')->where('setting_key', 'early_scan_minutes')->value('setting_value');
+
+        return $value === null || ! is_numeric($value)
+            ? self::DEFAULT_EARLY_SCAN_MINUTES
+            : max(0, min(self::MAX_EARLY_SCAN_MINUTES, (int) $value));
+    }
+
+    /** The first time of the day a session can be scanned: its start less the early scan minutes (not before midnight). */
+    public static function earliestScan(string $sessionStart): string
+    {
+        return gmdate('H:i:s', max(0, self::secondsOfDay($sessionStart) - self::earlyScanMinutes() * 60));
+    }
+
     /** "17:00" or "17:00:00" as "17:00:00". */
     public static function clock(string $time): string
     {
@@ -75,11 +97,13 @@ final class AttendanceTime
 
     /**
      * Hours worked in a day: every morning and afternoon session that has both a time in and a time out. The overtime session
-     * has its own minutes and is not part of it.
+     * has its own minutes and is not part of it. With the schedule, a session is counted from its start at the earliest: the time
+     * before it (an early scan) is not working time.
      *
      * @param object|array<string, mixed> $row an attendance row
+     * @param array{morning: array{start: string, end: string}, afternoon: array{start: string, end: string}}|null $schedule from {@see schedule()}
      */
-    public static function totalHours(object|array $row): float
+    public static function totalHours(object|array $row, ?array $schedule = null): float
     {
         $row = (array) $row;
         $seconds = 0;
@@ -87,7 +111,11 @@ final class AttendanceTime
             $in = $row["{$part}_time_in"] ?? null;
             $out = $row["{$part}_time_out"] ?? null;
             if ($in && $out) {
-                $seconds += max(0, self::secondsOfDay($out) - self::secondsOfDay($in));
+                $from = self::secondsOfDay($in);
+                if ($schedule !== null) {
+                    $from = max($from, self::secondsOfDay($schedule[$part]['start']));
+                }
+                $seconds += max(0, self::secondsOfDay($out) - $from);
             }
         }
 
@@ -130,6 +158,6 @@ final class AttendanceTime
             $undertime += self::undertimeOf($row["{$part}_time_in"] ?? null, $row["{$part}_time_out"] ?? null, $schedule[$part]['end']);
         }
 
-        return ['late_minutes' => $late, 'undertime_minutes' => $undertime, 'total_hours' => self::totalHours($row)];
+        return ['late_minutes' => $late, 'undertime_minutes' => $undertime, 'total_hours' => self::totalHours($row, $schedule)];
     }
 }

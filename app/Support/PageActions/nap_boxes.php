@@ -195,7 +195,6 @@ return function (Request $request): array {
         'occupied' => array_sum(array_column($boxes, 'occupied_ports')),
         'available' => array_sum(array_column($boxes, 'available_ports')),
     ];
-
     // The box whose ports are open below the list.
     $selectedBox = $selectedBoxId ? NapBoxes::box($selectedBoxId, $branch) : null;
     $assignableClients = [];

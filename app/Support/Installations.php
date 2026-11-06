@@ -9,11 +9,10 @@ use Illuminate\Support\Facades\DB;
  * Installing a client from the employee app.
  *
  *   1. The employee requests the items to take (a normal item-out request); the branch admin approves it, which releases the stock.
- *   2. After installing, the employee files an installation report: where it was installed (coordinates), the NAP box and port,
- *      the client's details (name, address, contact, plan, mode of payment, IP address, Facebook account) and the items brought back.
- *      The NAP port is reserved for the report, but the client does not exist yet.
- *   3. The branch admin checks the report, may edit any detail and confirms it: the client is added (with its first bill), the port is
- *      connected, the items brought back go into stock and what was used is recorded against the client and NAP box.
+ *   2. After installing, the employee files a report: the place (coordinates), NAP box and port, client details and any items
+ *      brought back. They can select a branch client's existing record when that client has not been connected yet.
+ *   3. The branch admin checks the report, may edit any detail and confirms it: a new client is added (with its first bill) or the
+ *      existing client is updated, the port is connected, returns go into stock and used items are recorded against the job.
  *      The admin can also reject it, which frees the items so the employee can report again.
  */
 final class Installations
@@ -51,23 +50,53 @@ final class Installations
             ->whereRaw("LOWER(COALESCE(area_used, '')) = 'installation'")->count();
     }
 
-    /** What the report form offers: the barangays of the branch, the plans, the modes of payment and the items taken. */
+    /** What the report form offers: branch barangays, clients not connected to a NAP port yet, plans and items taken. */
     public static function options(object $employee): array
     {
-        $plans = DB::table('internet_plans')->where('status', 'active')->where('archived', 0)->orderBy('monthly_price')
+        $modes = [];
+        foreach (ClientRegistration::PAYMENT_MODES as $value => $label) {
+            $modes[] = ['value' => $value, 'label' => $label];
+        }
+
+        $clients = DB::table('clients as c')
+            ->leftJoin('barangays as b', 'b.id', '=', 'c.barangay_id')
+            ->whereRaw('LOWER(c.branch_name) = LOWER(?)', [(string) $employee->branch_name])
+            ->where('c.status', 'active')
+            ->where(fn ($query) => $query->whereNull('c.archived')->orWhere('c.archived', 0))
+            ->whereNotExists(fn ($query) => $query->selectRaw('1')->from('nap_ports as np')->whereColumn('np.client_id', 'c.id')->where('np.status', 'occupied'))
+            ->whereNotExists(fn ($query) => $query->selectRaw('1')->from('client_installations as ci')->whereColumn('ci.client_id', 'c.id')->where('ci.status', 'submitted'))
+            ->orderBy('c.full_name')
+            ->limit(500)
+            ->get([
+                'c.id', 'c.full_name', 'c.contact_number', 'c.email',
+                DB::raw('COALESCE(c.registered_barangay_name, b.barangay_name) AS barangay_name'),
+                'c.exact_address', 'c.internet_plan_id', 'c.payment_mode', 'c.ip_address', 'c.facebook_account',
+            ])
+            ->map(fn ($client): array => [
+                'id' => (int) $client->id, 'full_name' => $client->full_name,
+                'contact_number' => (string) ($client->contact_number ?? ''), 'email' => (string) ($client->email ?? ''),
+                'barangay_name' => (string) ($client->barangay_name ?? ''), 'exact_address' => (string) ($client->exact_address ?? ''),
+                'internet_plan_id' => $client->internet_plan_id ? (int) $client->internet_plan_id : null,
+                'payment_mode' => (string) ($client->payment_mode ?? ''), 'ip_address' => (string) ($client->ip_address ?? ''),
+                'facebook_account' => (string) ($client->facebook_account ?? ''),
+            ])->all();
+
+        $registeredPlanIds = array_values(array_filter(array_unique(array_column($clients, 'internet_plan_id'))));
+        $plans = DB::table('internet_plans')->where(function ($query) use ($registeredPlanIds): void {
+            $query->where(fn ($active) => $active->where('status', 'active')->where('archived', 0));
+            if ($registeredPlanIds !== []) {
+                $query->orWhereIn('id', $registeredPlanIds);
+            }
+        })->orderBy('monthly_price')
             ->get(['id', 'plan_name', 'speed_mbps', 'monthly_price', 'installation_fee'])
             ->map(fn ($plan): array => [
                 'id' => (int) $plan->id, 'plan_name' => $plan->plan_name, 'speed_mbps' => (int) $plan->speed_mbps,
                 'monthly_price' => (float) $plan->monthly_price, 'installation_fee' => (float) $plan->installation_fee,
             ])->all();
 
-        $modes = [];
-        foreach (ClientRegistration::PAYMENT_MODES as $value => $label) {
-            $modes[] = ['value' => $value, 'label' => $label];
-        }
-
         return [
             'barangays' => NapBoxes::barangaysOf((string) $employee->branch_name),
+            'clients' => $clients,
             'plans' => $plans,
             'payment_modes' => $modes,
             'conditions' => self::CONDITIONS,
@@ -75,20 +104,24 @@ final class Installations
         ];
     }
 
-    /** Save the report of an employee. Throws a DomainException with a message to show the person. Returns the report id. */
+    /** Save an employee's report, linking a pre-registered client when selected. Returns the report id. */
     public static function submit(object $employee, array $input): int
     {
         $branch = (string) $employee->branch_name;
-        // The client does not exist yet, so only its details are checked here; the port is locked in the transaction.
-        $data = ClientRegistration::clean($input, $branch, false, true);
+        $clientId = (int) ($input['client_id'] ?? 0) ?: null;
+        // The client details and selected port are checked before saving; client_id links an existing branch client when selected.
+        $data = ClientRegistration::clean($input, $branch, false, true, $clientId);
         $requestIds = array_values(array_unique(array_map('intval', (array) ($input['request_ids'] ?? []))));
         $returns = self::cleanReturns((array) ($input['returns'] ?? []), $branch);
 
-        return DB::transaction(function () use ($employee, $branch, $data, $input, $requestIds, $returns): int {
+        return DB::transaction(function () use ($employee, $branch, $data, $input, $requestIds, $returns, $clientId): int {
+            if ($clientId !== null) {
+                ClientRegistration::lockUninstalledClient($clientId, $branch);
+            }
             $port = ClientRegistration::lockPort((int) $data['nap_port_id'], $branch);
 
             $id = (int) DB::table('client_installations')->insertGetId([
-                'branch_name' => $branch, 'employee_id' => $employee->id, 'status' => 'submitted',
+                'branch_name' => $branch, 'employee_id' => $employee->id, 'status' => 'submitted', 'client_id' => $clientId,
                 'client_name' => $data['full_name'], 'contact_number' => $data['contact_number'], 'email' => $data['email'],
                 'barangay_name' => $data['barangay_name'], 'exact_address' => $data['exact_address'], 'internet_plan_id' => $data['plan']->id,
                 'payment_mode' => $data['payment_mode'], 'ip_address' => $data['ip_address'], 'facebook_account' => $data['facebook_account'],
@@ -250,8 +283,10 @@ final class Installations
     {
         return DB::transaction(function () use ($id, $input, $adminId, $branch): int {
             $report = self::lockSubmitted($id, $branch);
-            $data = ClientRegistration::clean($input, $branch, false, true);
-            $clientId = ClientRegistration::create($data, $id);
+            $data = ClientRegistration::clean($input, $branch, false, true, $report->client_id ? (int) $report->client_id : null);
+            $clientId = $report->client_id
+                ? ClientRegistration::updateUninstalled((int) $report->client_id, $data, $id)
+                : ClientRegistration::create($data, $id);
             $port = DB::table('nap_ports')->where('id', $data['nap_port_id'])->first();
 
             $employee = DB::table('employees')->where('id', $report->employee_id)->value('full_name');

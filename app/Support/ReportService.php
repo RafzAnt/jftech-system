@@ -594,6 +594,48 @@ class ReportService
     }
 
     /**
+     * The activity of the filtered period counted by kind of record (payments, bills, installations, ...), biggest first:
+     * how many entries, how many of each outcome, and the amount and quantity they add up to. The printed summary uses it.
+     *
+     * @return list<array{label: string, count: int, completed: int, pending: int, cancelled: int, overdue: int, amount: float, quantity: int}>
+     */
+    public function summaryByReportType(array $f): array
+    {
+        [$where, $params] = $this->buildWhere($f);
+
+        $sql = "SELECT
+                    report_type,
+                    COUNT(*) AS total,
+                    SUM(CASE WHEN outcome = 'completed' THEN 1 ELSE 0 END) AS completed,
+                    SUM(CASE WHEN outcome = 'pending'   THEN 1 ELSE 0 END) AS pending,
+                    SUM(CASE WHEN outcome = 'cancelled' THEN 1 ELSE 0 END) AS cancelled,
+                    SUM(CASE WHEN outcome = 'overdue'   THEN 1 ELSE 0 END) AS overdue,
+                    COALESCE(SUM(amount), 0)   AS amount,
+                    COALESCE(SUM(quantity), 0) AS quantity
+                FROM (" . $this->activityUnion() . ") a
+                WHERE " . implode(' AND ', $where) . "
+                GROUP BY report_type";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+        $types = $this->reportTypes();
+
+        $rows = array_map(static fn (array $r): array => [
+            'label' => $types[$r['report_type']] ?? ucfirst(str_replace('_', ' ', (string) $r['report_type'])),
+            'count' => (int) $r['total'],
+            'completed' => (int) $r['completed'],
+            'pending' => (int) $r['pending'],
+            'cancelled' => (int) $r['cancelled'],
+            'overdue' => (int) $r['overdue'],
+            'amount' => (float) $r['amount'],
+            'quantity' => (int) $r['quantity'],
+        ], $stmt->fetchAll(\PDO::FETCH_ASSOC));
+        usort($rows, static fn (array $a, array $b): int => [$b['count'], $a['label']] <=> [$a['count'], $b['label']]);
+
+        return $rows;
+    }
+
+    /**
      * Performance summary metrics for a generated report.
      *
      * @param string $viewType  'daily', 'monthly', 'yearly', or 'custom'

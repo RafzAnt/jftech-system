@@ -15,7 +15,7 @@
     <link rel="stylesheet" href="{{ asset('css/jftech-theme.css') }}?{{ $themeCssVersion }}">
     <link rel="stylesheet" href="{{ asset('css/inventory_requests.css') }}?{{ $inventoryRequestsCssVersion }}">
 </head>
-<body>
+<body class="inventory-requests-page">
     <div class="grid-overlay"></div>
     
     @include('layouts.sidebar')
@@ -96,10 +96,14 @@ $statusClass = 'status-' . $req['status'];
                                 <td><strong>{{ htmlspecialchars($req['employee_name']) }}</strong></td>
                                 @if (! \App\Support\BranchScope::isRestricted())<td>{{ $req['employee_branch'] ?: '—' }}</td>@endif
                                 <td>
-                                    {{ htmlspecialchars($req['item_name']) }}
+                                    @if (count($req['items']) > 1)
+                                        <strong>{{ count($req['items']) }} items</strong>
+                                    @else
+                                        {{ htmlspecialchars($req['item_name']) }}
+                                    @endif
                                     <br><span class="badge {{ ($req['request_type'] ?? 'out') === 'return' ? 'badge-warning' : 'badge-info' }}">{{ ($req['request_type'] ?? 'out') === 'return' ? 'Item Return' : 'Item Out' }}</span>
                                 </td>
-                                <td>{{ $req['quantity'] }}</td>
+                                <td>{{ $req['total_quantity'] }}</td>
                                 <td style="max-width: 250px; padding: 1rem;">
                                     @php
                                         $requestDetails = array_filter([
@@ -109,10 +113,10 @@ $statusClass = 'status-' . $req['status'];
                                         ]);
                                     @endphp
                                     @foreach ($requestDetails as $requestDetail)
-                                        <span style="display:block; color: var(--text-secondary); font-size: 0.9rem;">{{ $requestDetail }}</span>
+                                        <span style="display:block; color: var(--text-secondary); font-size: 0.75rem;">{{ $requestDetail }}</span>
                                     @endforeach
                                     @if ($req['comments'])
-                                        <span style="color: var(--text-secondary); font-size: 0.9rem;">{{ nl2br(htmlspecialchars($req['comments'])) }}</span>
+                                        <span style="color: var(--text-secondary); font-size: 0.75rem;">{{ nl2br(htmlspecialchars($req['comments'])) }}</span>
                                     @elseif (empty($requestDetails))
                                         <span style="color: var(--text-muted);">-</span>
                                     @endif
@@ -128,27 +132,24 @@ $statusClass = 'status-' . $req['status'];
                                     @endif
                                 </td>
                                 <td>{{ date('M d, Y h:i A', strtotime($req['created_at'])) }}</td>
-                                <td style="font-size: 0.85rem; color: var(--text-secondary);">{{ $processedBy ?: '-' }}</td>
+                                <td style="font-size: 0.72rem; color: var(--text-secondary);">{{ $processedBy ?: '-' }}</td>
                                 <td class="actions-column">
-                                    @if ($req['status'] === 'pending' && $canDecideRequests)
                                     <div class="request-action-menu">
                                         <button class="request-action-menu-btn" type="button" aria-label="Actions for request #{{ $req['id'] }}" aria-expanded="false" onclick="toggleRequestActionMenu(this)">&#8942;</button>
                                         <div class="request-action-menu-dropdown">
-                                        <form method="POST" action="{{ route('inventory-requests.decide', ['inventoryRequest' => $req['id'], 'decision' => 'approve']) }}" onsubmit="return confirm('{{ ($req['request_type'] ?? 'out') === 'return' ? 'Accept this return and put the items back in stock?' : 'Approve this request and release stock?' }}');">
-            @csrf
-                                            <button type="submit" class="request-menu-item">{{ ($req['request_type'] ?? 'out') === 'return' ? 'Accept Return' : 'Approve' }}</button>
-                                        </form>
-                                        <form method="POST" action="{{ route('inventory-requests.decide', ['inventoryRequest' => $req['id'], 'decision' => 'deny']) }}" onsubmit="return confirm('Deny this request?');">
-            @csrf
-                                            <button type="submit" class="request-menu-item request-menu-item-danger">Deny</button>
-                                        </form>
+                                            <button type="button" class="request-menu-item" onclick="showRequestDetails(this)"
+                                                data-items="{{ json_encode($req['items'], JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_TAG | JSON_HEX_AMP) }}"
+                                                data-requester="{{ $req['employee_name'] }}"
+                                                data-branch="{{ $req['employee_branch'] ?: '—' }}"
+                                                data-created="{{ date('M d, Y h:i A', strtotime($req['created_at'])) }}"
+                                                data-type="{{ ($req['request_type'] ?? 'out') === 'return' ? 'Item Return' : 'Item Out' }}"
+                                                data-status="{{ ucfirst($req['status']) }}"
+                                                data-details="{{ implode(' · ', array_filter([$req['item_condition'] ? 'Condition: ' . $req['item_condition'] : null, $req['area_used'] ? 'Used for: ' . $req['area_used'] : null, $req['person_in_charge'] ? 'In charge: ' . $req['person_in_charge'] : null, $req['comments'] ? 'Remarks: ' . $req['comments'] : null])) }}"
+                                                data-actionable="{{ $req['status'] === 'pending' && $canDecideRequests ? '1' : '0' }}"
+                                                data-approve-url="{{ route('inventory-requests.decide', ['inventoryRequest' => $req['id'], 'decision' => 'approve']) }}"
+                                                data-deny-url="{{ route('inventory-requests.decide', ['inventoryRequest' => $req['id'], 'decision' => 'deny']) }}">View</button>
                                         </div>
                                     </div>
-                                    @elseif ($req['status'] === 'pending')
-                                    <span style="color: var(--text-muted); font-size: 0.85rem;">Pending</span>
-                                    @else
-                                    <span style="color: var(--text-muted); font-size: 0.85rem;">Processed</span>
-                                    @endif
                                 </td>
                             </tr>
                             @endforeach
@@ -161,7 +162,72 @@ $statusClass = 'status-' . $req['status'];
             </div>
         </div>
     </div>
+
+    <dialog id="requestDetailsDialog" class="request-details-dialog" aria-labelledby="requestDetailsTitle">
+        <div class="request-details-header">
+            <h2 id="requestDetailsTitle">Request details</h2>
+            <button type="button" class="request-details-close" aria-label="Close" onclick="document.getElementById('requestDetailsDialog').close()">&times;</button>
+        </div>
+        <div class="request-details-meta">
+            <div><span>Requested by</span><strong id="requestDetailsRequester"></strong></div>
+            <div><span>Branch</span><strong id="requestDetailsBranch"></strong></div>
+            <div><span>Request time</span><strong id="requestDetailsCreated"></strong></div>
+            <div><span>Type / status</span><strong id="requestDetailsStatus"></strong></div>
+        </div>
+        <h3>Items</h3>
+        <ul id="requestDetailsItems" class="request-details-items"></ul>
+        <p id="requestDetailsNotes" class="request-details-notes"></p>
+        @if ($canDecideRequests)
+        <div id="requestDetailsActions" class="request-details-actions" hidden>
+            <form id="requestApproveForm" method="POST" action="" onsubmit="return confirm('Approve this request set and update the stock?');">
+                @csrf
+                <button type="submit" id="requestApproveButton" class="request-details-approve">Approve</button>
+            </form>
+            <form id="requestDenyForm" method="POST" action="" onsubmit="return confirm('Deny this request set?');">
+                @csrf
+                <button type="submit" class="request-details-deny">Deny</button>
+            </form>
+        </div>
+        @endif
+    </dialog>
+
     <script>
+    function showRequestDetails(button) {
+        const dialog = document.getElementById('requestDetailsDialog');
+        document.getElementById('requestDetailsRequester').textContent = button.dataset.requester || '—';
+        document.getElementById('requestDetailsBranch').textContent = button.dataset.branch || '—';
+        document.getElementById('requestDetailsCreated').textContent = button.dataset.created || '—';
+        document.getElementById('requestDetailsStatus').textContent = (button.dataset.type || 'Item Out') + ' · ' + (button.dataset.status || 'Pending');
+        document.getElementById('requestDetailsNotes').textContent = button.dataset.details || '';
+        const list = document.getElementById('requestDetailsItems');
+        list.replaceChildren();
+        let items = [];
+        try { items = JSON.parse(button.dataset.items || '[]'); } catch (_) { items = []; }
+        items.forEach(item => {
+            const row = document.createElement('li');
+            const name = document.createElement('strong');
+            name.textContent = item.item_name || 'Inventory item';
+            const quantity = document.createElement('span');
+            quantity.textContent = '× ' + (item.quantity || 0);
+            row.append(name, quantity);
+            if (item.comments) {
+                const note = document.createElement('small');
+                note.textContent = item.comments;
+                row.appendChild(note);
+            }
+            list.appendChild(row);
+        });
+        const actions = document.getElementById('requestDetailsActions');
+        if (actions) {
+            actions.hidden = button.dataset.actionable !== '1';
+            if (!actions.hidden) {
+                document.getElementById('requestApproveForm').action = button.dataset.approveUrl;
+                document.getElementById('requestDenyForm').action = button.dataset.denyUrl;
+                document.getElementById('requestApproveButton').textContent = button.dataset.type === 'Item Return' ? 'Accept Return' : 'Approve';
+            }
+        }
+        dialog.showModal();
+    }
     function closeRequestActionMenus() {
         document.querySelectorAll('.request-action-menu-dropdown.show').forEach(menu => {
             menu.classList.remove('show');
